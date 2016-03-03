@@ -83,12 +83,7 @@ int test2(int n)
 class ff
 {
 public:
-	ff()
-		:m_val(0)
-	{
-		std::cout << "ff::ff" << std::endl;
-	}
-	ff(int a) :m_val(a) 
+	ff(int a = 0) :m_val(a) 
 	{
 		std::cout << "ff::ff(int a)" << std::endl;
 	}
@@ -170,8 +165,8 @@ int main()
 
 	lua_tinker::class_add<ff>(L, "ff");
 
-	lua_tinker::class_con<ff>(L, lua_tinker::constructor<ff>);
-	lua_tinker::class_con<ff>(L, lua_tinker::constructor<ff,int>);
+	//lua_tinker::class_con<ff>(L, lua_tinker::constructor<ff>::invoke);
+	lua_tinker::class_con<ff>(L, lua_tinker::constructor<ff,int>::invoke);
 
 	lua_tinker::class_def<ff>(L, "test", &ff::test);
 	lua_tinker::class_def<ff>(L, "test1", &ff::test1);

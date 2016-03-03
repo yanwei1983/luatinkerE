@@ -368,6 +368,7 @@ namespace lua_tinker
 		return _get_args<nIdxParams, T...>(L, std::make_index_sequence<num_args>());
 	}
 
+
 	//functor
 	template <typename RVal, typename CT, typename ... Args>
 	struct member_functor
@@ -555,14 +556,31 @@ namespace lua_tinker
 
     // constructor
 	template<typename T, typename ...Args>
-	int constructor(lua_State *L)
+	struct constructor
 	{
-		new(lua_newuserdata(L, sizeof(val2user<T>))) val2user<T>(_get_args<2, Args...>(L));
-		push_meta(L, class_name<base_type<T>>::name());
-		lua_setmetatable(L, -2);
+		static int invoke(lua_State *L)
+		{
+			new(lua_newuserdata(L, sizeof(val2user<T>))) val2user<T>(_get_args<2, Args...>(L));
+			push_meta(L, class_name<base_type<T>>::name());
+			lua_setmetatable(L, -2);
 
-		return 1;
-	}
+			return 1;
+		}
+	};
+	
+
+	template<typename T>
+	struct constructor<T>
+	{
+		static int invoke(lua_State *L)
+		{
+			new(lua_newuserdata(L, sizeof(val2user<T>))) val2user<T>();
+			push_meta(L, class_name<base_type<T>>::name());
+			lua_setmetatable(L, -2);
+
+			return 1;
+		}
+	};
 	
 
     // destroyer
