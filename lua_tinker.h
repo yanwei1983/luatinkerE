@@ -521,6 +521,20 @@ namespace lua_tinker
 		lua_pushcclosure(L, &member_functor<RVal, T>::invoke, 1);
 	}
 
+	template<typename RVal, typename T, typename ... Args>
+	void push_functor(lua_State *L, RVal(T::*func)(Args...)const)
+	{
+		(void)func;
+		lua_pushcclosure(L, &member_functor<RVal, T, Args...>::invoke, 1);
+	}
+
+	template<typename RVal, typename T>
+	void push_functor(lua_State *L, RVal(T::*func)()const)
+	{
+		(void)func;
+		lua_pushcclosure(L, &member_functor<RVal, T>::invoke, 1);
+	}
+
 	template<typename RVal, typename ... Args>
 	void push_functor(lua_State *L, RVal(*func)(Args...))
 	{

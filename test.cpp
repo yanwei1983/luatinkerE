@@ -91,6 +91,10 @@ public:
 	{
 		std::cout << "ff::test" << std::endl;
 	}
+	void test_const() const
+	{
+		std::cout << "ff::test" << std::endl;
+	}
 	void test1(int n ) 
 	{
 		std::cout << "ff::test1("<< n <<")" << std::endl;
@@ -169,6 +173,7 @@ int main()
 	lua_tinker::class_con<ff>(L, lua_tinker::constructor<ff,int>::invoke);
 
 	lua_tinker::class_def<ff>(L, "test", &ff::test);
+	lua_tinker::class_def<ff>(L, "test_const", &ff::test_const);
 	lua_tinker::class_def<ff>(L, "test1", &ff::test1);
 	lua_tinker::class_def<ff>(L, "test2", &ff::test2);
 	lua_tinker::class_def<ff>(L, "test3", &ff::test3);
@@ -185,6 +190,7 @@ int main()
 		"	test2(3);"
 		"	local pFF = test3();"
 		"	pFF:test();"
+		"	pFF:test_const();"
 		"	pFF:test1(3);"
 		"	pFF:test2(45);"
 		"	pFF:test3(123,pFF);"
