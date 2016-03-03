@@ -5,11 +5,67 @@
 #include<functional>
 #include<vector>
 #include<map>
+#include<set>
+#include<unordered_map>
 #include<type_traits>
 #include<iostream>
 
 #include "lua_tinker.h"
 
+namespace lua_tinker
+{
+	////stl container push to lua table
+	template<typename K, typename V>
+	void push(lua_State *L, const std::unordered_map<K, V>& ret)
+	{
+		lua_newtable(L);
+		for (auto it = ret.begin(); it != ret.end(); it++)
+		{
+			push(L, it->first);
+			push(L, it->second);
+			lua_settable(L, -3);
+		}
+	}
+
+	template<typename K, typename V>
+	void push(lua_State *L, const std::map<K, V>& ret)
+	{
+		lua_newtable(L);
+		for (auto it = ret.begin(); it != ret.end(); it++)
+		{
+			push(L, it->first);
+			push(L, it->second);
+			lua_settable(L, -3);
+		}
+	}
+
+	template<typename T>
+	void push(lua_State *L, const std::set<T>& ret)
+	{
+		lua_newtable(L);
+		auto it = ret.begin();
+		for (int i = 1; it != ret.end(); it++, i++)
+		{
+			push(L, i);
+			push(L, *it);
+			lua_settable(L, -3);
+		}
+	}
+
+	template<typename T>
+	void push(lua_State *L, const std::vector<T>& ret)
+	{
+		lua_newtable(L);
+		auto it = ret.begin();
+		for (int i = 1; it != ret.end(); it++, i++)
+		{
+			push(L, i);
+			push(L, *it);
+			lua_settable(L, -3);
+		}
+	}
+
+};
 
 void test()
 {
@@ -30,9 +86,11 @@ public:
 	ff()
 		:m_val(0)
 	{
+		std::cout << "ff::ff" << std::endl;
 	}
 	ff(int a) :m_val(a) 
 	{
+		std::cout << "ff::ff(int a)" << std::endl;
 	}
 	void test() 
 	{
@@ -64,7 +122,31 @@ ff* test3()
 	return &g_ff; 
 }
 
-#include "lua_tinker.h"
+std::unordered_map<int, int> g_testhashmap = { { 1,1 },{ 3,2 },{ 5,3 },{ 7,4 } };
+const std::unordered_map<int, int>& push_hashmap()
+{
+	return g_testhashmap;
+}
+
+std::map<int, int> g_testmap = { {1,1},{3,2},{5,3},{7,4} };
+const std::map<int,int>& push_map()
+{
+	return g_testmap;
+}
+
+std::set<int> g_testset = { 1,2,3,4,5 }; 
+const std::set<int> & push_set()
+{
+	return g_testset;
+}
+
+
+std::vector<int> g_testvec = { 1,2,3,4,5 };
+const std::vector<int>& push_vector()
+{
+	return g_testvec;
+}
+
 
 int main()
 {
@@ -80,6 +162,10 @@ int main()
 	lua_tinker::def(L, "test1", &test1);
 	lua_tinker::def(L, "test2", &test2);
 	lua_tinker::def(L, "test3", &test3);
+	lua_tinker::def(L, "push_map", &push_map);
+	lua_tinker::def(L, "push_vector", &push_vector);
+	lua_tinker::def(L, "push_set", &push_set);
+	lua_tinker::def(L, "push_hashmap", &push_hashmap);
 
 
 	lua_tinker::class_add<ff>(L, "ff");
@@ -97,7 +183,7 @@ int main()
 
 
 	std::string luabuf =
-		"g_int = 100;"
+		"g_int = 100; \n"
 		"function lua_test()"
 		"	test();"
 		"	test1(2);"
@@ -115,6 +201,30 @@ int main()
 		"	test1(luaFF.m_val);"
 		"	local luaFF1 = ff(1);"
 		"	test1(luaFF1.m_val);"
+		"	local map_table = push_map();"
+		"	print(\"print map_table\")"
+		"	for k,v in pairs(map_table) do"
+		"		print(k);"
+		"		print(v);"
+		"	end""\n"
+		"	print(\"print hashmap_table\")"
+		"	local hashmap_table = push_hashmap();"
+		"	for k,v in pairs(hashmap_table) do"
+		"		print(k);"
+		"		print(v);"
+		"	end""\n"
+		"	print(\"print vector_table\")"
+		"	local vector_table = push_vector();"
+		"	for idx,v in ipairs(vector_table) do"
+		"		print(idx);"
+		"		print(v);"
+		"	end""\n"
+		"	print(\"print set_table\")"
+		"	local set_table = push_set();"
+		"	for idx,v in ipairs(set_table) do"
+		"		print(idx);"
+		"		print(v);"
+		"	end""\n"
 		"end"
 		"\n"
 		"function lua_test2(n)"

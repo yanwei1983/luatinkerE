@@ -278,7 +278,7 @@ namespace lua_tinker
 	template<>  void push(lua_State *L, const std::string& ret);
 
 	////stl container push to lua table
-	//template<typename L,typename V>
+	//template<typename K,typename V>
 	//void push(lua_State *L, const std::map<K,V>& ret)
 	//{
 	//	lua_newtable(L);
@@ -549,10 +549,7 @@ namespace lua_tinker
         V T::*_var;
         mem_var(V T::*val) : _var(val) {}
 		void get(lua_State *L) { CHECK_CLASS_PTR(T); push(L, read<T*>(L, 1)->*(_var)); }
-        void set(lua_State *L) 
-		{ 
-			CHECK_CLASS_PTR(T); 
-			read<T*>(L,1)->*(_var) = read<V>(L, 3);  
+        void set(lua_State *L) { CHECK_CLASS_PTR(T); read<T*>(L,1)->*(_var) = read<V>(L, 3);  
 		}
     };
 
