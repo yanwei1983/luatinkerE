@@ -16,7 +16,7 @@
 #include <typeinfo>
 #include <type_traits>
 #include"lua.hpp"
-
+#include"type_traits_ext.h" 
 
 #ifdef LUA_CALL_CFUNC_NEED_ALL_PARAM
 #define LUA_CHECK_HAVE_THIS_PARAM(L,index) if(lua_isnone(L,index)){lua_pushfstring(L, "need argument %d to call cfunc", index);lua_error(L);}
@@ -61,6 +61,7 @@ namespace lua_tinker
     // type trait
     template<typename T> struct class_name;
     struct table;
+
 
 	// from lua
 	// param to pointer
@@ -277,42 +278,30 @@ namespace lua_tinker
 	template<>  void push(lua_State *L, std::string ret);
 	template<>  void push(lua_State *L, const std::string& ret);
 
-	////stl container push to lua table
-	//template<typename K,typename V>
-	//void push(lua_State *L, const std::map<K,V>& ret)
-	//{
-	//	lua_newtable(L);
-	//	for (auto it = ret.begin(); it != ret.end(); it++)
-	//	{
-	//		push(L, it->first);
-	//		push(L, it->second);
-	//		lua_settable(L, -3);
-	//	}
-	//}
+	//stl container push to lua table
+	template<typename K,typename V, template<typename,typename> typename TContainer >
+	typename std::enable_if<is_associative_container<TContainer<K, V>>::value,void>::type push(lua_State *L, const TContainer<K, V>& ret)
+	{
+		lua_newtable(L);
+		for (auto it = ret.begin(); it != ret.end(); it++)
+		{
+			push(L, it->first);
+			push(L, it->second);
+			lua_settable(L, -3);
+		}
+	}
 
-	//template<typename T>
-	//void push(lua_State *L, const std::set<T>& ret)
-	//{
-	//	lua_newtable(L);
-	//	for (auto it = ret.begin(),int i = 1; it != ret.end(); it++,i++)
-	//	{
-	//		push(L, i);
-	//		push(L, *it);
-	//		lua_settable(L, -3);
-	//	}
-	//}
-
-	//template<typename T>
-	//void push(lua_State *L, const std::vector<T>& ret)
-	//{
-	//	lua_newtable(L);
-	//	for (auto it = ret.begin(), int i = 1; it != ret.end(); it++, i++)
-	//	{
-	//		push(L, i);
-	//		push(L, *it);
-	//		lua_settable(L, -3);
-	//	}
-	//}
+	template<typename T, template<typename> typename TContainer >
+	typename std::enable_if<is_container<TContainer<T>>::value, void>::type push(lua_State *L, const TContainer<T>& ret)
+	{
+		lua_newtable(L);
+		for (auto it = ret.begin(), int i = 1; it != ret.end(); it++, i++)
+		{
+			push(L, i);
+			push(L, *it);
+			lua_settable(L, -3);
+		}
+	}
 
 
 
