@@ -38,8 +38,6 @@ namespace lua_tinker
     // init LuaTinker
     void    init(lua_State *L);
 
-    void    init_s64(lua_State *L);
-    void    init_u64(lua_State *L);
 	void	init_shared_ptr(lua_State *L);
 
     // string-buffer excution
@@ -58,6 +56,7 @@ namespace lua_tinker
     // dynamic type extention
     struct lua_value
     {
+		virtual ~lua_value() {}
         virtual void to_lua(lua_State *L) = 0;
     };
 
@@ -66,7 +65,7 @@ namespace lua_tinker
     struct table;
 
 	// lua stack help to read/push
-	template<typename T>
+	template<typename T, typename Enable = void>
 	struct _stack_help
 	{
 		static T _read(lua_State *L, int index) { return lua2type<T>(L, index); }
@@ -85,87 +84,41 @@ namespace lua_tinker
 	{
 		static const char* _read(lua_State *L, int index);
 		static void  _push(lua_State *L, const char* ret);
-
 	};
 
 	template<>
-	struct _stack_help<char>
+	struct _stack_help<bool>
 	{
-		static char _read(lua_State *L, int index);
-		static void  _push(lua_State *L, char ret);
-
+		static bool _read(lua_State *L, int index);
+		static void  _push(lua_State *L, bool ret);
 	};
 
-	template<>
-	struct _stack_help<unsigned char>
+	//integral
+	template<typename T>
+	struct _stack_help<T, typename std::enable_if<std::is_integral<T>::value>::type> 
 	{
-		static unsigned char _read(lua_State *L, int index);
-		static void  _push(lua_State *L, unsigned char ret);
-
+		static T _read(lua_State *L, int index)
+		{
+			return (T)lua_tointeger(L, index);
+		}
+		static void  _push(lua_State *L, T ret)
+		{
+			lua_pushinteger(L, ret);
+		}
 	};
 
-	template<>
-	struct _stack_help<short>
+	//float pointer
+	template<typename T>
+	struct _stack_help<T, typename std::enable_if<std::is_floating_point<T>::value>::type>
 	{
-		static short _read(lua_State *L, int index);
-		static void  _push(lua_State *L, short ret);
-
-	};
-
-	template<>
-	struct _stack_help<unsigned short>
-	{
-		static unsigned short _read(lua_State *L, int index);
-		static void  _push(lua_State *L, unsigned short ret);
-
-	};
-
-	template<>
-	struct _stack_help<int>
-	{
-		static int _read(lua_State *L, int index);
-		static void  _push(lua_State *L, int ret);
-
-	};
-
-	template<>
-	struct _stack_help<unsigned int>
-	{
-		static unsigned int _read(lua_State *L, int index);
-		static void  _push(lua_State *L, unsigned int ret);
-
-	};
-
-	template<>
-	struct _stack_help<long>
-	{
-		static long _read(lua_State *L, int index);
-		static void  _push(lua_State *L, long ret);
-
-	};
-
-	template<>
-	struct _stack_help< unsigned long>
-	{
-		static  unsigned long _read(lua_State *L, int index);
-		static void  _push(lua_State *L, unsigned long ret);
-
-	};
-
-	template<>
-	struct _stack_help<float>
-	{
-		static float _read(lua_State *L, int index);
-		static void  _push(lua_State *L, float ret);
-
-	};
-
-	template<>
-	struct _stack_help< double>
-	{
-		static  double _read(lua_State *L, int index);
-		static void  _push(lua_State *L, double ret);
-
+		static T _read(lua_State *L, int index)
+		{
+			return (T)lua_tonumber(L, index);
+		}
+		static void  _push(lua_State *L, T ret)
+		{
+			lua_pushnumber(L, ret);
+		}
 	};
 
 	template<>
@@ -183,6 +136,68 @@ namespace lua_tinker
 		static std::string _read(lua_State *L, int index);
 		static void _push(lua_State *L, const std::string& ret);
 
+	};
+
+	template<>
+	struct _stack_help<table>
+	{
+		static table _read(lua_State *L, int index);
+		static void _push(lua_State *L, table ret);
+
+	};
+
+	template<>
+	struct _stack_help<lua_value*>
+	{
+		static lua_value* _read(lua_State *L, int index);
+		static void _push(lua_State *L, lua_value* ret);
+
+	};
+
+	//enum
+	template<typename T>
+	struct _stack_help<T, typename std::enable_if<std::is_enum<T>::value>::type>
+	{
+		static T _read(lua_State *L, int index)
+		{
+			return (T)lua_tonumber(L, index);
+		}
+		static void  _push(lua_State *L, T ret)
+		{
+			lua_pushnumber(L, ret);
+		}
+	};
+	
+	//stl container
+	template<typename T>
+	struct _stack_help<T, typename std::enable_if<is_container<T>::value>::type>
+	{
+		static T _read(lua_State *L, int index) = delete;
+		//k,v container to lua
+		template<typename T>
+		static typename std::enable_if<is_associative_container<T>::value, void>::type  _push(lua_State *L, T ret)
+		{
+			lua_newtable(L);
+			for (auto it = ret.begin(); it != ret.end(); it++)
+			{
+				push(L, it->first);
+				push(L, it->second);
+				lua_settable(L, -3);
+			}
+		} 
+		//t container to lua
+		template<typename T>
+		static typename std::enable_if<!is_associative_container<T>::value, void>::type  _push(lua_State *L, T ret)
+		{
+			lua_newtable(L);
+			auto it = ret.begin();
+			for (int i = 1; it != ret.end(); it++, i++)
+			{
+				push(L, i);
+				push(L, *it);
+				lua_settable(L, -3);
+			}
+		}
 	};
 
 	// from lua
@@ -230,7 +245,7 @@ namespace lua_tinker
 	
 	//get userdata from lua 
 	template<typename T>
-	typename std::enable_if<!std::is_enum<T>::value && !std::is_pointer<T>::value, T>::type lua2type(lua_State *L, int index)
+	typename std::enable_if<!std::is_pointer<T>::value, T>::type lua2type(lua_State *L, int index)
 	{
 		if (!lua_isuserdata(L, index))
 		{
@@ -238,14 +253,7 @@ namespace lua_tinker
 			lua_error(L);
 		}
 		
-		user* puser = user2type<user*>(L, index);
-		if (puser->checktype<T>() == false)
-		{
-			lua_pushfstring(L, "can't convert argument %d to class %s", index, class_name< base_type<T> >::name());
-			lua_error(L);
-		}
-
-		return void2type<T>(puser->m_p);
+		return void2type<T>(user2type<user*>(L, index)->m_p);
 	}
 
 	//get userdata ptr from lua, can handle nil an 0
@@ -266,22 +274,9 @@ namespace lua_tinker
 			lua_error(L);
 		}
 
-		user* puser = user2type<user*>(L, index);
-		if (puser->checktype<T>() == false)
-		{
-			lua_pushfstring(L, "can't convert argument %d to class %s", index, class_name< base_type<T> >::name());
-			lua_error(L);
-		}
-
-		return void2type<T>(puser->m_p);
+		return void2type<T>(user2type<user*>(L, index)->m_p);
 	}
 
-	//get enum from lua
-	template<typename T>
-	typename std::enable_if<std::is_enum<T>::value,T>::type lua2type(lua_State *L, int index)
-	{
-		return (T)(int)lua_tonumber(L, index);
-	}
 
  	//read_weap
 	template<typename T>
@@ -307,48 +302,13 @@ namespace lua_tinker
 		return _stack_help<T>::_read(L, index);
 	}
 
-	enum userdata_holder_t
-	{
-		userdata_val,
-		userdata_ref,
-		userdata_ptr,
-		userdata_sharedptr,
-	};
+
 	//userdata holder
 	struct user
 	{
 		user(void* p) : m_p(p) {}
 		virtual ~user() {}
 		void* m_p;
-		virtual userdata_holder_t gettype() = 0;
-
-
-
-
-
-		template<typename T>
-		typename std::enable_if<std::is_pointer<T>::value, bool>::type checktype()
-		{
-			return gettype() == userdata_ptr;
-		}
-
-		template<typename T>
-		typename std::enable_if<std::is_reference<T>::value, bool>::type checktype()
-		{
-			return gettype() == userdata_ref;
-		}
-
-		template<typename T>
-		typename std::enable_if<is_shared_ptr<T>::value, bool>::type checktype()
-		{
-			return gettype() == userdata_sharedptr;
-		}
-
-		template<typename T>
-		typename std::enable_if<!std::is_pointer<T>::value && !std::is_reference<T>::value && !is_shared_ptr<T>::value, bool>::type checktype()
-		{
-			return gettype() == userdata_val;
-		}
 	};
 
 	template<typename T>
@@ -365,21 +325,18 @@ namespace lua_tinker
 
 		~val2user() { delete ((T*)m_p); }
 
-		virtual userdata_holder_t gettype() override { return userdata_val; }
 	};
 
 	template<typename T>
 	struct ptr2user : user
 	{
 		ptr2user(T* t) : user((void*)t) {}
-		virtual userdata_holder_t gettype() override { return userdata_ptr; }
 	};
 
 	template<typename T>
 	struct ref2user : user
 	{
 		ref2user(T& t) : user(&t) {}
-		virtual userdata_holder_t gettype() override { return userdata_ref; }
 	};
 
 	template<typename T>
@@ -390,7 +347,6 @@ namespace lua_tinker
 		~sharedptr2user() { m_holder.reset(); }
 
 		std::weak_ptr<T> m_holder;
-		virtual userdata_holder_t gettype() override { return userdata_sharedptr; }
 	};
 
 	// to lua
@@ -422,46 +378,11 @@ namespace lua_tinker
 
 	//obj to lua
 	template<typename T>
-	typename std::enable_if<!std::is_enum<T>::value && !is_shared_ptr<T>::value && !is_container<T>::value, void>::type type2lua(lua_State *L, T val)
+	typename std::enable_if<!is_shared_ptr<T>::value, void>::type type2lua(lua_State *L, T val)
 	{
 		object2lua(L, std::forward<T>(val));
 		push_meta(L, class_name<base_type<T>>::name());
 		lua_setmetatable(L, -2);
-	}
-
-
-	//k,v container to lua
-	template<typename T >
-	static typename std::enable_if<is_associative_container<T>::value, void>::type _push_container(lua_State *L, const T& ret)
-	{
-		lua_newtable(L);
-		for (auto it = ret.begin(); it != ret.end(); it++)
-		{
-			push(L, it->first);
-			push(L, it->second);
-			lua_settable(L, -3);
-		}
-	}
-
-	//t container to lua
-	template<typename T >
-	static typename std::enable_if<!is_associative_container<T>::value, void>::type _push_container(lua_State *L, const T& ret)
-	{
-		lua_newtable(L);
-		auto it = ret.begin();
-		for (int i = 1; it != ret.end(); it++, i++)
-		{
-			push(L, i);
-			push(L, *it);
-			lua_settable(L, -3);
-		}
-	}
-
-	//stl container push to lua table
-	template<typename T >
-	typename std::enable_if<is_container<T>::value, void>::type type2lua(lua_State *L, T ret) 
-	{
-		_push_container<T>(L, ret); 
 	}
 
 	//shared_ptr to lua
@@ -474,13 +395,6 @@ namespace lua_tinker
 		push_meta(L, S_SHARED_PTR_NAME);
 
 		lua_setmetatable(L, -2);
-	}
-
-	//enum to lua
-	template<typename T>
-	typename std::enable_if<std::is_enum<T>::value, void>::type type2lua(lua_State *L, T val)
-	{
-		lua_pushnumber(L, (int)val);
 	}
 
 	// get value from cclosure
@@ -552,29 +466,19 @@ namespace lua_tinker
 
 
 	template <int nIdxParams, typename... T, std::size_t... N>
-	ParamHolder_T<T...> _get_args_help(lua_State *L, std::index_sequence<N...>)
+	ParamHolder_T<T...> _get_args(lua_State *L, std::index_sequence<N...>)
 	{
 		return std::forward<ParamHolder_T<T...>>(ParamHolder_T<T...>{ read<T>(L, N + nIdxParams)... });
 	}
 
 	template <int nIdxParams, typename... T>
-	ParamHolder_T<T...> _get_args_help(lua_State *L)
-	{
-		constexpr std::size_t num_args = sizeof...(T);
-		return _get_args_help<nIdxParams, T...>(L, std::make_index_sequence<num_args>());
-	}
-
-	////ParamHolder no hold const T&, only hold T
-	//template <int nIdxParams, typename... T>
-	//ParamHolder_T<T...> _get_args(lua_State *L)
-	//{
-	//	return _get_args_help<nIdxParams, typename std::remove_cv<typename std::remove_reference<T>::type>::type...>(L);
-	//}
-	template <int nIdxParams, typename... T>
 	ParamHolder_T<T...> _get_args(lua_State *L)
 	{
-		return _get_args_help<nIdxParams, T...>(L);
+		constexpr std::size_t num_args = sizeof...(T);
+		return _get_args<nIdxParams, T...>(L, std::make_index_sequence<num_args>());
 	}
+
+
 	//functor
 	template <typename RVal, typename CT, typename ... Args>
 	struct member_functor

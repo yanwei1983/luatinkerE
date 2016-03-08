@@ -22,76 +22,8 @@
 /*---------------------------------------------------------------------------*/ 
 void lua_tinker::init(lua_State *L)
 {
-    init_s64(L);
-    init_u64(L);
 	init_shared_ptr(L);
 }
-
-/*---------------------------------------------------------------------------*/ 
-/* __s64                                                                     */ 
-/*---------------------------------------------------------------------------*/ 
-static int tostring_s64(lua_State *L)
-{
-    lua_pushstring(L, std::to_string(*(long long*)lua_topointer(L, 1)).c_str());
-    return 1;
-}
-
-/*---------------------------------------------------------------------------*/ 
-static int eq_s64(lua_State *L)
-{
-    int64_t a = *(int64_t*)lua_touserdata(L, 1);
-    int64_t b = *(int64_t*)lua_touserdata(L, 2);
-    lua_pushboolean(L, (a == b));
-    return 1;
-}
-
-/*---------------------------------------------------------------------------*/ 
-static int lt_s64(lua_State *L)
-{
-    int64_t a = *(int64_t*)lua_touserdata(L, 1);
-    int64_t b = *(int64_t*)lua_touserdata(L, 2);
-    lua_pushboolean(L, (a < b));
-    return 1;
-}
-
-/*---------------------------------------------------------------------------*/ 
-static int le_s64(lua_State *L)
-{
-    int64_t a = *(int64_t*)lua_touserdata(L, 1);
-    int64_t b = *(int64_t*)lua_touserdata(L, 2);
-    lua_pushboolean(L, (a <= b));
-    return 1;
-}
-
-/*---------------------------------------------------------------------------*/ 
-void lua_tinker::init_s64(lua_State *L)
-{
-    const char* name = "__s64";
-    lua_newtable(L);
-
-    lua_pushstring(L, "__name");
-    lua_pushstring(L, name);
-    lua_rawset(L, -3);
-
-    lua_pushstring(L, "__tostring");
-    lua_pushcclosure(L, tostring_s64, 0);
-    lua_rawset(L, -3);
-
-    lua_pushstring(L, "__eq");
-    lua_pushcclosure(L, eq_s64, 0);
-    lua_rawset(L, -3);  
-
-    lua_pushstring(L, "__lt");
-    lua_pushcclosure(L, lt_s64, 0);
-    lua_rawset(L, -3);  
-
-    lua_pushstring(L, "__le");
-    lua_pushcclosure(L, le_s64, 0);
-    lua_rawset(L, -3);  
-
-    lua_setglobal(L, name); //pop table
-}
-
 
 /*---------------------------------------------------------------------------*/
 void lua_tinker::init_shared_ptr(lua_State *L)
@@ -123,74 +55,7 @@ int lua_tinker::destroyer_shared_ptr(lua_State *L)
 	((user*)lua_touserdata(L, 1))->~user();
 	return 0;
 }
-/*---------------------------------------------------------------------------*/ 
-/* __u64                                                                     */ 
-/*---------------------------------------------------------------------------*/ 
-static int tostring_u64(lua_State *L)
-{
-	lua_pushstring(L, std::to_string(*(unsigned long long*)lua_topointer(L, 1)).c_str());
-    return 1;
-}
 
-/*---------------------------------------------------------------------------*/ 
-static int eq_u64(lua_State *L)
-{
-    uint64_t a = *(uint64_t*)lua_touserdata(L, 1);
-    uint64_t b = *(uint64_t*)lua_touserdata(L, 2);
-    lua_pushboolean(L, (a == b));
-    return 1;
-}
-
-/*---------------------------------------------------------------------------*/ 
-static int lt_u64(lua_State *L)
-{
-    uint64_t a = *(uint64_t*)lua_touserdata(L, 1);
-    uint64_t b = *(uint64_t*)lua_touserdata(L, 2);
-    lua_pushboolean(L, (a < b));
-    return 1;
-}
-
-/*---------------------------------------------------------------------------*/ 
-static int le_u64(lua_State *L)
-{
-    uint64_t a = *(uint64_t*)lua_touserdata(L, 1);
-    uint64_t b = *(uint64_t*)lua_touserdata(L, 2);
-    lua_pushboolean(L, (a <= b));
-    return 1;
-}
-
-/*---------------------------------------------------------------------------*/ 
-void lua_tinker::init_u64(lua_State *L)
-{
-    const char* name = "__u64";
-    lua_newtable(L);
-
-    lua_pushstring(L, "__name");
-    lua_pushstring(L, name);
-    lua_rawset(L, -3);
-
-    lua_pushstring(L, "__tostring");
-    lua_pushcclosure(L, tostring_u64, 0);
-    lua_rawset(L, -3);
-
-    lua_pushstring(L, "__eq");
-    lua_pushcclosure(L, eq_u64, 0);
-    lua_rawset(L, -3);  
-
-    lua_pushstring(L, "__lt");
-    lua_pushcclosure(L, lt_u64, 0);
-    lua_rawset(L, -3);  
-
-    lua_pushstring(L, "__le");
-    lua_pushcclosure(L, le_u64, 0);
-    lua_rawset(L, -3);  
-
-    //lua_pushstring(L, "__concat");
-    //lua_pushcclosure(L, concat_u64, 0);
-    //lua_rawset(L, -3);
-
-    lua_setglobal(L, name);
-}
 
 /*---------------------------------------------------------------------------*/ 
 /* excution                                                                  */ 
@@ -356,97 +221,12 @@ const char* lua_tinker::_stack_help<const char*>::_read(lua_State *L, int index)
     return (const char*)lua_tostring(L, index);     
 }
 
-char lua_tinker::_stack_help<char>::_read(lua_State *L, int index)
-{
-    return (char)lua_tointeger(L, index);
-}
-
-unsigned char lua_tinker::_stack_help<unsigned char>::_read(lua_State *L, int index)
-{
-    return (unsigned char)lua_tointeger(L, index);       
-}
-
-short lua_tinker::_stack_help<short>::_read(lua_State *L, int index)
-{
-    return (short)lua_tointeger(L, index);
-}
-
-unsigned short lua_tinker::_stack_help<unsigned short>::_read(lua_State *L, int index)
-{
-    return (unsigned short)lua_tointeger(L, index);
-}
-
-// long is different between i386 and X86_64 architecture
-#if defined(__X86_64__) || defined(__X86_64) || defined(__amd_64) || defined(__amd_64__)
-long lua_tinker::_stack_help<long>::_read(lua_State *L, int index)
-{
-    if(lua_isnumber(L,index))
-        return (long)lua_tointeger(L, index);
-    else
-        return *(long*)lua_touserdata(L, index);
-}
-
-unsigned long lua_tinker::_stack_help<unsigned long>::_read(lua_State *L, int index)
-{
-    if(lua_isnumber(L,index))
-        return (unsigned long)lua_tointeger(L, index);
-    else
-        return *(unsigned long*)lua_touserdata(L, index);
-}
-#else //__i386__ //32bit
-long lua_tinker::_stack_help<long>::_read(lua_State *L, int index)
-{
-	return (long)lua_tointeger(L, index);
-}
-
-unsigned long lua_tinker::_stack_help<unsigned long>::_read(lua_State *L, int index)
-{
-	return (unsigned long)lua_tointeger(L, index);
-}
-#endif
-
-int lua_tinker::_stack_help<int>::_read(lua_State *L, int index)
-{
-    return (int)lua_tointeger(L, index);
-}
-
-unsigned int lua_tinker::_stack_help<unsigned int>::_read(lua_State *L, int index)
-{
-    return (unsigned int)lua_tointeger(L, index);
-}
-
-float lua_tinker::_stack_help<float>::_read(lua_State *L, int index)
-{
-    return (float)lua_tonumber(L, index);               
-}
-
-double lua_tinker::_stack_help<double>::_read(lua_State *L, int index)
-{
-    return (double)lua_tonumber(L, index);          
-}
-
 bool lua_tinker::_stack_help<bool>::_read(lua_State *L, int index)
 {
     if(lua_isboolean(L, index))
         return lua_toboolean(L, index) != 0;                
     else
-        return lua_tonumber(L, index) != 0;
-}
-
-long long lua_tinker::_stack_help< long long>::_read(lua_State *L, int index)
-{
-    if(lua_isnumber(L,index))
-        return (long long)lua_tonumber(L, index);
-    else
-        return *(long long*)lua_touserdata(L, index);
-}
-
-unsigned long long lua_tinker::_stack_help< unsigned long long>::_read(lua_State *L, int index)
-{
-    if(lua_isnumber(L,index))
-        return (unsigned long long)lua_tonumber(L, index);
-    else
-        return *(unsigned long long*)lua_touserdata(L, index);
+        return lua_tointeger(L, index) != 0;
 }
 
 lua_tinker::table lua_tinker::_stack_help<lua_tinker::table>::_read(lua_State *L, int index)
@@ -469,72 +249,6 @@ std::string lua_tinker::_stack_help<const std::string&>::_read(lua_State *L, int
 /*---------------------------------------------------------------------------*/ 
 /* _push                                                                      */ 
 /*---------------------------------------------------------------------------*/ 
-void lua_tinker::_stack_help<char>::_push(lua_State *L, char ret)
-{
-    lua_pushnumber(L, ret);                     
-}
-
-void lua_tinker::_stack_help<unsigned char>::_push(lua_State *L, unsigned char ret)
-{
-    lua_pushnumber(L, ret);                     
-}
-
-void lua_tinker::_stack_help<short>::_push(lua_State *L, short ret)
-{
-    lua_pushnumber(L, ret);                     
-}
-
-void lua_tinker::_stack_help<unsigned short>::_push(lua_State *L, unsigned short ret)
-{
-    lua_pushnumber(L, ret);                     
-}
-
-#if defined(__X86_64__) || defined(__X86_64) || defined(__amd_64) || defined(__amd_64__)
-void lua_tinker::_stack_help<long>::_push(lua_State *L, long ret)
-{
-    *(long*)lua_newuserdata(L, sizeof(long)) = ret;
-    lua_getglobal(L, "__s64");
-    lua_setmetatable(L, -2);
-}
-
-void lua_tinker::_stack_help<unsigned long>::_push(lua_State *L, unsigned long ret)
-{
-    *(unsigned long*)lua_newuserdata(L, sizeof(unsigned long)) = ret;
-    lua_getglobal(L, "__u64");
-    lua_setmetatable(L, -2);
-}
-#else //__i386__ 
-void lua_tinker::_stack_help<long>::_push(lua_State *L, long ret)
-{
-	lua_pushnumber(L, ret);						
-}
-
-void lua_tinker::_stack_help<unsigned long>::_push(lua_State *L, unsigned long ret)
-{
-	lua_pushnumber(L, ret);						
-}
-#endif
-
-void lua_tinker::_stack_help<int>::_push(lua_State *L, int ret)
-{
-    lua_pushnumber(L, ret);                     
-}
-
-void lua_tinker::_stack_help<unsigned int>::_push(lua_State *L, unsigned int ret)
-{
-    lua_pushnumber(L, ret);                     
-}
-
-void lua_tinker::_stack_help<float>::_push(lua_State *L, float ret)
-{
-    lua_pushnumber(L, ret);                     
-}
-
-void lua_tinker::_stack_help<double>::_push(lua_State *L, double ret)
-{
-    lua_pushnumber(L, ret);                     
-}
-
 void lua_tinker::_stack_help<char*>::_push(lua_State *L, char* ret)
 {
     lua_pushstring(L, ret);                     
@@ -553,19 +267,6 @@ void lua_tinker::_stack_help<bool>::_push(lua_State *L, bool ret)
 void lua_tinker::_stack_help<lua_tinker::lua_value*>::_push(lua_State *L, lua_value* ret)
 {
     if(ret) ret->to_lua(L); else lua_pushnil(L);    
-}
-
-void lua_tinker::_stack_help<long long>::_push(lua_State *L, long long ret)
-{ 
-    *(long long*)lua_newuserdata(L, sizeof(long long)) = ret;
-    lua_getglobal(L, "__s64");
-    lua_setmetatable(L, -2);
-}
-void lua_tinker::_stack_help<unsigned long long>::_push(lua_State *L, unsigned long long ret)
-{
-    *(unsigned long long*)lua_newuserdata(L, sizeof(unsigned long long)) = ret;
-    lua_getglobal(L, "__u64");
-    lua_setmetatable(L, -2);
 }
 
 void lua_tinker::_stack_help<lua_tinker::table>::_push(lua_State *L, lua_tinker::table ret)
