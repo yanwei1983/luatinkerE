@@ -238,7 +238,14 @@ namespace lua_tinker
 			lua_error(L);
 		}
 		
-		return void2type<T>(user2type<user*>(L, index)->m_p);
+		user* puser = user2type<user*>(L, index);
+		if (puser->checktype<T>() == false)
+		{
+			lua_pushfstring(L, "can't convert argument %d to class %s", index, class_name< base_type<T> >::name());
+			lua_error(L);
+		}
+
+		return void2type<T>(puser->m_p);
 	}
 
 	//get userdata ptr from lua, can handle nil an 0
@@ -258,7 +265,15 @@ namespace lua_tinker
 			lua_pushfstring(L, "can't convert argument %d to class %s", index, class_name< base_type<T> >::name());
 			lua_error(L);
 		}
-		return void2type<T>(user2type<user*>(L, index)->m_p);
+
+		user* puser = user2type<user*>(L, index);
+		if (puser->checktype<T>() == false)
+		{
+			lua_pushfstring(L, "can't convert argument %d to class %s", index, class_name< base_type<T> >::name());
+			lua_error(L);
+		}
+
+		return void2type<T>(puser->m_p);
 	}
 
 	//get enum from lua
@@ -292,18 +307,54 @@ namespace lua_tinker
 		return _stack_help<T>::_read(L, index);
 	}
 
+	enum userdata_holder_t
+	{
+		userdata_val,
+		userdata_ref,
+		userdata_ptr,
+		userdata_sharedptr,
+	};
 	//userdata holder
 	struct user
 	{
 		user(void* p) : m_p(p) {}
 		virtual ~user() {}
 		void* m_p;
+		virtual userdata_holder_t gettype() = 0;
+
+
+
+
+
+		template<typename T>
+		typename std::enable_if<std::is_pointer<T>::value, bool>::type checktype()
+		{
+			return gettype() == userdata_ptr;
+		}
+
+		template<typename T>
+		typename std::enable_if<std::is_reference<T>::value, bool>::type checktype()
+		{
+			return gettype() == userdata_ref;
+		}
+
+		template<typename T>
+		typename std::enable_if<is_shared_ptr<T>::value, bool>::type checktype()
+		{
+			return gettype() == userdata_sharedptr;
+		}
+
+		template<typename T>
+		typename std::enable_if<!std::is_pointer<T>::value && !std::is_reference<T>::value && !is_shared_ptr<T>::value, bool>::type checktype()
+		{
+			return gettype() == userdata_val;
+		}
 	};
 
 	template<typename T>
 	struct val2user : user
 	{
-		val2user() : user(new T) {}
+		val2user() : user(new T) { nType = }
 		val2user(const T& t) : user(new T(t)) {}
 		val2user(T&& t) : user(new T(t)) {}
 
@@ -313,18 +364,22 @@ namespace lua_tinker
 		val2user(Tup&& tup, std::index_sequence<index...>) : user(new T(std::get<index>(std::forward<Tup>(tup))...)) {}
 
 		~val2user() { delete ((T*)m_p); }
+
+		virtual userdata_holder_t gettype() override { return userdata_val; }
 	};
 
 	template<typename T>
 	struct ptr2user : user
 	{
 		ptr2user(T* t) : user((void*)t) {}
+		virtual userdata_holder_t gettype() override { return userdata_ptr; }
 	};
 
 	template<typename T>
 	struct ref2user : user
 	{
 		ref2user(T& t) : user(&t) {}
+		virtual userdata_holder_t gettype() override { return userdata_ref; }
 	};
 
 	template<typename T>
@@ -335,6 +390,7 @@ namespace lua_tinker
 		~sharedptr2user() { m_holder.reset(); }
 
 		std::weak_ptr<T> m_holder;
+		virtual userdata_holder_t gettype() override { return userdata_sharedptr; }
 	};
 
 	// to lua

@@ -164,22 +164,37 @@ public:
 	int m_val;
 };
 
-std::shared_ptr<ff_nodef> g_ff_nodef;
-std::shared_ptr<ff_nodef> make_ff_nodef()
+ff_nodef g_ff_nodef;
+ff_nodef* make_ff_nodef()
 {
-	if (!g_ff_nodef)
-	{
-		g_ff_nodef = std::shared_ptr<ff_nodef>(new ff_nodef);
-	}
-	return g_ff_nodef;
+	return &g_ff_nodef;
 }
 
-void visot_ff_nodef(std::shared_ptr<ff_nodef> pFF)
+void visot_ff_nodef(ff_nodef* pFF)
 {
 	if (pFF)
 	{
 		pFF->m_val++;
 		std::cout << "visot_ff_nodef(" << pFF->m_val << ")" << std::endl;
+	}
+}
+
+std::shared_ptr<ff_nodef> g_ff_nodef_shared;
+std::shared_ptr<ff_nodef> make_ff_nodef_shared()
+{
+	if (!g_ff_nodef_shared)
+	{
+		g_ff_nodef_shared = std::shared_ptr<ff_nodef>(new ff_nodef);
+	}
+	return g_ff_nodef_shared;
+}
+
+void visot_ff_nodef_shared(std::shared_ptr<ff_nodef> pFF)
+{
+	if (pFF)
+	{
+		pFF->m_val++;
+		std::cout << "visot_ff_nodef_shared(" << pFF->m_val << ")" << std::endl;
 	}
 }
 
@@ -212,6 +227,8 @@ int main()
 	lua_tinker::def(L, "visot_ff", &visot_ff);
 	lua_tinker::def(L, "make_ff_nodef", &make_ff_nodef);
 	lua_tinker::def(L, "visot_ff_nodef", &visot_ff_nodef);
+	lua_tinker::def(L, "make_ff_nodef_shared", &make_ff_nodef_shared);
+	lua_tinker::def(L, "visot_ff_nodef_shared", &visot_ff_nodef_shared);
 
 
 	lua_tinker::class_add<ff>(L, "ff");
@@ -235,8 +252,11 @@ int main()
 	std::string luabuf =
 		"g_int = 100; \n"
 		"function lua_test()"
-		"	local pFFShared = make_ff_nodef();"
-		"	visot_ff_nodef(pFFShared);"
+		"	local pFFShared = make_ff_nodef_shared();"
+		"	visot_ff_nodef_shared(pFFShared);"
+		"	local pFF_nodef = make_ff_nodef();"
+		"	visot_ff_nodef(pFF_nodef);"
+		"	visot_ff_nodef_shared(pFF_nodef);"
 		"	local pFF = test4();"
 		"	test();"
 		"	test1(2);"
