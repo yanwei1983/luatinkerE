@@ -1,7 +1,7 @@
 #ifndef type_traits_ext_h
 #define type_traits_ext_h
 
-
+#include<memory>
 
 
 
@@ -177,5 +177,44 @@ struct is_associative_container
 { };
 
 
+//////////////////////////////////////////////////////////////////////////////////
+//
+// is_tuple
+//
+
+template <typename T>
+struct is_tuple : bool_type<false>
+{ };
+
+template <typename ...Ti>
+struct is_tuple<std::tuple<Ti...>> : bool_type<true>
+{ };
+
+
+//////////////////////////////////////////////////////////////////////////////////
+//
+// is_shared_ptr
+//
+
+template <typename T>
+struct is_shared_ptr : bool_type<false>
+{ };
+
+template <typename T>
+struct is_shared_ptr<std::shared_ptr<T>> : bool_type<true>
+{ };
+
+
+template <typename T>
+struct get_shared
+{ 
+};
+template <typename T>
+struct get_shared<std::shared_ptr<T>>
+{
+	typedef typename T type;
+};
+template<typename T>
+using get_shared_t = typename get_shared<T>::type;
 
 #endif

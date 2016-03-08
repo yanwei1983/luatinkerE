@@ -24,6 +24,7 @@ void lua_tinker::init(lua_State *L)
 {
     init_s64(L);
     init_u64(L);
+	init_shared_ptr(L);
 }
 
 /*---------------------------------------------------------------------------*/ 
@@ -91,6 +92,37 @@ void lua_tinker::init_s64(lua_State *L)
     lua_setglobal(L, name); //pop table
 }
 
+
+/*---------------------------------------------------------------------------*/
+void lua_tinker::init_shared_ptr(lua_State *L)
+{
+	
+	lua_newtable(L);
+
+	lua_pushstring(L, "__name");
+	lua_pushstring(L, S_SHARED_PTR_NAME);
+	lua_rawset(L, -3);
+
+	lua_pushstring(L, "__index");
+	lua_pushcclosure(L, meta_get, 0);
+	lua_rawset(L, -3);
+
+	lua_pushstring(L, "__newindex");
+	lua_pushcclosure(L, meta_set, 0);
+	lua_rawset(L, -3);
+
+	lua_pushstring(L, "__gc");
+	lua_pushcclosure(L, destroyer_shared_ptr, 0);
+	lua_rawset(L, -3);
+
+	lua_setglobal(L, S_SHARED_PTR_NAME); //pop table
+}
+
+int lua_tinker::destroyer_shared_ptr(lua_State *L)
+{
+	((user*)lua_touserdata(L, 1))->~user();
+	return 0;
+}
 /*---------------------------------------------------------------------------*/ 
 /* __u64                                                                     */ 
 /*---------------------------------------------------------------------------*/ 
@@ -454,6 +486,12 @@ std::string lua_tinker::_read(lua_State *L, int index)
 }
 
 template<>
+const std::string&& lua_tinker::_read(lua_State *L, int index)
+{
+	return std::move(std::string((const char*)lua_tostring(L, index)));
+}
+
+template<>
 void lua_tinker::read(lua_State *L, int index)
 {
 
@@ -586,13 +624,7 @@ void lua_tinker::push(lua_State *L, lua_tinker::table ret)
 }
 
 template<>
-void lua_tinker::push(lua_State *L, std::string ret)
-{
-	lua_pushlstring(L, ret.data(), ret.size());
-}
-
-template<>
-void lua_tinker::push(lua_State *L, const std::string& ret)
+void lua_tinker::_push_container(lua_State *L, const std::string& ret)
 {
 	lua_pushlstring(L, ret.data(), ret.size());
 }
