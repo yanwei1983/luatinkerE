@@ -27,7 +27,7 @@
 #define LUA_CHECK_HAVE_THIS_PARAM_AND_NOT_NIL(L,index)
 #endif
 
-#define CHECK_CLASS_PTR(T) {if(lua_isnoneornil(L,1)){lua_pushfstring(L, "class_ptr %s is nil or none", lua_tinker::class_name<base_type<T>>::name());lua_error(L);} }
+#define CHECK_CLASS_PTR(T) {if(lua_isnoneornil(L,1)){lua_pushfstring(L, "class_ptr %s is nil or none", lua_tinker::get_class_name<T>());lua_error(L);} }
 
 #define TRY_LUA_TINKER_INVOKE() try
 #define CATCH_LUA_TINKER_INVOKE() catch(...)
@@ -53,6 +53,18 @@ namespace lua_tinker
 	template<typename T>
 	using base_type = typename std::remove_cv<typename std::remove_reference<typename std::remove_pointer<T>::type>::type>::type;
 
+	template<typename T>
+	static typename std::enable_if<!is_shared_ptr<T>::value, const char*>::type get_class_name()
+	{
+		return class_name< base_type<T> >::name();
+	}
+
+	template<typename T>
+	static typename std::enable_if<is_shared_ptr<T>::value, const char*>::type get_class_name()
+	{
+		return S_SHARED_PTR_NAME;
+	}
+
     // dynamic type extention
     struct lua_value
     {
@@ -68,19 +80,9 @@ namespace lua_tinker
 	template<typename T, typename Enable = void>
 	struct _stack_help
 	{
-		static T _read(lua_State *L, int index) { return lua2type<T>(L, index); }
-
-		//get userdata from lua 
-		template<typename T>
-		static typename std::enable_if<!std::is_pointer<T>::value, T>::type lua2type(lua_State *L, int index)
-		{
-			if (!lua_isuserdata(L, index))
-			{
-				lua_pushfstring(L, "can't convert argument %d to class %s", index, class_name< base_type<T> >::name());
-				lua_error(L);
-			}
-
-			return void2type<T>(user2type<user*>(L, index)->m_p);
+		static T _read(lua_State *L, int index) 
+		{ 
+			return lua2type<T>(L, index); 
 		}
 
 		//get userdata ptr from lua, can handle nil an 0
@@ -95,21 +97,70 @@ namespace lua_tinker
 			{
 				return nullptr;
 			}
-			else if (!lua_isuserdata(L, index))
+			return _lua2type<T>(L, index);
+		}
+
+		//get userdata from lua 
+		template<typename T>
+		static typename std::enable_if<!std::is_pointer<T>::value, T>::type lua2type(lua_State *L, int index)
+		{
+			return _lua2type<T>(L, index);
+		}
+
+		template<typename T>
+		static T _lua2type(lua_State *L, int index)
+		{
+			if (!lua_isuserdata(L, index))
 			{
-				lua_pushfstring(L, "can't convert argument %d to class %s", index, class_name< base_type<T> >::name());
+				lua_pushfstring(L, "can't convert argument %d to class %s", index, get_class_name<T>());
 				lua_error(L);
 			}
 
-			return void2type<T>(user2type<user*>(L, index)->m_p);
+			UserDataWapper* pWapper = user2type<UserDataWapper*>(L, index);
+			if (lua_getmetatable(L, index) != 0)
+			{
+				lua_pushstring(L, "__name");
+				lua_rawget(L, -2);
+				const char* name = lua_tostring(L, -1);
+				if (strcmp(name, get_class_name<T>()) != 0)
+				{
+					lua_pushfstring(L, "can't convert argument %d to class %s", index, get_class_name<T>());
+					lua_error(L);
+				}
+				lua_settop(L, -3);
+			}
+			else
+			{
+				//unregister class convert to unregister class is ok
+				if (strcmp("", get_class_name<T>()) != 0)
+				{
+					lua_pushfstring(L, "can't convert argument %d to class %s", index, get_class_name<T>());
+					lua_error(L);
+				}
+			}
+
+			return void2type<T>(pWapper->m_p);
 		}
+		template<typename T>
+		static typename std::enable_if<!is_shared_ptr<T>::value, bool>::type CheckName(const char* name)
+		{
+			return 
+		}
+
+		template<typename T>
+		static typename std::enable_if<is_shared_ptr<T>::value, bool>::type CheckName(const char* name)
+		{
+			return strcmp(name, S_SHARED_PTR_NAME) != 0;
+		}
+
+		
 
 		//obj to lua
 		template<typename T>
 		static typename std::enable_if<!is_shared_ptr<T>::value, void>::type _push(lua_State *L, T val)
 		{
 			object2lua(L, std::forward<T>(val));
-			push_meta(L, class_name<base_type<T>>::name());
+			push_meta(L, get_class_name<T>());
 			lua_setmetatable(L, -2);
 		}
 
@@ -118,9 +169,7 @@ namespace lua_tinker
 		static typename std::enable_if<is_shared_ptr<T>::value, void>::type _push(lua_State *L, T val)
 		{
 			sharedobject2lua(L, val);
-			//use RowT's meta
-			//push_meta(L, class_name<get_shared_t<T>>::name());
-			push_meta(L, S_SHARED_PTR_NAME);
+			push_meta(L, get_class_name<T>());
 
 			lua_setmetatable(L, -2);
 		}
@@ -315,45 +364,45 @@ namespace lua_tinker
 
 
 	//userdata holder
-	struct user
+	struct UserDataWapper
 	{
-		user(void* p) : m_p(p) {}
-		virtual ~user() {}
+		UserDataWapper(void* p) : m_p(p) {}
+		virtual ~UserDataWapper() {}
 		void* m_p;
 	};
 
 	template<typename T>
-	struct val2user : user
+	struct val2user : UserDataWapper
 	{
-		val2user() : user(new T) { nType = }
-		val2user(const T& t) : user(new T(t)) {}
-		val2user(T&& t) : user(new T(t)) {}
+		val2user() : UserDataWapper(new T) { nType = }
+		val2user(const T& t) : UserDataWapper(new T(t)) {}
+		val2user(T&& t) : UserDataWapper(new T(t)) {}
 
 		template<typename Tup,typename = typename std::enable_if<is_tuple<Tup>::value, void>::type >
 		val2user(Tup&& tup) : val2user(std::forward<Tup>(tup), std::make_index_sequence<std::tuple_size<typename std::decay<Tup>::type>::value>{}) {}
 		template<typename Tup, size_t ...index>
-		val2user(Tup&& tup, std::index_sequence<index...>) : user(new T(std::get<index>(std::forward<Tup>(tup))...)) {}
+		val2user(Tup&& tup, std::index_sequence<index...>) : UserDataWapper(new T(std::get<index>(std::forward<Tup>(tup))...)) {}
 
 		~val2user() { delete ((T*)m_p); }
 
 	};
 
 	template<typename T>
-	struct ptr2user : user
+	struct ptr2user : UserDataWapper
 	{
-		ptr2user(T* t) : user((void*)t) {}
+		ptr2user(T* t) : UserDataWapper((void*)t) {}
 	};
 
 	template<typename T>
-	struct ref2user : user
+	struct ref2user : UserDataWapper
 	{
-		ref2user(T& t) : user(&t) {}
+		ref2user(T& t) : UserDataWapper(&t) {}
 	};
 
 	template<typename T>
-	struct sharedptr2user : user
+	struct sharedptr2user : UserDataWapper
 	{
-		sharedptr2user(const std::shared_ptr<T>& rht) :m_holder(rht), user(&m_holder) {}
+		sharedptr2user(const std::shared_ptr<T>& rht) :m_holder(rht), UserDataWapper(&m_holder) {}
 		//use weak_ptr to hold it
 		~sharedptr2user() { m_holder.reset(); }
 
@@ -677,7 +726,7 @@ namespace lua_tinker
 		static int invoke(lua_State *L)
 		{
 			new(lua_newuserdata(L, sizeof(val2user<T>))) val2user<T>(_get_args<2, Args...>(L));
-			push_meta(L, class_name<base_type<T>>::name());
+			push_meta(L, get_class_name<T>());
 			lua_setmetatable(L, -2);
 
 			return 1;
@@ -691,7 +740,7 @@ namespace lua_tinker
 		static int invoke(lua_State *L)
 		{
 			new(lua_newuserdata(L, sizeof(val2user<T>))) val2user<T>();
-			push_meta(L, class_name<base_type<T>>::name());
+			push_meta(L, get_class_name<T>());
 			lua_setmetatable(L, -2);
 
 			return 1;
@@ -703,7 +752,7 @@ namespace lua_tinker
     template<typename T>
     int destroyer(lua_State *L) 
     { 
-        ((user*)lua_touserdata(L, 1))->~user();
+        ((UserDataWapper*)lua_touserdata(L, 1))->~UserDataWapper();
         return 0;
     }
 	int destroyer_shared_ptr(lua_State *L);
@@ -821,11 +870,11 @@ namespace lua_tinker
     template<typename T, typename P>
     void class_inh(lua_State* L)
     {
-        push_meta(L, class_name<T>::name());
+        push_meta(L, get_class_name<T>());
         if(lua_istable(L, -1))
         {
             lua_pushstring(L, "__parent");
-            push_meta(L, class_name<P>::name());
+            push_meta(L, get_class_name<P>());
             lua_rawset(L, -3);
         }
         lua_pop(L, 1);
@@ -835,7 +884,7 @@ namespace lua_tinker
     template<typename T, typename F>
     void class_con(lua_State* L,F func)
     {
-        push_meta(L, class_name<T>::name());
+        push_meta(L, get_class_name<T>());
         if(lua_istable(L, -1))
         {
             lua_newtable(L);
@@ -851,7 +900,7 @@ namespace lua_tinker
     template<typename T, typename F>
     void class_def(lua_State* L, const char* name, F func) 
     { 
-        push_meta(L, class_name<T>::name());
+        push_meta(L, get_class_name<T>());
         if(lua_istable(L, -1))
         {
             lua_pushstring(L, name);
@@ -866,7 +915,7 @@ namespace lua_tinker
     template<typename T, typename BASE, typename VAR>
     void class_mem(lua_State* L, const char* name, VAR BASE::*val) 
     { 
-        push_meta(L, class_name<T>::name());
+        push_meta(L, get_class_name<T>());
         if(lua_istable(L, -1))
         {
             lua_pushstring(L, name);

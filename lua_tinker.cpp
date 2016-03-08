@@ -52,7 +52,7 @@ void lua_tinker::init_shared_ptr(lua_State *L)
 
 int lua_tinker::destroyer_shared_ptr(lua_State *L)
 {
-	((user*)lua_touserdata(L, 1))->~user();
+	((UserDataWapper*)lua_touserdata(L, 1))->~UserDataWapper();
 	return 0;
 }
 

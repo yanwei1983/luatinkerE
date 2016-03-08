@@ -249,7 +249,6 @@ int main()
 	lua_tinker::def(L, "print_ul", &print_ul);
 
 	lua_tinker::class_add<ff>(L, "ff");
-	lua_tinker::class_add<std::string>(L, "string");
 
 	//lua_tinker::class_con<ff>(L, lua_tinker::constructor<ff>::invoke);
 	lua_tinker::class_con<ff>(L, lua_tinker::constructor<ff,int>::invoke);
@@ -282,7 +281,7 @@ int main()
 		"	visot_ff_nodef_shared(pFFShared);\n"
 		"	local pFF_nodef = make_ff_nodef();\n"
 		"	visot_ff_nodef(pFF_nodef);\n"
-		"	visot_ff_nodef_shared(pFF_nodef);\n"
+		"	visot_ff_nodef_shared(pFFShared);\n"
 		"	local pFF = test4();\n"
 		"	test();\n"
 		"	test1(2);\n"
