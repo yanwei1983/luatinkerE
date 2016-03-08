@@ -9,61 +9,6 @@
 
 #include "lua_tinker.h"
 
-//namespace lua_tinker
-//{
-//	////stl container push to lua table
-//	template<typename K, typename V>
-//	void push(lua_State *L, const std::unordered_map<K, V>& ret)
-//	{
-//		lua_newtable(L);
-//		for (auto it = ret.begin(); it != ret.end(); it++)
-//		{
-//			push(L, it->first);
-//			push(L, it->second);
-//			lua_settable(L, -3);
-//		}
-//	}
-//
-//	template<typename K, typename V>
-//	void push(lua_State *L, const std::map<K, V>& ret)
-//	{
-//		lua_newtable(L);
-//		for (auto it = ret.begin(); it != ret.end(); it++)
-//		{
-//			push(L, it->first);
-//			push(L, it->second);
-//			lua_settable(L, -3);
-//		}
-//	}
-//
-//	template<typename T>
-//	void push(lua_State *L, const std::set<T>& ret)
-//	{
-//		lua_newtable(L);
-//		auto it = ret.begin();
-//		for (int i = 1; it != ret.end(); it++, i++)
-//		{
-//			push(L, i);
-//			push(L, *it);
-//			lua_settable(L, -3);
-//		}
-//	}
-//
-//	template<typename T>
-//	void push(lua_State *L, const std::vector<T>& ret)
-//	{
-//		lua_newtable(L);
-//		auto it = ret.begin();
-//		for (int i = 1; it != ret.end(); it++, i++)
-//		{
-//			push(L, i);
-//			push(L, *it);
-//			lua_settable(L, -3);
-//		}
-//	}
-//
-//};
-
 void test()
 {
 	std::cout << "test" << std::endl;
@@ -234,7 +179,7 @@ void visot_ff_nodef(std::shared_ptr<ff_nodef> pFF)
 	if (pFF)
 	{
 		pFF->m_val++;
-		std::cout << "visot_ff(" << pFF->m_val << ")" << std::endl;
+		std::cout << "visot_ff_nodef(" << pFF->m_val << ")" << std::endl;
 	}
 }
 
@@ -322,7 +267,7 @@ int main()
 		"	local string = push_string();"
 		"	read_lua_string(string);"
 		"	local string_ref = push_string_ref();"
-		"	read_lua_string_ref(string);"
+		"	read_lua_string_ref(string_ref);"
 		
 		"	local map_table = push_map();"
 		"	print(\"print map_table\")"

@@ -344,48 +344,41 @@ void lua_tinker::enum_stack(lua_State *L)
 }
  
 /*---------------------------------------------------------------------------*/ 
-/* read                                                                      */ 
+/* _read                                                                      */ 
 /*---------------------------------------------------------------------------*/ 
-template<>
-char* lua_tinker::_read(lua_State *L, int index)
+char* lua_tinker::_stack_help<char*>::_read(lua_State *L, int index)
 {
     return (char*)lua_tostring(L, index);               
 }
 
-template<>
-const char* lua_tinker::_read(lua_State *L, int index)
+const char* lua_tinker::_stack_help<const char*>::_read(lua_State *L, int index)
 {
     return (const char*)lua_tostring(L, index);     
 }
 
-template<>
-char lua_tinker::_read(lua_State *L, int index)
+char lua_tinker::_stack_help<char>::_read(lua_State *L, int index)
 {
     return (char)lua_tointeger(L, index);
 }
 
-template<>
-unsigned char lua_tinker::_read(lua_State *L, int index)
+unsigned char lua_tinker::_stack_help<unsigned char>::_read(lua_State *L, int index)
 {
     return (unsigned char)lua_tointeger(L, index);       
 }
 
-template<>
-short lua_tinker::_read(lua_State *L, int index)
+short lua_tinker::_stack_help<short>::_read(lua_State *L, int index)
 {
     return (short)lua_tointeger(L, index);
 }
 
-template<>
-unsigned short lua_tinker::_read(lua_State *L, int index)
+unsigned short lua_tinker::_stack_help<unsigned short>::_read(lua_State *L, int index)
 {
     return (unsigned short)lua_tointeger(L, index);
 }
 
 // long is different between i386 and X86_64 architecture
 #if defined(__X86_64__) || defined(__X86_64) || defined(__amd_64) || defined(__amd_64__)
-template<>
-long lua_tinker::_read(lua_State *L, int index)
+long lua_tinker::_stack_help<long>::_read(lua_State *L, int index)
 {
     if(lua_isnumber(L,index))
         return (long)lua_tointeger(L, index);
@@ -393,8 +386,7 @@ long lua_tinker::_read(lua_State *L, int index)
         return *(long*)lua_touserdata(L, index);
 }
 
-template<>
-unsigned long lua_tinker::_read(lua_State *L, int index)
+unsigned long lua_tinker::_stack_help<unsigned long>::_read(lua_State *L, int index)
 {
     if(lua_isnumber(L,index))
         return (unsigned long)lua_tointeger(L, index);
@@ -402,45 +394,38 @@ unsigned long lua_tinker::_read(lua_State *L, int index)
         return *(unsigned long*)lua_touserdata(L, index);
 }
 #else //__i386__ //32bit
-template<>
-long lua_tinker::_read(lua_State *L, int index)
+long lua_tinker::_stack_help<long>::_read(lua_State *L, int index)
 {
 	return (long)lua_tointeger(L, index);
 }
 
-template<> 
-unsigned long lua_tinker::_read(lua_State *L, int index)
+unsigned long lua_tinker::_stack_help<unsigned long>::_read(lua_State *L, int index)
 {
 	return (unsigned long)lua_tointeger(L, index);
 }
 #endif
 
-template<>
-int lua_tinker::_read(lua_State *L, int index)
+int lua_tinker::_stack_help<int>::_read(lua_State *L, int index)
 {
     return (int)lua_tointeger(L, index);
 }
 
-template<>
-unsigned int lua_tinker::_read(lua_State *L, int index)
+unsigned int lua_tinker::_stack_help<unsigned int>::_read(lua_State *L, int index)
 {
     return (unsigned int)lua_tointeger(L, index);
 }
 
-template<>
-float lua_tinker::_read(lua_State *L, int index)
+float lua_tinker::_stack_help<float>::_read(lua_State *L, int index)
 {
     return (float)lua_tonumber(L, index);               
 }
 
-template<>
-double lua_tinker::_read(lua_State *L, int index)
+double lua_tinker::_stack_help<double>::_read(lua_State *L, int index)
 {
     return (double)lua_tonumber(L, index);          
 }
 
-template<>
-bool lua_tinker::_read(lua_State *L, int index)
+bool lua_tinker::_stack_help<bool>::_read(lua_State *L, int index)
 {
     if(lua_isboolean(L, index))
         return lua_toboolean(L, index) != 0;                
@@ -448,24 +433,15 @@ bool lua_tinker::_read(lua_State *L, int index)
         return lua_tonumber(L, index) != 0;
 }
 
-template<>
-void lua_tinker::_read(lua_State *L, int index)
-{
-    (void)L;
-    (void)index;
-    return;                                         
-}
-
-template<>
-long long lua_tinker::_read(lua_State *L, int index)
+long long lua_tinker::_stack_help< long long>::_read(lua_State *L, int index)
 {
     if(lua_isnumber(L,index))
         return (long long)lua_tonumber(L, index);
     else
         return *(long long*)lua_touserdata(L, index);
 }
-template<>
-unsigned long long lua_tinker::_read(lua_State *L, int index)
+
+unsigned long long lua_tinker::_stack_help< unsigned long long>::_read(lua_State *L, int index)
 {
     if(lua_isnumber(L,index))
         return (unsigned long long)lua_tonumber(L, index);
@@ -473,158 +449,136 @@ unsigned long long lua_tinker::_read(lua_State *L, int index)
         return *(unsigned long long*)lua_touserdata(L, index);
 }
 
-template<>
-lua_tinker::table lua_tinker::_read(lua_State *L, int index)
+lua_tinker::table lua_tinker::_stack_help<lua_tinker::table>::_read(lua_State *L, int index)
 {
     return table(L, index);
 }
 
-template<>
-std::string lua_tinker::_read(lua_State *L, int index)
+std::string lua_tinker::_stack_help<std::string>::_read(lua_State *L, int index)
 {
 	return std::string((const char*)lua_tostring(L, index));
 }
 
-template<>
-const std::string&& lua_tinker::_read(lua_State *L, int index)
+std::string lua_tinker::_stack_help<const std::string&>::_read(lua_State *L, int index)
 {
-	return std::move(std::string((const char*)lua_tostring(L, index)));
+	return std::string((const char*)lua_tostring(L, index));
 }
 
-template<>
-void lua_tinker::read(lua_State *L, int index)
-{
 
-}
 
 /*---------------------------------------------------------------------------*/ 
-/* push                                                                      */ 
+/* _push                                                                      */ 
 /*---------------------------------------------------------------------------*/ 
-template<>
-void lua_tinker::push(lua_State *L, char ret)
+void lua_tinker::_stack_help<char>::_push(lua_State *L, char ret)
 {
     lua_pushnumber(L, ret);                     
 }
 
-template<>
-void lua_tinker::push(lua_State *L, unsigned char ret)
+void lua_tinker::_stack_help<unsigned char>::_push(lua_State *L, unsigned char ret)
 {
     lua_pushnumber(L, ret);                     
 }
 
-template<>
-void lua_tinker::push(lua_State *L, short ret)
+void lua_tinker::_stack_help<short>::_push(lua_State *L, short ret)
 {
     lua_pushnumber(L, ret);                     
 }
 
-template<>
-void lua_tinker::push(lua_State *L, unsigned short ret)
+void lua_tinker::_stack_help<unsigned short>::_push(lua_State *L, unsigned short ret)
 {
     lua_pushnumber(L, ret);                     
 }
 
 #if defined(__X86_64__) || defined(__X86_64) || defined(__amd_64) || defined(__amd_64__)
-template<>
-void lua_tinker::push(lua_State *L, long ret)
+void lua_tinker::_stack_help<long>::_push(lua_State *L, long ret)
 {
     *(long*)lua_newuserdata(L, sizeof(long)) = ret;
     lua_getglobal(L, "__s64");
     lua_setmetatable(L, -2);
 }
 
-template<>
-void lua_tinker::push(lua_State *L, unsigned long ret)
+void lua_tinker::_stack_help<unsigned long>::_push(lua_State *L, unsigned long ret)
 {
     *(unsigned long*)lua_newuserdata(L, sizeof(unsigned long)) = ret;
     lua_getglobal(L, "__u64");
     lua_setmetatable(L, -2);
 }
 #else //__i386__ 
-template<>
-void lua_tinker::push(lua_State *L, long ret)
+void lua_tinker::_stack_help<long>::_push(lua_State *L, long ret)
 {
 	lua_pushnumber(L, ret);						
 }
 
-template<>
-void lua_tinker::push(lua_State *L, unsigned long ret)
+void lua_tinker::_stack_help<unsigned long>::_push(lua_State *L, unsigned long ret)
 {
 	lua_pushnumber(L, ret);						
 }
 #endif
 
-template<>
-void lua_tinker::push(lua_State *L, int ret)
+void lua_tinker::_stack_help<int>::_push(lua_State *L, int ret)
 {
     lua_pushnumber(L, ret);                     
 }
 
-template<>
-void lua_tinker::push(lua_State *L, unsigned int ret)
+void lua_tinker::_stack_help<unsigned int>::_push(lua_State *L, unsigned int ret)
 {
     lua_pushnumber(L, ret);                     
 }
 
-template<>
-void lua_tinker::push(lua_State *L, float ret)
+void lua_tinker::_stack_help<float>::_push(lua_State *L, float ret)
 {
     lua_pushnumber(L, ret);                     
 }
 
-template<>
-void lua_tinker::push(lua_State *L, double ret)
+void lua_tinker::_stack_help<double>::_push(lua_State *L, double ret)
 {
     lua_pushnumber(L, ret);                     
 }
 
-template<>
-void lua_tinker::push(lua_State *L, char* ret)
+void lua_tinker::_stack_help<char*>::_push(lua_State *L, char* ret)
 {
     lua_pushstring(L, ret);                     
 }
 
-template<>
-void lua_tinker::push(lua_State *L, const char* ret)
+void lua_tinker::_stack_help<const char*>::_push(lua_State *L, const char* ret)
 {
     lua_pushstring(L, ret);                     
 }
 
-template<>
-void lua_tinker::push(lua_State *L, bool ret)
+void lua_tinker::_stack_help<bool>::_push(lua_State *L, bool ret)
 {
     lua_pushboolean(L, ret);                        
 }
 
-template<>
-void lua_tinker::push(lua_State *L, lua_value* ret)
+void lua_tinker::_stack_help<lua_tinker::lua_value*>::_push(lua_State *L, lua_value* ret)
 {
     if(ret) ret->to_lua(L); else lua_pushnil(L);    
 }
 
-template<>
-void lua_tinker::push(lua_State *L, long long ret)          
+void lua_tinker::_stack_help<long long>::_push(lua_State *L, long long ret)
 { 
     *(long long*)lua_newuserdata(L, sizeof(long long)) = ret;
     lua_getglobal(L, "__s64");
     lua_setmetatable(L, -2);
 }
-template<>
-void lua_tinker::push(lua_State *L, unsigned long long ret)
+void lua_tinker::_stack_help<unsigned long long>::_push(lua_State *L, unsigned long long ret)
 {
     *(unsigned long long*)lua_newuserdata(L, sizeof(unsigned long long)) = ret;
     lua_getglobal(L, "__u64");
     lua_setmetatable(L, -2);
 }
 
-template<>
-void lua_tinker::push(lua_State *L, lua_tinker::table ret)
+void lua_tinker::_stack_help<lua_tinker::table>::_push(lua_State *L, lua_tinker::table ret)
 {
     lua_pushvalue(L, ret.m_obj->m_index);
 }
 
-template<>
-void lua_tinker::_push_container(lua_State *L, const std::string& ret)
+void lua_tinker::_stack_help<std::string>::_push(lua_State *L, std::string ret)
+{
+	lua_pushlstring(L, ret.data(), ret.size());
+}
+
+void lua_tinker::_stack_help<const std::string&>::_push(lua_State *L, const std::string& ret)
 {
 	lua_pushlstring(L, ret.data(), ret.size());
 }
