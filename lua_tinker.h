@@ -69,7 +69,61 @@ namespace lua_tinker
 	struct _stack_help
 	{
 		static T _read(lua_State *L, int index) { return lua2type<T>(L, index); }
-		static void _push(lua_State *L, T ret) { type2lua<T>(L, std::forward<T>(ret)); }
+
+		//get userdata from lua 
+		template<typename T>
+		static typename std::enable_if<!std::is_pointer<T>::value, T>::type lua2type(lua_State *L, int index)
+		{
+			if (!lua_isuserdata(L, index))
+			{
+				lua_pushfstring(L, "can't convert argument %d to class %s", index, class_name< base_type<T> >::name());
+				lua_error(L);
+			}
+
+			return void2type<T>(user2type<user*>(L, index)->m_p);
+		}
+
+		//get userdata ptr from lua, can handle nil an 0
+		template<typename T>
+		static typename std::enable_if<std::is_pointer<T>::value, T>::type lua2type(lua_State *L, int index)
+		{
+			if (lua_isnoneornil(L, index))
+			{
+				return nullptr;
+			}
+			else if (lua_isnumber(L, index) && lua_tonumber(L, index) == 0)
+			{
+				return nullptr;
+			}
+			else if (!lua_isuserdata(L, index))
+			{
+				lua_pushfstring(L, "can't convert argument %d to class %s", index, class_name< base_type<T> >::name());
+				lua_error(L);
+			}
+
+			return void2type<T>(user2type<user*>(L, index)->m_p);
+		}
+
+		//obj to lua
+		template<typename T>
+		static typename std::enable_if<!is_shared_ptr<T>::value, void>::type _push(lua_State *L, T val)
+		{
+			object2lua(L, std::forward<T>(val));
+			push_meta(L, class_name<base_type<T>>::name());
+			lua_setmetatable(L, -2);
+		}
+
+		//shared_ptr to lua
+		template<typename T>
+		static typename std::enable_if<is_shared_ptr<T>::value, void>::type _push(lua_State *L, T val)
+		{
+			sharedobject2lua(L, val);
+			//use RowT's meta
+			//push_meta(L, class_name<get_shared_t<T>>::name());
+			push_meta(L, S_SHARED_PTR_NAME);
+
+			lua_setmetatable(L, -2);
+		}
 	};
 
 	template<>
@@ -126,7 +180,6 @@ namespace lua_tinker
 	{
 		static std::string _read(lua_State *L, int index);
 		static void _push(lua_State *L, std::string ret);
-
 	};
 
 	//if want read const std::string& , we read a string obj
@@ -135,7 +188,6 @@ namespace lua_tinker
 	{
 		static std::string _read(lua_State *L, int index);
 		static void _push(lua_State *L, const std::string& ret);
-
 	};
 
 	template<>
@@ -143,7 +195,6 @@ namespace lua_tinker
 	{
 		static table _read(lua_State *L, int index);
 		static void _push(lua_State *L, table ret);
-
 	};
 
 	template<>
@@ -151,7 +202,6 @@ namespace lua_tinker
 	{
 		static lua_value* _read(lua_State *L, int index);
 		static void _push(lua_State *L, lua_value* ret);
-
 	};
 
 	//enum
@@ -160,11 +210,11 @@ namespace lua_tinker
 	{
 		static T _read(lua_State *L, int index)
 		{
-			return (T)lua_tonumber(L, index);
+			return (T)lua_tointeger(L, index);
 		}
 		static void  _push(lua_State *L, T ret)
 		{
-			lua_pushnumber(L, ret);
+			lua_pushinteger(L, (int)ret);
 		}
 	};
 	
@@ -200,6 +250,9 @@ namespace lua_tinker
 		}
 	};
 
+
+
+
 	// from lua
 	// param to pointer
 	template<typename T>
@@ -221,20 +274,12 @@ namespace lua_tinker
 		return *(base_type<T>*)ptr;
 	}
 
-	
 	//to shared_ptr, use weak_ptr to hold it
 	template<typename T>
 	typename std::enable_if<is_shared_ptr<T>::value, T>::type void2type(void* ptr)
 	{
-
 		return ((std::weak_ptr<get_shared_t<T>>*)ptr)->lock();
 	}
-	//template<typename T>
-	//typename std::enable_if<is_shared_ptr<T>::value, T>::type void2type(void* ptr)
-	//{
-
-	//	return *(T*)ptr;
-	//}
 
 	//userdata to T，T*，T&
 	template<typename T>
@@ -243,40 +288,6 @@ namespace lua_tinker
 		return void2type<T>(lua_touserdata(L, index));
 	}
 	
-	//get userdata from lua 
-	template<typename T>
-	typename std::enable_if<!std::is_pointer<T>::value, T>::type lua2type(lua_State *L, int index)
-	{
-		if (!lua_isuserdata(L, index))
-		{
-			lua_pushfstring(L, "can't convert argument %d to class %s", index, class_name< base_type<T> >::name());
-			lua_error(L);
-		}
-		
-		return void2type<T>(user2type<user*>(L, index)->m_p);
-	}
-
-	//get userdata ptr from lua, can handle nil an 0
-	template<typename T>
-	typename std::enable_if<std::is_pointer<T>::value, T>::type lua2type(lua_State *L, int index)
-	{
-		if (lua_isnoneornil(L, index))
-		{
-			return void2type<T>(nullptr);
-		}
-		else if (lua_isnumber(L, index) && lua_tonumber(L, index) == 0)
-		{
-			return void2type<T>(nullptr);
-		}
-		else if (!lua_isuserdata(L, index))
-		{
-			lua_pushfstring(L, "can't convert argument %d to class %s", index, class_name< base_type<T> >::name());
-			lua_error(L);
-		}
-
-		return void2type<T>(user2type<user*>(L, index)->m_p);
-	}
-
 
  	//read_weap
 	template<typename T>
@@ -376,26 +387,7 @@ namespace lua_tinker
 		if (input) new(lua_newuserdata(L, sizeof(sharedptr2user<T>))) sharedptr2user<T>(input); else lua_pushnil(L);
 	}
 
-	//obj to lua
-	template<typename T>
-	typename std::enable_if<!is_shared_ptr<T>::value, void>::type type2lua(lua_State *L, T val)
-	{
-		object2lua(L, std::forward<T>(val));
-		push_meta(L, class_name<base_type<T>>::name());
-		lua_setmetatable(L, -2);
-	}
 
-	//shared_ptr to lua
-	template<typename T>
-	typename std::enable_if<is_shared_ptr<T>::value, void>::type type2lua(lua_State *L, T val)
-	{
-		sharedobject2lua(L, val);
-		//use RowT's meta
-		//push_meta(L, class_name<get_shared_t<T>>::name());
-		push_meta(L, S_SHARED_PTR_NAME);
-
-		lua_setmetatable(L, -2);
-	}
 
 	// get value from cclosure
 	template<typename T>
