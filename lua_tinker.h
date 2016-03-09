@@ -169,19 +169,7 @@ namespace lua_tinker
 
 			return void2type<T>(pWapper->m_p);
 		}
-		template<typename T>
-		static typename std::enable_if<!is_shared_ptr<T>::value, bool>::type CheckName(const char* name)
-		{
-			return 
-		}
-
-		template<typename T>
-		static typename std::enable_if<is_shared_ptr<T>::value, bool>::type CheckName(const char* name)
-		{
-			return strcmp(name, S_SHARED_PTR_NAME) != 0;
-		}
-
-		
+				
 
 		//obj to lua
 		template<typename T>
@@ -198,7 +186,6 @@ namespace lua_tinker
 		{
 			sharedobject2lua(L, val);
 			push_meta(L, get_class_name<T>());
-
 			lua_setmetatable(L, -2);
 		}
 	};
@@ -425,11 +412,11 @@ namespace lua_tinker
 		val2user(T&& t) : UserDataWapper(new T(t)){}
 
 		//tuple is hold the params, so unpack it
-		template<typename Tup, size_t ...index>
-		val2user(Tup&& tup, std::index_sequence<index...>) : UserDataWapper(new T(std::get<index>(std::forward<Tup>(tup))...)) {}
+		//template<typename Tup, size_t ...index>
+		//val2user(Tup&& tup, std::index_sequence<index...>) : UserDataWapper(new T(std::get<index>(std::forward<Tup>(tup))...)) {}
 
-		template<typename Tup,typename = typename std::enable_if<is_tuple<Tup>::value, void>::type >
-		val2user(Tup&& tup) : val2user(std::forward<Tup>(tup), std::make_index_sequence<std::tuple_size<typename std::decay<Tup>::type>::value>{}) {}
+		//template<typename Tup,typename = typename std::enable_if<is_tuple<Tup>::value, void>::type >
+		//val2user(Tup&& tup) : val2user(std::forward<Tup>(tup), std::make_index_sequence<std::tuple_size<typename std::decay<Tup>::type>::value>{}) {}
 
 
 		//direct read args, use type_list to help hold Args
@@ -519,7 +506,7 @@ namespace lua_tinker
 	template<typename T>
 	void push(lua_State *L, T ret)
 	{
-		return _stack_help<T>::_push(L, std::forward<T>(ret));
+		_stack_help<T>::_push(L, std::forward<T>(ret));
 	}
 
     // pop a value from lua stack
@@ -531,20 +518,20 @@ namespace lua_tinker
 
 
 	//invoke func tuple hold params
-	template<typename Func, typename Tup, std::size_t... index>
-	decltype(auto) invoke_helper(Func&& func, Tup&& tup, std::index_sequence<index...>)
-	{
-		return std::invoke(func, std::get<index>(std::forward<Tup>(tup))...);
-	}
+	//template<typename Func, typename Tup, std::size_t... index>
+	//decltype(auto) invoke_helper(Func&& func, Tup&& tup, std::index_sequence<index...>)
+	//{
+	//	return std::invoke(func, std::get<index>(std::forward<Tup>(tup))...);
+	//}
 
-	template<typename Func, typename Tup>
-	decltype(auto) invoke_func(Func&& func, Tup&& tup)
-	{
-		constexpr auto Size = std::tuple_size<typename std::decay<Tup>::type>::value;
-		return invoke_helper(std::forward<Func>(func),
-			std::forward<Tup>(tup),
-			std::make_index_sequence<Size>{});
-	}
+	//template<typename Func, typename Tup>
+	//decltype(auto) invoke_func(Func&& func, Tup&& tup)
+	//{
+	//	constexpr auto Size = std::tuple_size<typename std::decay<Tup>::type>::value;
+	//	return invoke_helper(std::forward<Func>(func),
+	//		std::forward<Tup>(tup),
+	//		std::make_index_sequence<Size>{});
+	//}
 
 	template<typename Func>
 	decltype(auto) invoke_func(Func func)
@@ -562,32 +549,31 @@ namespace lua_tinker
 	template<int nIdxParams, typename Func, typename ...Args>
 	decltype(auto) direct_invoke_func(Func&& func, lua_State *L)
 	{
-		constexpr auto Size = sizeof...(Args);
-		return direct_invoke_invoke_helper<nIdxParams, Func, Args...>(std::forward<Func>(func), L, std::make_index_sequence<Size>{});
+		return direct_invoke_invoke_helper<nIdxParams, Func, Args...>(std::forward<Func>(func), L, std::make_index_sequence<sizeof...(Args)>{});
 	}
 
 	//make params to tuple
-	template<typename...T>
-	struct ParamHolder
-	{
-		typedef std::tuple<typename std::remove_cv<typename std::remove_reference<T>::type>::type...> type;
-	};
-	template<typename...T>
-	using ParamHolder_T = typename ParamHolder<T...>::type;
+	//template<typename...T>
+	//struct ParamHolder
+	//{
+	//	typedef std::tuple<typename std::remove_cv<typename std::remove_reference<T>::type>::type...> type;
+	//};
+	//template<typename...T>
+	//using ParamHolder_T = typename ParamHolder<T...>::type;
 
 
-	template <int nIdxParams, typename... T, std::size_t... N>
-	ParamHolder_T<T...> _get_args(lua_State *L, std::index_sequence<N...>)
-	{
-		return std::forward<ParamHolder_T<T...>>(ParamHolder_T<T...>{ read<T>(L, N + nIdxParams)... });
-	}
+	//template <int nIdxParams, typename... T, std::size_t... N>
+	//ParamHolder_T<T...> _get_args(lua_State *L, std::index_sequence<N...>)
+	//{
+	//	return std::forward<ParamHolder_T<T...>>(ParamHolder_T<T...>{ read<T>(L, N + nIdxParams)... });
+	//}
 
-	template <int nIdxParams, typename... T>
-	ParamHolder_T<T...> _get_args(lua_State *L)
-	{
-		constexpr std::size_t num_args = sizeof...(T);
-		return _get_args<nIdxParams, T...>(L, std::make_index_sequence<num_args>());
-	}
+	//template <int nIdxParams, typename... T>
+	//ParamHolder_T<T...> _get_args(lua_State *L)
+	//{
+	//	constexpr std::size_t num_args = sizeof...(T);
+	//	return _get_args<nIdxParams, T...>(L, std::make_index_sequence<num_args>());
+	//}
 
 
 	//functor
@@ -737,44 +723,38 @@ namespace lua_tinker
 
 	//functor push
 	template<typename RVal, typename T, typename ... Args>
-	void push_functor(lua_State *L, RVal(T::*func)(Args...))
+	void push_functor(lua_State *L, RVal(T::*)(Args...))
 	{
-		(void)func;
 		lua_pushcclosure(L, &member_functor<RVal, T, Args...>::invoke, 1);
 	}
 
 	template<typename RVal, typename T>
-	void push_functor(lua_State *L, RVal(T::*func)())
+	void push_functor(lua_State *L, RVal(T::*)())
 	{
-		(void)func;
 		lua_pushcclosure(L, &member_functor<RVal, T>::invoke, 1);
 	}
 
 	template<typename RVal, typename T, typename ... Args>
-	void push_functor(lua_State *L, RVal(T::*func)(Args...)const)
+	void push_functor(lua_State *L, RVal(T::*)(Args...)const)
 	{
-		(void)func;
 		lua_pushcclosure(L, &member_functor<RVal, T, Args...>::invoke, 1);
 	}
 
 	template<typename RVal, typename T>
-	void push_functor(lua_State *L, RVal(T::*func)()const)
+	void push_functor(lua_State *L, RVal(T::*)()const)
 	{
-		(void)func;
 		lua_pushcclosure(L, &member_functor<RVal, T>::invoke, 1);
 	}
 
 	template<typename RVal, typename ... Args>
-	void push_functor(lua_State *L, RVal(*func)(Args...))
+	void push_functor(lua_State *L, RVal(*)(Args...))
 	{
-		(void)func;
 		lua_pushcclosure(L, &functor<RVal, Args...>::invoke, 1);
 	}
 
 	template<typename RVal>
-	void push_functor(lua_State *L, RVal(*func)())
+	void push_functor(lua_State *L, RVal(*)())
 	{
-		(void)func;
 		lua_pushcclosure(L, &functor<RVal>::invoke, 1);
 	}
 

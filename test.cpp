@@ -29,8 +29,25 @@ public:
 	{
 		std::cout << "ff::ff(int a)" << std::endl;
 	}
-	ff(const ff& rht) :m_val(rht.m_val) {}
-	ff(ff&& rht) :m_val(rht.m_val) {}
+	ff(const ff& rht) :m_val(rht.m_val) 
+	{
+		std::cout << "ff::copy constructor" << std::endl;
+	}
+	ff(ff&& rht) = default;
+	/*ff(ff&& rht) :m_val(rht.m_val) 
+	{
+		std::cout << "ff::move constructor" << std::endl;
+	}*/
+	ff& operator=(const ff& rht)
+	{
+		if (&rht != this)
+		{
+			m_val = rht.m_val;
+		}
+		std::cout << "ff::operator =" << std::endl;
+
+		return *this;
+	}
 
 	~ff()
 	{
