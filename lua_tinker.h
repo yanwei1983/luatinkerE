@@ -410,6 +410,13 @@ namespace lua_tinker
 #endif
 	};
 
+	template <class... Args>
+	struct type_list
+	{
+		template <std::size_t N>
+		using type = typename std::tuple_element<N, std::tuple<Args...>>::type;
+	};
+
 	template<typename T>
 	struct val2user : UserDataWapper
 	{
@@ -417,11 +424,25 @@ namespace lua_tinker
 		val2user(const T& t): UserDataWapper(new T(t)) {}
 		val2user(T&& t) : UserDataWapper(new T(t)){}
 
+		//tuple is hold the params, so unpack it
+		template<typename Tup, size_t ...index>
+		val2user(Tup&& tup, std::index_sequence<index...>) : UserDataWapper(new T(std::get<index>(std::forward<Tup>(tup))...)) {}
+
 		template<typename Tup,typename = typename std::enable_if<is_tuple<Tup>::value, void>::type >
 		val2user(Tup&& tup) : val2user(std::forward<Tup>(tup), std::make_index_sequence<std::tuple_size<typename std::decay<Tup>::type>::value>{}) {}
 
-		template<typename Tup, size_t ...index>
-		val2user(Tup&& tup, std::index_sequence<index...>) : UserDataWapper(new T(std::get<index>(std::forward<Tup>(tup))...)) {}
+
+		//direct read args, use type_list to help hold Args
+		template<typename ...Args, size_t ...index>
+		val2user(type_list<Args...> type_list, lua_State* L, std::index_sequence<index...>)
+		: UserDataWapper(new T(read<Args>(L, 2 + index)...))
+		{}
+
+		template<typename ...Args>
+		val2user(type_list<Args...> type_list, lua_State* L)
+			: val2user(type_list, L, std::make_index_sequence<sizeof...(Args)>())
+		{}
+
 
 		~val2user() { delete ((T*)m_p); }
 
@@ -782,7 +803,7 @@ namespace lua_tinker
 	{
 		static int invoke(lua_State *L)
 		{
-			new(lua_newuserdata(L, sizeof(val2user<T>))) val2user<T>(_get_args<2, Args...>(L));
+			new(lua_newuserdata(L, sizeof(val2user<T>))) val2user<T>(type_list<Args...>(),L);
 			push_meta(L, get_class_name<T>());
 			lua_setmetatable(L, -2);
 

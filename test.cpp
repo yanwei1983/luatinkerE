@@ -25,7 +25,7 @@ int test2(int n)
 class ff
 {
 public:
-	ff(int a = 0) :m_val(a) 
+	ff(int a = 0, double b = 0, unsigned char c = 0) :m_val(a) 
 	{
 		std::cout << "ff::ff(int a)" << std::endl;
 	}
@@ -252,7 +252,7 @@ int main()
 	lua_tinker::class_add<ff>(L, "ff");
 
 	//lua_tinker::class_con<ff>(L, lua_tinker::constructor<ff>::invoke);
-	lua_tinker::class_con<ff>(L, lua_tinker::constructor<ff,int>::invoke);
+	lua_tinker::class_con<ff>(L, lua_tinker::constructor<ff,int,double,unsigned char>::invoke);
 
 	lua_tinker::class_def<ff>(L, "test", &ff::test);
 	lua_tinker::class_def<ff>(L, "test_const", &ff::test_const);
@@ -295,11 +295,11 @@ int main()
 			pFF:test3(123,pFF);
 			pFF:test3(123,nil);
 			pFF:test3(123,0);
-			local luaFF = ff();
+			local luaFF = ff(1,2,3);
 			test1(luaFF.m_val);
 			luaFF.m_val = 2;
 			test1(luaFF.m_val);
-			local luaFF1 = ff(1);
+			local luaFF1 = ff(1,2,3);
 			test1(luaFF1.m_val);
 			local luaFF2 = luaFF1
 			test1(luaFF2.m_val);
