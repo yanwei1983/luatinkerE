@@ -6,7 +6,7 @@
 #include<unordered_map>
 #include<type_traits>
 #include<iostream>
-
+#include<utility>
 #include "lua_tinker.h"
 
 void test()
@@ -212,6 +212,7 @@ long long Number2Interger(double v)
 {
 	return long long(v);
 }
+
 int main()
 {
 	lua_State* L = luaL_newstate();
@@ -266,85 +267,82 @@ int main()
 
 
 	std::string luabuf =
-		"g_int = 100; \n"
-		"function lua_test()"
-		"	local ul_a = addUL(0x8000000000000000, 1);\n"
-		"	print_ul(ul_a);\n"
-		"	print(ul_a);\n"
-		"	local ul_b = Number2Interger(2^63)+0x1;\n"
-		"	print_ul(ul_b);\n"
-		"	print(ul_b);\n"
-		"	local ul_c = ul_a + ul_b;\n"
-		"	print_ul(ul_c);\n"
-		"	print(ul_c);\n"
-		"	local pFFShared = make_ff_nodef_shared();\n"
-		"	visot_ff_nodef_shared(pFFShared);\n"
-		"	local pFF_nodef = make_ff_nodef();\n"
-		"	visot_ff_nodef(pFF_nodef);\n"
-		"	visot_ff_nodef_shared(pFFShared);\n"
-		"	local pFF = test4();\n"
-		"	test();\n"
-		"	test1(2);\n"
-		"	test2(3);\n"
-		"	local pFF = test3();\n"
-		"	pFF:test();\n"
-		"	pFF:test_const();\n"
-		"	pFF:test1(3);\n"
-		"	pFF:test2(45);\n"
-		"	pFF:test3(123,pFF);\n"
-		"	pFF:test3(123,nil);\n"
-		"	pFF:test3(123,0);\n"
-		"	local luaFF = ff();\n"
-		"	test1(luaFF.m_val);\n"
-		"	luaFF.m_val = 2;\n"
-		"	test1(luaFF.m_val);\n"
-		"	local luaFF1 = ff(1);\n"
-		"	test1(luaFF1.m_val);\n"
-		"	local luaFF2 = luaFF1\n"
-		"	test1(luaFF2.m_val);\n"
-		"	luaFF2:test3(321,luaFF1);\n"
-		"	luaFF2:test4(luaFF1);\n"
-		"	luaFF2:test5(luaFF1);\n"
+		R"(g_int = 100;
+		function lua_test()
+			local ul_a = addUL(0x8000000000000000, 1);
+			print_ul(ul_a);
+			print(ul_a);
+			local ul_b = Number2Interger(2^63)+0x1;
+			print_ul(ul_b);
+			print(ul_b);
+			local ul_c = ul_a + ul_b;
+			print_ul(ul_c);
+			print(ul_c);
+			local pFFShared = make_ff_nodef_shared();
+			visot_ff_nodef_shared(pFFShared);
+			local pFF_nodef = make_ff_nodef();
+			visot_ff_nodef(pFF_nodef);
+			visot_ff_nodef_shared(pFFShared);
+			local pFF = test4();
+			test();
+			test1(2);
+			test2(3);
+			local pFF = test3();
+			pFF:test();
+			pFF:test_const();
+			pFF:test1(3);
+			pFF:test2(45);
+			pFF:test3(123,pFF);
+			pFF:test3(123,nil);
+			pFF:test3(123,0);
+			local luaFF = ff();
+			test1(luaFF.m_val);
+			luaFF.m_val = 2;
+			test1(luaFF.m_val);
+			local luaFF1 = ff(1);
+			test1(luaFF1.m_val);
+			local luaFF2 = luaFF1
+			test1(luaFF2.m_val);
+			luaFF2:test3(321,luaFF1);
+			luaFF2:test4(luaFF1);
+			luaFF2:test5(luaFF1);
 		
-		"	local pFFref = test5()\n"
-		"	pFFref:test4(luaFF1);\n"
+			local pFFref = test5()
+			pFFref:test4(luaFF1);
 
-		"	local string = push_string();\n"
-		"	read_lua_string(string);\n"
-		"	local string_ref = push_string_ref();\n"
-		"	read_lua_string_ref(string_ref);\n"
+			local string = push_string();
+			read_lua_string(string);
+			local string_ref = push_string_ref();
+			read_lua_string_ref(string_ref);
 		
-		"	local map_table = push_map();\n"
-		"	print(\"print map_table\")\n"
-		"	for k,v in pairs(map_table) do\n"
-		"		print(k);\n"
-		"		print(v);\n"
-		"	end\n"
-		"	print(\"print hashmap_table\")\n"
-		"	local hashmap_table = push_hashmap();\n"
-		"	for k,v in pairs(hashmap_table) do\n"
-		"		print(k);\n"
-		"		print(v);\n"
-		"	end\n"
-		"	print(\"print vector_table\")\n"
-		"	local vector_table = push_vector();\n"
-		"	for idx,v in ipairs(vector_table) do\n"
-		"		print(idx);\n"
-		"		print(v);\n"
-		"	end\n"
-		"	print(\"print set_table\")\n"
-		"	local set_table = push_set();\n"
-		"	for idx,v in ipairs(set_table) do\n"
-		"		print(idx);\n"
-		"		print(v);\n"
-		"	end\n"
+			local map_table = push_map();
+			print("print map_table")
+			for k,v in pairs(map_table) do
+				print(string.format("[%d]=%d",k,v));
+			end
+			print("print hashmap_table")
+			local hashmap_table = push_hashmap();
+			for k,v in pairs(hashmap_table) do
+				print(string.format("[%d]=%d",k,v));
+			end
+			print("print vector_table")
+			local vector_table = push_vector();
+			for idx,v in ipairs(vector_table) do
+				print(string.format("[%d]=%d",idx,v));
+			end
+			print("print set_table")
+			local set_table = push_set();
+			for idx,v in ipairs(set_table) do
+				print(string.format("[%d]=%d",idx,v));
+			end
 		
-		"end"
-		"\n"
-		"function lua_test2(n)"
-		"	test1(n)"
-		"	return n+1;"
-		"end";
+		end
+		
+		function lua_test2(n)
+			test1(n)
+			return n+1;
+		end
+		)";
 	lua_tinker::dostring(L, luabuf.c_str());
 	int a = lua_tinker::get<int>(L, "g_int");
 	printf("%d\n",a);

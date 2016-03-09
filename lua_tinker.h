@@ -73,7 +73,7 @@ namespace lua_tinker
 	}
 
 	template<typename T>
-	constexpr size_t get_type_idx()
+	constexpr const size_t get_type_idx()
 	{
 		return std::type_index(typeid(base_type<T>)).hash_code();
 	}
@@ -509,7 +509,7 @@ namespace lua_tinker
     template<>  table   pop(lua_State *L);
 
 
-	//invoke func
+	//invoke func tuple hold params
 	template<typename Func, typename Tup, std::size_t... index>
 	decltype(auto) invoke_helper(Func&& func, Tup&& tup, std::index_sequence<index...>)
 	{
@@ -525,18 +525,25 @@ namespace lua_tinker
 			std::make_index_sequence<Size>{});
 	}
 
-	//template<typename Func, typename ...Args>
-	//decltype(auto) invoke_func(Func func, Args...args)
-	//{
-	//	return func(args...);
-	//}
-
 	template<typename Func>
 	decltype(auto) invoke_func(Func func)
 	{
 		return func();
 	}
 
+	//direct invoke func
+	template<int nIdxParams, typename Func, typename ...Args, std::size_t... index>
+	decltype(auto) direct_invoke_invoke_helper(Func&& func, lua_State *L, std::index_sequence<index...>)
+	{
+		return std::invoke(func, read<Args>(L, index + nIdxParams)...);
+	}
+
+	template<int nIdxParams, typename Func, typename ...Args>
+	decltype(auto) direct_invoke_func(Func&& func, lua_State *L)
+	{
+		constexpr auto Size = sizeof...(Args);
+		return direct_invoke_invoke_helper<nIdxParams, Func, Args...>(std::forward<Func>(func), L, std::make_index_sequence<Size>{});
+	}
 
 	//make params to tuple
 	template<typename...T>
@@ -587,13 +594,15 @@ namespace lua_tinker
 		template<typename T>
 		static typename std::enable_if<!std::is_void<T>::value, void>::type _invoke(lua_State *L)
 		{
-			push(L, std::forward<RVal>(invoke_func(upvalue_<RVal(CT::*)(Args...)>(L), _get_args<1, CT*, Args...>(L))));
+			using FuncType = RVal(CT::*)(Args...);
+			push(L, std::forward<RVal>(direct_invoke_func<1, FuncType, CT*,Args...>(upvalue_<FuncType>(L), L)));
 		}
 
 		template<typename T>
 		static typename std::enable_if<std::is_void<T>::value, void>::type _invoke(lua_State *L)
 		{
-			invoke_func(upvalue_<RVal(CT::*)(Args...)>(L), _get_args<1, CT*, Args...>(L));
+			using FuncType = RVal(CT::*)(Args...);
+			direct_invoke_func<1, FuncType, CT*, Args...>(upvalue_<FuncType>(L), L);
 		}
 	};
 
@@ -620,13 +629,15 @@ namespace lua_tinker
 		template<typename T>
 		static typename std::enable_if<!std::is_void<T>::value, void>::type _invoke(lua_State *L)
 		{
-			push(L, std::forward<RVal>(invoke_func(upvalue_<RVal(CT::*)()>(L), _get_args<1, CT*>(L))));
+			using FuncType = RVal(CT::*)();
+			push(L, std::forward<RVal>(direct_invoke_func<1, FuncType, CT*>(upvalue_<FuncType>(L), L)));
 		}
 
 		template<typename T>
 		static typename std::enable_if<std::is_void<T>::value, void>::type _invoke(lua_State *L)
 		{
-			invoke_func(upvalue_<void(CT::*)()>(L), _get_args<1, CT*>(L));
+			using FuncType = void(CT::*)();
+			direct_invoke_func<1, FuncType, CT*>(upvalue_<FuncType>(L), L);
 		}
 	};
 
@@ -657,13 +668,15 @@ namespace lua_tinker
 		template<typename T>
 		static typename std::enable_if<!std::is_void<T>::value, void>::type _invoke(lua_State *L)
 		{
-			push(L, std::forward<RVal>(invoke_func(upvalue_<RVal(*)(Args...)>(L), _get_args<1, Args...>(L))));
+			using FuncType = RVal(*)(Args...);
+			push(L, std::forward<RVal>(direct_invoke_func<1, FuncType, Args...>(upvalue_<FuncType>(L), L)));
 		}
 
 		template<typename T>
 		static typename std::enable_if<std::is_void<T>::value, void>::type _invoke(lua_State *L)
 		{
-			invoke_func(upvalue_<RVal(*)(Args...)>(L), _get_args<1, Args...>(L));
+			using FuncType = RVal(*)(Args...);
+			direct_invoke_func<1, FuncType, Args...>(upvalue_<FuncType>(L), L);
 		}
 	};
 
@@ -689,13 +702,15 @@ namespace lua_tinker
 		template<typename T>
 		static typename std::enable_if<!std::is_void<T>::value, void>::type _invoke(lua_State *L)
 		{
-			push(L, std::forward<RVal>(invoke_func( upvalue_<RVal(*)()>(L) ) ));
+			using FuncType = RVal(*)();
+			push(L, std::forward<RVal>(invoke_func( upvalue_<FuncType>(L) ) ));
 		}
 
 		template<typename T>
 		static typename std::enable_if<std::is_void<T>::value, void>::type _invoke(lua_State *L)
 		{
-			invoke_func(upvalue_<void(*)()>(L));
+			using FuncType = void(*)();
+			invoke_func(upvalue_<FuncType>(L));
 		}
 	};
 
