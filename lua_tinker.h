@@ -18,6 +18,10 @@
 #include"lua.hpp"
 #include"type_traits_ext.h" 
 #include<memory>
+#include<typeindex>
+
+#define USE_TYPEID_OF_USERDATA
+
 
 #ifdef LUA_CALL_CFUNC_NEED_ALL_PARAM
 #define LUA_CHECK_HAVE_THIS_PARAM(L,index) if(lua_isnone(L,index)){lua_pushfstring(L, "need argument %d to call cfunc", index);lua_error(L);}
@@ -63,6 +67,12 @@ namespace lua_tinker
 	static typename std::enable_if<is_shared_ptr<T>::value, const char*>::type get_class_name()
 	{
 		return S_SHARED_PTR_NAME;
+	}
+
+	template<typename T>
+	constexpr size_t get_type_idx()
+	{
+		return std::type_index(typeid(base_type<T>)).hash_code();
 	}
 
     // dynamic type extention
@@ -116,13 +126,27 @@ namespace lua_tinker
 				lua_error(L);
 			}
 
+
 			UserDataWapper* pWapper = user2type<UserDataWapper*>(L, index);
+#ifdef USE_TYPEID_OF_USERDATA
 			if (lua_getmetatable(L, index) != 0)
 			{
-				lua_pushstring(L, "__name");
+				lua_pushstring(L, "__typeid");
 				lua_rawget(L, -2);
-				const char* name = lua_tostring(L, -1);
-				if (strcmp(name, get_class_name<T>()) != 0)
+				size_t type_idx = (size_t)lua_tointeger(L, -1);
+				if (type_idx == 0) //must be shared_ptr
+				{
+					lua_pushstring(L, "__name");
+					lua_rawget(L, index+1);
+					const char* name = lua_tostring(L, -1);
+					if (strcmp(name, S_SHARED_PTR_NAME) != 0)
+					{
+						lua_pushfstring(L, "can't convert argument %d to class %s", index, get_class_name<T>());
+						lua_error(L);
+					}
+					lua_settop(L, -2);
+				}
+				else if (type_idx != get_type_idx<T>())
 				{
 					lua_pushfstring(L, "can't convert argument %d to class %s", index, get_class_name<T>());
 					lua_error(L);
@@ -132,12 +156,13 @@ namespace lua_tinker
 			else
 			{
 				//unregister class convert to unregister class is ok
-				if (strcmp("", get_class_name<T>()) != 0)
+				if (pWapper->m_type_idx != get_type_idx<T>())
 				{
 					lua_pushfstring(L, "can't convert argument %d to class %s", index, get_class_name<T>());
 					lua_error(L);
 				}
 			}
+#endif
 
 			return void2type<T>(pWapper->m_p);
 		}
@@ -366,22 +391,23 @@ namespace lua_tinker
 	//userdata holder
 	struct UserDataWapper
 	{
-		UserDataWapper(void* p) : m_p(p) {}
+		UserDataWapper(void* p, size_t nTypeIdx) : m_p(p), m_type_idx(nTypeIdx) {}
 		virtual ~UserDataWapper() {}
 		void* m_p;
+		size_t  m_type_idx;
 	};
 
 	template<typename T>
 	struct val2user : UserDataWapper
 	{
-		val2user() : UserDataWapper(new T) { nType = }
-		val2user(const T& t) : UserDataWapper(new T(t)) {}
-		val2user(T&& t) : UserDataWapper(new T(t)) {}
+		val2user() : UserDataWapper(new T, get_type_idx<T>() ) { }
+		val2user(const T& t) : UserDataWapper(new T(t), get_type_idx<T>()) {}
+		val2user(T&& t) : UserDataWapper(new T(t), get_type_idx<T>()) {}
 
 		template<typename Tup,typename = typename std::enable_if<is_tuple<Tup>::value, void>::type >
 		val2user(Tup&& tup) : val2user(std::forward<Tup>(tup), std::make_index_sequence<std::tuple_size<typename std::decay<Tup>::type>::value>{}) {}
 		template<typename Tup, size_t ...index>
-		val2user(Tup&& tup, std::index_sequence<index...>) : UserDataWapper(new T(std::get<index>(std::forward<Tup>(tup))...)) {}
+		val2user(Tup&& tup, std::index_sequence<index...>) : UserDataWapper(new T(std::get<index>(std::forward<Tup>(tup))...), get_type_idx<T>()) {}
 
 		~val2user() { delete ((T*)m_p); }
 
@@ -390,19 +416,19 @@ namespace lua_tinker
 	template<typename T>
 	struct ptr2user : UserDataWapper
 	{
-		ptr2user(T* t) : UserDataWapper((void*)t) {}
+		ptr2user(T* t) : UserDataWapper((void*)t, get_type_idx<T>()) {}
 	};
 
 	template<typename T>
 	struct ref2user : UserDataWapper
 	{
-		ref2user(T& t) : UserDataWapper(&t) {}
+		ref2user(T& t) : UserDataWapper(&t, get_type_idx<T>()) {}
 	};
 
 	template<typename T>
 	struct sharedptr2user : UserDataWapper
 	{
-		sharedptr2user(const std::shared_ptr<T>& rht) :m_holder(rht), UserDataWapper(&m_holder) {}
+		sharedptr2user(const std::shared_ptr<T>& rht) :m_holder(rht), UserDataWapper(&m_holder, get_type_idx<T>()) {}
 		//use weak_ptr to hold it
 		~sharedptr2user() { m_holder.reset(); }
 
@@ -850,7 +876,11 @@ namespace lua_tinker
         lua_pushstring(L, "__name");
         lua_pushstring(L, name);
         lua_rawset(L, -3);
-
+#ifdef USE_TYPEID_OF_USERDATA
+		lua_pushstring(L, "__typeid");
+		lua_pushinteger(L, std::type_index(typeid(T)).hash_code() );
+		lua_rawset(L, -3);
+#endif
         lua_pushstring(L, "__index");
         lua_pushcclosure(L, meta_get, 0);
         lua_rawset(L, -3);
