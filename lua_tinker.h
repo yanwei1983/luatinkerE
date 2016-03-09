@@ -20,7 +20,10 @@
 #include<memory>
 #include<typeindex>
 
+#ifdef  _DEBUG
 #define USE_TYPEID_OF_USERDATA
+#endif //  _DEBUG
+
 
 
 #ifdef LUA_CALL_CFUNC_NEED_ALL_PARAM
@@ -391,23 +394,34 @@ namespace lua_tinker
 	//userdata holder
 	struct UserDataWapper
 	{
-		UserDataWapper(void* p, size_t nTypeIdx) : m_p(p), m_type_idx(nTypeIdx) {}
+		template<typename T>
+		explicit UserDataWapper(T* p)
+		: m_p(p)
+#ifdef USE_TYPEID_OF_USERDATA
+		, m_type_idx(get_type_idx<T>())
+#endif
+		{}
+
 		virtual ~UserDataWapper() {}
+
 		void* m_p;
+#ifdef USE_TYPEID_OF_USERDATA
 		size_t  m_type_idx;
+#endif
 	};
 
 	template<typename T>
 	struct val2user : UserDataWapper
 	{
-		val2user() : UserDataWapper(new T, get_type_idx<T>() ) { }
-		val2user(const T& t) : UserDataWapper(new T(t), get_type_idx<T>()) {}
-		val2user(T&& t) : UserDataWapper(new T(t), get_type_idx<T>()) {}
+		val2user() : UserDataWapper(new T) { }
+		val2user(const T& t): UserDataWapper(new T(t)) {}
+		val2user(T&& t) : UserDataWapper(new T(t)){}
 
 		template<typename Tup,typename = typename std::enable_if<is_tuple<Tup>::value, void>::type >
 		val2user(Tup&& tup) : val2user(std::forward<Tup>(tup), std::make_index_sequence<std::tuple_size<typename std::decay<Tup>::type>::value>{}) {}
+
 		template<typename Tup, size_t ...index>
-		val2user(Tup&& tup, std::index_sequence<index...>) : UserDataWapper(new T(std::get<index>(std::forward<Tup>(tup))...), get_type_idx<T>()) {}
+		val2user(Tup&& tup, std::index_sequence<index...>) : UserDataWapper(new T(std::get<index>(std::forward<Tup>(tup))...)) {}
 
 		~val2user() { delete ((T*)m_p); }
 
@@ -416,19 +430,21 @@ namespace lua_tinker
 	template<typename T>
 	struct ptr2user : UserDataWapper
 	{
-		ptr2user(T* t) : UserDataWapper((void*)t, get_type_idx<T>()) {}
+		ptr2user(T* t) : UserDataWapper(t){}
+
 	};
 
 	template<typename T>
 	struct ref2user : UserDataWapper
 	{
-		ref2user(T& t) : UserDataWapper(&t, get_type_idx<T>()) {}
+		ref2user(T& t) : UserDataWapper(&t)	{}
+
 	};
 
 	template<typename T>
 	struct sharedptr2user : UserDataWapper
 	{
-		sharedptr2user(const std::shared_ptr<T>& rht) :m_holder(rht), UserDataWapper(&m_holder, get_type_idx<T>()) {}
+		sharedptr2user(const std::shared_ptr<T>& rht) :m_holder(rht), UserDataWapper(&m_holder)	{}
 		//use weak_ptr to hold it
 		~sharedptr2user() { m_holder.reset(); }
 
