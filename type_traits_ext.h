@@ -207,7 +207,7 @@ struct is_shared_ptr<std::shared_ptr<T>> : bool_type<true>
 
 template <typename T>
 struct get_shared
-{ 
+{
 };
 template <typename T>
 struct get_shared<std::shared_ptr<T>>

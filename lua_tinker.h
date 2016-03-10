@@ -42,20 +42,20 @@
 namespace lua_tinker
 {
 	static const char* S_SHARED_PTR_NAME = "__shared_ptr";
-    // init LuaTinker
-    void    init(lua_State *L);
+	// init LuaTinker
+	void    init(lua_State *L);
 
 	void	init_shared_ptr(lua_State *L);
 
-    // string-buffer excution
-    void    dofile(lua_State *L, const char *filename);
-    void    dostring(lua_State *L, const char* buff);
-    void    dobuffer(lua_State *L, const char* buff, size_t sz);
-    
-    // debug helpers
-    void    enum_stack(lua_State *L);
-    int     on_error(lua_State *L);
-    void    print_error(lua_State *L, const char* fmt, ...);
+	// string-buffer excution
+	void    dofile(lua_State *L, const char *filename);
+	void    dostring(lua_State *L, const char* buff);
+	void    dobuffer(lua_State *L, const char* buff, size_t sz);
+
+	// debug helpers
+	void    enum_stack(lua_State *L);
+	int     on_error(lua_State *L);
+	void    print_error(lua_State *L, const char* fmt, ...);
 
 	template<typename T>
 	using base_type = typename std::remove_cv<typename std::remove_reference<typename std::remove_pointer<T>::type>::type>::type;
@@ -78,24 +78,24 @@ namespace lua_tinker
 		return std::type_index(typeid(base_type<T>)).hash_code();
 	}
 
-    // dynamic type extention
-    struct lua_value
-    {
+	// dynamic type extention
+	struct lua_value
+	{
 		virtual ~lua_value() {}
-        virtual void to_lua(lua_State *L) = 0;
-    };
+		virtual void to_lua(lua_State *L) = 0;
+	};
 
-    // type trait
-    template<typename T> struct class_name;
-    struct table;
+	// type trait
+	template<typename T> struct class_name;
+	struct table;
 
 	// lua stack help to read/push
 	template<typename T, typename Enable = void>
 	struct _stack_help
 	{
-		static T _read(lua_State *L, int index) 
-		{ 
-			return lua2type<T>(L, index); 
+		static T _read(lua_State *L, int index)
+		{
+			return lua2type<T>(L, index);
 		}
 
 		//get userdata ptr from lua, can handle nil an 0
@@ -140,7 +140,7 @@ namespace lua_tinker
 				if (type_idx == 0) //must be shared_ptr
 				{
 					lua_pushstring(L, "__name");
-					lua_rawget(L, index+1);
+					lua_rawget(L, index + 1);
 					const char* name = lua_tostring(L, -1);
 					if (strcmp(name, S_SHARED_PTR_NAME) != 0)
 					{
@@ -169,7 +169,7 @@ namespace lua_tinker
 
 			return void2type<T>(pWapper->m_p);
 		}
-				
+
 
 		//obj to lua
 		template<typename T>
@@ -213,7 +213,7 @@ namespace lua_tinker
 
 	//integral
 	template<typename T>
-	struct _stack_help<T, typename std::enable_if<std::is_integral<T>::value>::type> 
+	struct _stack_help<T, typename std::enable_if<std::is_integral<T>::value>::type>
 	{
 		static T _read(lua_State *L, int index)
 		{
@@ -281,7 +281,7 @@ namespace lua_tinker
 			lua_pushinteger(L, (int)ret);
 		}
 	};
-	
+
 	//stl container
 	template<typename T>
 	struct _stack_help<T, typename std::enable_if<is_container<T>::value>::type>
@@ -298,7 +298,7 @@ namespace lua_tinker
 				push(L, it->second);
 				lua_settable(L, -3);
 			}
-		} 
+		}
 		//t container to lua
 		template<typename T>
 		static typename std::enable_if<!is_associative_container<T>::value, void>::type  _push(lua_State *L, T ret)
@@ -351,9 +351,9 @@ namespace lua_tinker
 	{
 		return void2type<T>(lua_touserdata(L, index));
 	}
-	
 
- 	//read_weap
+
+	//read_weap
 	template<typename T>
 	decltype(auto) read(lua_State *L, int index)
 	{
@@ -383,9 +383,9 @@ namespace lua_tinker
 	{
 		template<typename T>
 		explicit UserDataWapper(T* p)
-		: m_p(p)
+			: m_p(p)
 #ifdef USE_TYPEID_OF_USERDATA
-		, m_type_idx(get_type_idx<T>())
+			, m_type_idx(get_type_idx<T>())
 #endif
 		{}
 
@@ -408,8 +408,8 @@ namespace lua_tinker
 	struct val2user : UserDataWapper
 	{
 		val2user() : UserDataWapper(new T) { }
-		val2user(const T& t): UserDataWapper(new T(t)) {}
-		val2user(T&& t) : UserDataWapper(new T(t)){}
+		val2user(const T& t) : UserDataWapper(new T(t)) {}
+		val2user(T&& t) : UserDataWapper(new T(t)) {}
 
 		//tuple is hold the params, so unpack it
 		//template<typename Tup, size_t ...index>
@@ -422,7 +422,7 @@ namespace lua_tinker
 		//direct read args, use type_list to help hold Args
 		template<typename ...Args, size_t ...index>
 		val2user(type_list<Args...> type_list, lua_State* L, std::index_sequence<index...>)
-		: UserDataWapper(new T(read<Args>(L, 2 + index)...))
+			: UserDataWapper(new T(read<Args>(L, 2 + index)...))
 		{}
 
 		template<typename ...Args>
@@ -438,21 +438,21 @@ namespace lua_tinker
 	template<typename T>
 	struct ptr2user : UserDataWapper
 	{
-		ptr2user(T* t) : UserDataWapper(t){}
+		ptr2user(T* t) : UserDataWapper(t) {}
 
 	};
 
 	template<typename T>
 	struct ref2user : UserDataWapper
 	{
-		ref2user(T& t) : UserDataWapper(&t)	{}
+		ref2user(T& t) : UserDataWapper(&t) {}
 
 	};
 
 	template<typename T>
 	struct sharedptr2user : UserDataWapper
 	{
-		sharedptr2user(const std::shared_ptr<T>& rht) :m_holder(rht), UserDataWapper(&m_holder)	{}
+		sharedptr2user(const std::shared_ptr<T>& rht) :m_holder(rht), UserDataWapper(&m_holder) {}
 		//use weak_ptr to hold it
 		~sharedptr2user() { m_holder.reset(); }
 
@@ -495,8 +495,8 @@ namespace lua_tinker
 		return user2type<T>(L, lua_upvalueindex(1));
 	}
 
-    // push value_list to lua stack 
-	template<typename T,typename ...Args>
+	// push value_list to lua stack 
+	template<typename T, typename ...Args>
 	void push_args(lua_State *L, T ret, Args...args) { push<T>(L, std::forward<T>(ret)); push_args<Args...>(L, std::forward<Args>(args)...); }
 	template<typename T, typename ...Args>
 	void push_args(lua_State *L, T ret) { push<T>(L, std::forward<T>(ret)); }
@@ -509,12 +509,12 @@ namespace lua_tinker
 		_stack_help<T>::_push(L, std::forward<T>(ret));
 	}
 
-    // pop a value from lua stack
-    template<typename T>  
-    T pop(lua_State *L) { T t = read_nocheck<T>(L, -1); lua_pop(L, 1); return t; }
-    
-    template<>  void    pop(lua_State *L);
-    template<>  table   pop(lua_State *L);
+	// pop a value from lua stack
+	template<typename T>
+	T pop(lua_State *L) { T t = read_nocheck<T>(L, -1); lua_pop(L, 1); return t; }
+
+	template<>  void    pop(lua_State *L);
+	template<>  table   pop(lua_State *L);
 
 
 	//invoke func tuple hold params
@@ -595,14 +595,14 @@ namespace lua_tinker
 				lua_error(L);
 			}
 			return 0;
-			
+
 		}
 
 		template<typename T>
 		static typename std::enable_if<!std::is_void<T>::value, void>::type _invoke(lua_State *L)
 		{
 			using FuncType = RVal(CT::*)(Args...);
-			push(L, std::forward<RVal>(direct_invoke_func<1, FuncType, CT*,Args...>(upvalue_<FuncType>(L), L)));
+			push(L, std::forward<RVal>(direct_invoke_func<1, FuncType, CT*, Args...>(upvalue_<FuncType>(L), L)));
 		}
 
 		template<typename T>
@@ -710,7 +710,7 @@ namespace lua_tinker
 		static typename std::enable_if<!std::is_void<T>::value, void>::type _invoke(lua_State *L)
 		{
 			using FuncType = RVal(*)();
-			push(L, std::forward<RVal>(invoke_func( upvalue_<FuncType>(L) ) ));
+			push(L, std::forward<RVal>(invoke_func(upvalue_<FuncType>(L))));
 		}
 
 		template<typename T>
@@ -759,38 +759,39 @@ namespace lua_tinker
 	}
 
 
-    // member variable
-    struct var_base
-    {
-        virtual ~var_base() {};
-        virtual void get(lua_State *L) = 0;
-        virtual void set(lua_State *L) = 0;
-    };
+	// member variable
+	struct var_base
+	{
+		virtual ~var_base() {};
+		virtual void get(lua_State *L) = 0;
+		virtual void set(lua_State *L) = 0;
+	};
 
-    template<typename T, typename V>
-    struct mem_var : var_base
-    {
-        V T::*_var;
-        mem_var(V T::*val) : _var(val) {}
+	template<typename T, typename V>
+	struct mem_var : var_base
+	{
+		V T::*_var;
+		mem_var(V T::*val) : _var(val) {}
 		void get(lua_State *L) { CHECK_CLASS_PTR(T); push(L, read<T*>(L, 1)->*(_var)); }
-        void set(lua_State *L) { CHECK_CLASS_PTR(T); read<T*>(L,1)->*(_var) = read<V>(L, 3);  
+		void set(lua_State *L) {
+			CHECK_CLASS_PTR(T); read<T*>(L, 1)->*(_var) = read<V>(L, 3);
 		}
-    };
+	};
 
-    // constructor
+	// constructor
 	template<typename T, typename ...Args>
 	struct constructor
 	{
 		static int invoke(lua_State *L)
 		{
-			new(lua_newuserdata(L, sizeof(val2user<T>))) val2user<T>(type_list<Args...>(),L);
+			new(lua_newuserdata(L, sizeof(val2user<T>))) val2user<T>(type_list<Args...>(), L);
 			push_meta(L, get_class_name<T>());
 			lua_setmetatable(L, -2);
 
 			return 1;
 		}
 	};
-	
+
 
 	template<typename T>
 	struct constructor<T>
@@ -804,81 +805,81 @@ namespace lua_tinker
 			return 1;
 		}
 	};
-	
 
-    // destroyer
-    template<typename T>
-    int destroyer(lua_State *L) 
-    { 
-        ((UserDataWapper*)lua_touserdata(L, 1))->~UserDataWapper();
-        return 0;
-    }
+
+	// destroyer
+	template<typename T>
+	int destroyer(lua_State *L)
+	{
+		((UserDataWapper*)lua_touserdata(L, 1))->~UserDataWapper();
+		return 0;
+	}
 	int destroyer_shared_ptr(lua_State *L);
 
-    // global function
-    template<typename F> 
-    void def(lua_State* L, const char* name, F func)
-    { 
-        lua_pushlightuserdata(L, (void*)func);
-        push_functor(L, func);
-        lua_setglobal(L, name);
-    }
+	// global function
+	template<typename F>
+	void def(lua_State* L, const char* name, F func)
+	{
+		lua_pushlightuserdata(L, (void*)func);
+		push_functor(L, func);
+		lua_setglobal(L, name);
+	}
 
-    // global variable
-    template<typename T>
-    void set(lua_State* L, const char* name, T object)
-    {
-        push(L, object);
-        lua_setglobal(L, name);
-    }
+	// global variable
+	template<typename T>
+	void set(lua_State* L, const char* name, T object)
+	{
+		push(L, object);
+		lua_setglobal(L, name);
+	}
 
-    template<typename T>
-    T get(lua_State* L, const char* name)
-    {
-        lua_getglobal(L, name);
-        return pop<T>(L);
-    }
+	template<typename T>
+	T get(lua_State* L, const char* name)
+	{
+		lua_getglobal(L, name);
+		return pop<T>(L);
+	}
 
-    template<typename T>
-    void decl(lua_State* L, const char* name, T object)
-    {
-        set(L, name, object);
-    }
+	template<typename T>
+	void decl(lua_State* L, const char* name, T object)
+	{
+		set(L, name, object);
+	}
 
-    // call lua func
-    template<typename RVal>
-    RVal call(lua_State* L, const char* name)
-    {
-        lua_pushcclosure(L, on_error, 0);
-        int errfunc = lua_gettop(L);
-
-        lua_getglobal(L, name);
-        if(lua_isfunction(L,-1))
-        {
-            lua_pcall(L, 0, 1, errfunc);
-        }
-        else
-        {
-            print_error(L, "lua_tinker::call() attempt to call global `%s' (not a function)", name);
-        }
-
-        lua_remove(L, errfunc);
-        return pop<RVal>(L);
-    }
-
-    template<typename RVal, typename ...Args>
-    RVal call(lua_State* L, const char* name, Args... arg)
-    {
-      
+	// call lua func
+	template<typename RVal>
+	RVal call(lua_State* L, const char* name)
+	{
 		lua_pushcclosure(L, on_error, 0);
 		int errfunc = lua_gettop(L);
 
-		lua_getglobal(L,name);
-		if(lua_isfunction(L,-1))
+		lua_getglobal(L, name);
+		if (lua_isfunction(L, -1))
+		{
+			lua_pcall(L, 0, 1, errfunc);
+		}
+		else
+		{
+			print_error(L, "lua_tinker::call() attempt to call global `%s' (not a function)", name);
+		}
+
+		lua_remove(L, errfunc);
+		return pop<RVal>(L);
+	}
+
+	template<typename RVal, typename ...Args>
+	RVal call(lua_State* L, const char* name, Args... arg)
+	{
+
+		lua_pushcclosure(L, on_error, 0);
+		int errfunc = lua_gettop(L);
+
+		lua_getglobal(L, name);
+		if (lua_isfunction(L, -1))
 		{
 			push_args(L, arg...);
-			
-			if(lua_pcall(L, sizeof...(Args), 1, errfunc) != 0)
+
+			if (lua_pcall(L, sizeof...(Args), 1, errfunc) != 0)
 			{
 				lua_pop(L, 1);
 			}
@@ -892,202 +893,202 @@ namespace lua_tinker
 		return pop<RVal>(L);
 	} // }
 
-    // class helper
-    int meta_get(lua_State *L);
-    int meta_set(lua_State *L);
-    void push_meta(lua_State *L, const char* name);
+	// class helper
+	int meta_get(lua_State *L);
+	int meta_set(lua_State *L);
+	void push_meta(lua_State *L, const char* name);
 
-    // class init
-    template<typename T>
-    void class_add(lua_State* L, const char* name) 
-    { 
-        class_name<T>::name(name);
+	// class init
+	template<typename T>
+	void class_add(lua_State* L, const char* name)
+	{
+		class_name<T>::name(name);
 
-        lua_newtable(L);
+		lua_newtable(L);
 
-        lua_pushstring(L, "__name");
-        lua_pushstring(L, name);
-        lua_rawset(L, -3);
+		lua_pushstring(L, "__name");
+		lua_pushstring(L, name);
+		lua_rawset(L, -3);
 #ifdef USE_TYPEID_OF_USERDATA
 		lua_pushstring(L, "__typeid");
-		lua_pushinteger(L, std::type_index(typeid(T)).hash_code() );
+		lua_pushinteger(L, std::type_index(typeid(T)).hash_code());
 		lua_rawset(L, -3);
 #endif
-        lua_pushstring(L, "__index");
-        lua_pushcclosure(L, meta_get, 0);
-        lua_rawset(L, -3);
+		lua_pushstring(L, "__index");
+		lua_pushcclosure(L, meta_get, 0);
+		lua_rawset(L, -3);
 
-        lua_pushstring(L, "__newindex");
-        lua_pushcclosure(L, meta_set, 0);
-        lua_rawset(L, -3);
+		lua_pushstring(L, "__newindex");
+		lua_pushcclosure(L, meta_set, 0);
+		lua_rawset(L, -3);
 
-        lua_pushstring(L, "__gc");
-        lua_pushcclosure(L, destroyer<T>, 0);
-        lua_rawset(L, -3);
+		lua_pushstring(L, "__gc");
+		lua_pushcclosure(L, destroyer<T>, 0);
+		lua_rawset(L, -3);
 
-        lua_setglobal(L, name);
-    }
+		lua_setglobal(L, name);
+	}
 
-    // Tinker Class Inheritence
-    template<typename T, typename P>
-    void class_inh(lua_State* L)
-    {
-        push_meta(L, get_class_name<T>());
-        if(lua_istable(L, -1))
-        {
-            lua_pushstring(L, "__parent");
-            push_meta(L, get_class_name<P>());
-            lua_rawset(L, -3);
-        }
-        lua_pop(L, 1);
-    }
+	// Tinker Class Inheritence
+	template<typename T, typename P>
+	void class_inh(lua_State* L)
+	{
+		push_meta(L, get_class_name<T>());
+		if (lua_istable(L, -1))
+		{
+			lua_pushstring(L, "__parent");
+			push_meta(L, get_class_name<P>());
+			lua_rawset(L, -3);
+		}
+		lua_pop(L, 1);
+	}
 
-    // Tinker Class Constructor
-    template<typename T, typename F>
-    void class_con(lua_State* L,F func)
-    {
-        push_meta(L, get_class_name<T>());
-        if(lua_istable(L, -1))
-        {
-            lua_newtable(L);
-            lua_pushstring(L, "__call");
-            lua_pushcclosure(L, func, 0);
-            lua_rawset(L, -3);
-            lua_setmetatable(L, -2);
-        }
-        lua_pop(L, 1);
-    }
+	// Tinker Class Constructor
+	template<typename T, typename F>
+	void class_con(lua_State* L, F func)
+	{
+		push_meta(L, get_class_name<T>());
+		if (lua_istable(L, -1))
+		{
+			lua_newtable(L);
+			lua_pushstring(L, "__call");
+			lua_pushcclosure(L, func, 0);
+			lua_rawset(L, -3);
+			lua_setmetatable(L, -2);
+		}
+		lua_pop(L, 1);
+	}
 
-    // Tinker Class Functions
-    template<typename T, typename F>
-    void class_def(lua_State* L, const char* name, F func) 
-    { 
-        push_meta(L, get_class_name<T>());
-        if(lua_istable(L, -1))
-        {
-            lua_pushstring(L, name);
-            new(lua_newuserdata(L,sizeof(F))) F(func);
+	// Tinker Class Functions
+	template<typename T, typename F>
+	void class_def(lua_State* L, const char* name, F func)
+	{
+		push_meta(L, get_class_name<T>());
+		if (lua_istable(L, -1))
+		{
+			lua_pushstring(L, name);
+			new(lua_newuserdata(L, sizeof(F))) F(func);
 			push_functor(L, func);
-            lua_rawset(L, -3);
-        }
-        lua_pop(L, 1);
-    }
+			lua_rawset(L, -3);
+		}
+		lua_pop(L, 1);
+	}
 
-    // Tinker Class Variables
-    template<typename T, typename BASE, typename VAR>
-    void class_mem(lua_State* L, const char* name, VAR BASE::*val) 
-    { 
-        push_meta(L, get_class_name<T>());
-        if(lua_istable(L, -1))
-        {
-            lua_pushstring(L, name);
-            new(lua_newuserdata(L,sizeof(mem_var<BASE,VAR>))) mem_var<BASE,VAR>(val);
-            lua_rawset(L, -3);
-        }
-        lua_pop(L, 1);
-    }
+	// Tinker Class Variables
+	template<typename T, typename BASE, typename VAR>
+	void class_mem(lua_State* L, const char* name, VAR BASE::*val)
+	{
+		push_meta(L, get_class_name<T>());
+		if (lua_istable(L, -1))
+		{
+			lua_pushstring(L, name);
+			new(lua_newuserdata(L, sizeof(mem_var<BASE, VAR>))) mem_var<BASE, VAR>(val);
+			lua_rawset(L, -3);
+		}
+		lua_pop(L, 1);
+	}
 
-    template<typename T>
-    struct class_name
-    {
-        // global name
-        static const char* name(const char* name = NULL)
-        {
-            static char temp[256] = "";
-            if (name != NULL) strncpy(temp, name, sizeof(temp)-1);
-            return temp;
-        }
-    };
+	template<typename T>
+	struct class_name
+	{
+		// global name
+		static const char* name(const char* name = NULL)
+		{
+			static char temp[256] = "";
+			if (name != NULL) strncpy(temp, name, sizeof(temp) - 1);
+			return temp;
+		}
+	};
 
-    // Table Object on Stack
-    struct table_obj
-    {
-        table_obj(lua_State* L, int index);
-        ~table_obj();
+	// Table Object on Stack
+	struct table_obj
+	{
+		table_obj(lua_State* L, int index);
+		~table_obj();
 
-        void inc_ref();
-        void dec_ref();
+		void inc_ref();
+		void dec_ref();
 
-        bool validate();
+		bool validate();
 
-        template<typename T>
-        void set(const char* name, T object)
-        {
-            if(validate())
-            {
-                lua_pushstring(m_L, name);
-                push(m_L, object);
-                lua_settable(m_L, m_index);
-            }
-        }
+		template<typename T>
+		void set(const char* name, T object)
+		{
+			if (validate())
+			{
+				lua_pushstring(m_L, name);
+				push(m_L, object);
+				lua_settable(m_L, m_index);
+			}
+		}
 
-        template<typename T>
-        T get(const char* name)
-        {
-            if(validate())
-            {
-                lua_pushstring(m_L, name);
-                lua_gettable(m_L, m_index);
-            }
-            else
-            {
-                lua_pushnil(m_L);
-            }
+		template<typename T>
+		T get(const char* name)
+		{
+			if (validate())
+			{
+				lua_pushstring(m_L, name);
+				lua_gettable(m_L, m_index);
+			}
+			else
+			{
+				lua_pushnil(m_L);
+			}
 
-            return pop<T>(m_L);
-        }
+			return pop<T>(m_L);
+		}
 
-        template<typename T>
-        T get(int num)
-        {
-            if(validate())
-            {
-                lua_pushinteger(m_L, num);
-                lua_gettable(m_L, m_index);
-            }
-            else
-            {
-                lua_pushnil(m_L);
-            }
+		template<typename T>
+		T get(int num)
+		{
+			if (validate())
+			{
+				lua_pushinteger(m_L, num);
+				lua_gettable(m_L, m_index);
+			}
+			else
+			{
+				lua_pushnil(m_L);
+			}
 
-            return pop<T>(m_L);
-        }
+			return pop<T>(m_L);
+		}
 
-        lua_State*      m_L;
-        int             m_index;
-        const void*     m_pointer;
-        int             m_ref;
-    };
+		lua_State*      m_L;
+		int             m_index;
+		const void*     m_pointer;
+		int             m_ref;
+	};
 
-    // Table Object Holder
-    struct table
-    {
-        table(lua_State* L);
-        table(lua_State* L, int index);
-        table(lua_State* L, const char* name);
-        table(const table& input);
-        ~table();
+	// Table Object Holder
+	struct table
+	{
+		table(lua_State* L);
+		table(lua_State* L, int index);
+		table(lua_State* L, const char* name);
+		table(const table& input);
+		~table();
 
-        template<typename T>
-        void set(const char* name, T object)
-        {
-            m_obj->set(name, object);
-        }
+		template<typename T>
+		void set(const char* name, T object)
+		{
+			m_obj->set(name, object);
+		}
 
-        template<typename T>
-        T get(const char* name)
-        {
-            return m_obj->get<T>(name);
-        }
+		template<typename T>
+		T get(const char* name)
+		{
+			return m_obj->get<T>(name);
+		}
 
-        template<typename T>
-        T get(int num)
-        {
-            return m_obj->get<T>(num);
-        }
+		template<typename T>
+		T get(int num)
+		{
+			return m_obj->get<T>(num);
+		}
 
-        table_obj*      m_obj;
-    };
+		table_obj*      m_obj;
+	};
 
 } // namespace lua_tinker
 
