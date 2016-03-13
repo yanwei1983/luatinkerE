@@ -61,7 +61,7 @@ namespace lua_tinker
 	using base_type = typename std::remove_cv<typename std::remove_reference<typename std::remove_pointer<T>::type>::type>::type;
 
 	template<typename T>
-	static typename std::enable_if<!is_shared_ptr<T>::value, const char*>::type get_class_name()
+	static constexpr typename std::enable_if<!is_shared_ptr<T>::value, const char*>::type get_class_name()
 	{
 		return class_name< base_type<T> >::name();
 	}
@@ -69,13 +69,23 @@ namespace lua_tinker
 	template<typename T>
 	static typename std::enable_if<is_shared_ptr<T>::value, const char*>::type get_class_name()
 	{
-		return S_SHARED_PTR_NAME;
+		const std::string& strSharedName = class_name<T>::name_str();
+		if (strSharedName.empty())
+		{
+			return S_SHARED_PTR_NAME;
+		}
+		else
+		{
+			return strSharedName.c_str();
+		}
+
+
 	}
 
 	template<typename T>
 	constexpr const size_t get_type_idx()
 	{
-		return std::type_index(typeid(base_type<T>)).hash_code();
+		return typeid(base_type<T>).hash_code();
 	}
 
 	// dynamic type extention
@@ -132,12 +142,12 @@ namespace lua_tinker
 
 			UserDataWapper* pWapper = user2type<UserDataWapper*>(L, index);
 #ifdef USE_TYPEID_OF_USERDATA
-			if (lua_getmetatable(L, index) != 0)
+			if (lua_getmetatable(L, index) != 0)		//has metatable is registeged class
 			{
 				lua_pushstring(L, "__typeid");
 				lua_rawget(L, -2);
 				size_t type_idx = (size_t)lua_tointeger(L, -1);
-				if (type_idx == 0) //must be shared_ptr
+				if (type_idx == 0) // unregisteged shared_ptr
 				{
 					lua_pushstring(L, "__name");
 					lua_rawget(L, index + 1);
@@ -389,6 +399,14 @@ namespace lua_tinker
 #endif
 		{}
 
+#ifdef USE_TYPEID_OF_USERDATA
+		template<typename T>
+		explicit UserDataWapper(T* p, size_t nTypeIdx)
+			: m_p(p)
+			, m_type_idx(nTypeIdx)
+		{}
+#endif
+
 		virtual ~UserDataWapper() {}
 
 		void* m_p;
@@ -452,7 +470,13 @@ namespace lua_tinker
 	template<typename T>
 	struct sharedptr2user : UserDataWapper
 	{
-		sharedptr2user(const std::shared_ptr<T>& rht) :m_holder(rht), UserDataWapper(&m_holder) {}
+		sharedptr2user(const std::shared_ptr<T>& rht)
+			:m_holder(rht)
+#ifdef USE_TYPEID_OF_USERDATA
+			, UserDataWapper(&m_holder, get_type_idx<T>()) {}
+#else
+			, UserDataWapper(&m_holder) {}
+#endif
 		//use weak_ptr to hold it
 		~sharedptr2user() { m_holder.reset(); }
 
@@ -900,7 +924,7 @@ namespace lua_tinker
 
 	// class init
 	template<typename T>
-	void class_add(lua_State* L, const char* name)
+	void class_add(lua_State* L, const char* name, bool bInitShared = false)
 	{
 		class_name<T>::name(name);
 
@@ -911,7 +935,7 @@ namespace lua_tinker
 		lua_rawset(L, -3);
 #ifdef USE_TYPEID_OF_USERDATA
 		lua_pushstring(L, "__typeid");
-		lua_pushinteger(L, std::type_index(typeid(T)).hash_code());
+		lua_pushinteger(L, get_type_idx<T>());
 		lua_rawset(L, -3);
 #endif
 		lua_pushstring(L, "__index");
@@ -927,6 +951,37 @@ namespace lua_tinker
 		lua_rawset(L, -3);
 
 		lua_setglobal(L, name);
+
+		if (bInitShared)
+		{
+			std::string strSharedName = (std::string(name) + S_SHARED_PTR_NAME);
+			class_name< std::shared_ptr<T> >::name(strSharedName.c_str());
+
+			lua_newtable(L);
+
+			lua_pushstring(L, "__name");
+			lua_pushstring(L, strSharedName.c_str());
+			lua_rawset(L, -3);
+#ifdef USE_TYPEID_OF_USERDATA
+			lua_pushstring(L, "__typeid");
+			lua_pushinteger(L, get_type_idx<std::shared_ptr<T>>());
+			lua_rawset(L, -3);
+#endif
+			lua_pushstring(L, "__index");
+			lua_pushcclosure(L, meta_get, 0);
+			lua_rawset(L, -3);
+
+			lua_pushstring(L, "__newindex");
+			lua_pushcclosure(L, meta_set, 0);
+			lua_rawset(L, -3);
+
+			lua_pushstring(L, "__gc");
+			lua_pushcclosure(L, destroyer_shared_ptr, 0);
+			lua_rawset(L, -3);
+
+			lua_setglobal(L, strSharedName.c_str());
+		}
+
 	}
 
 	// Tinker Class Inheritence
@@ -994,9 +1049,13 @@ namespace lua_tinker
 		// global name
 		static const char* name(const char* name = NULL)
 		{
-			static char temp[256] = "";
-			if (name != NULL) strncpy(temp, name, sizeof(temp) - 1);
-			return temp;
+			return name_str(name).c_str();
+		}
+		static const std::string& name_str(const char* name = NULL)
+		{
+			static std::string s_name;
+			if (name != NULL) s_name.assign(name);
+			return s_name;
 		}
 	};
 

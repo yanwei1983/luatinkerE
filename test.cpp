@@ -153,10 +153,21 @@ void read_lua_string_ref(const std::string& t)
 	std::cout << "read_lua_string_ref(" << t << ")" << std::endl;
 }
 
+std::shared_ptr<ff> g_ff_shared;
 std::shared_ptr<ff> make_ff()
 {
-	return std::shared_ptr<ff>(new ff);
+	if (!g_ff_shared)
+	{
+		g_ff_shared = std::shared_ptr<ff>(new ff);
+	}
+	return g_ff_shared;
 }
+
+std::weak_ptr<ff> make_ff_weak()
+{
+	return std::weak_ptr<ff>(g_ff_shared);
+}
+
 
 void visot_ff(std::shared_ptr<ff> pFF)
 {
@@ -164,6 +175,19 @@ void visot_ff(std::shared_ptr<ff> pFF)
 	{
 		std::cout << "visot_ff(" << pFF->m_val << ")" << std::endl;
 	}
+}
+
+void visot_ff_weak(std::weak_ptr<ff> pWeakFF)
+{
+	if (pWeakFF.expired() == false)
+	{
+		std::shared_ptr<ff> pFF = pWeakFF.lock();
+		if (pFF)
+		{
+			std::cout << "visot_ff(" << pFF->m_val << ")" << std::endl;
+		}
+	}
+	
 }
 
 class ff_nodef
@@ -258,6 +282,9 @@ int main()
 
 	lua_tinker::def(L, "make_ff", &make_ff);
 	lua_tinker::def(L, "visot_ff", &visot_ff);
+	lua_tinker::def(L, "make_ff_weak", &make_ff_weak);
+	lua_tinker::def(L, "visot_ff_weak", &visot_ff_weak);
+
 	lua_tinker::def(L, "make_ff_nodef", &make_ff_nodef);
 	lua_tinker::def(L, "visot_ff_nodef", &visot_ff_nodef);
 	lua_tinker::def(L, "make_ff_nodef_shared", &make_ff_nodef_shared);
@@ -266,7 +293,7 @@ int main()
 	lua_tinker::def(L, "addUL", &addUL);
 	lua_tinker::def(L, "print_ul", &print_ul);
 
-	lua_tinker::class_add<ff>(L, "ff");
+	lua_tinker::class_add<ff>(L, "ff", true);
 
 	//lua_tinker::class_con<ff>(L, lua_tinker::constructor<ff>::invoke);
 	lua_tinker::class_con<ff>(L, lua_tinker::constructor<ff, int, double, unsigned char>::invoke);
@@ -295,11 +322,19 @@ int main()
 			local ul_c = ul_a + ul_b;
 			print_ul(ul_c);
 			print(ul_c);
-			local pFFShared = make_ff_nodef_shared();
-			visot_ff_nodef_shared(pFFShared);
+
+			local pFFShared =  make_ff();
+			visot_ff(pFFShared);
+			--visot_ff_weak(pFFShared);	--error shared_ptr to weak_ptr
+			local pFFWeak = make_ff_weak();
+			--visot_ff(pFFWeak);		--error weak_ptr to shared_ptr
+			visot_ff_weak(pFFWeak);
+
+			local pFF_nodef_Shared = make_ff_nodef_shared();
+			visot_ff_nodef_shared(pFF_nodef_Shared);
 			local pFF_nodef = make_ff_nodef();
 			visot_ff_nodef(pFF_nodef);
-			visot_ff_nodef_shared(pFFShared);
+			visot_ff_nodef_shared(pFF_nodef_Shared);
 			local pFF = test4();
 			test();
 			test1(2);
