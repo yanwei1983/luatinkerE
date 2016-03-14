@@ -142,34 +142,20 @@ namespace lua_tinker
 
 			UserDataWapper* pWapper = user2type<UserDataWapper*>(L, index);
 #ifdef USE_TYPEID_OF_USERDATA
-			if (lua_getmetatable(L, index) != 0)		//has metatable is registeged class
+			size_t nTypeIdx = type_idx<T>::hash_code();
+			if (nTypeIdx == 0)
 			{
-				lua_pushstring(L, "__typeid");
-				lua_rawget(L, -2);
-				size_t type_idx = (size_t)lua_tointeger(L, -1);
-				if (type_idx == 0) // unregisteged shared_ptr
-				{
-					lua_pushstring(L, "__name");
-					lua_rawget(L, index + 1);
-					const char* name = lua_tostring(L, -1);
-					if (strcmp(name, S_SHARED_PTR_NAME) != 0)
-					{
-						lua_pushfstring(L, "can't convert argument %d to class %s", index, get_class_name<T>());
-						lua_error(L);
-					}
-					lua_settop(L, -2);
-				}
-				else if (type_idx != get_type_idx<T>())
+				//unregister class convert to unregister class is ok
+				if (pWapper->m_type_idx != get_type_idx<T>())
 				{
 					lua_pushfstring(L, "can't convert argument %d to class %s", index, get_class_name<T>());
 					lua_error(L);
 				}
-				lua_settop(L, -3);
 			}
 			else
 			{
-				//unregister class convert to unregister class is ok
-				if (pWapper->m_type_idx != get_type_idx<T>())
+				//registered class
+				if (pWapper->m_type_idx != nTypeIdx)
 				{
 					lua_pushfstring(L, "can't convert argument %d to class %s", index, get_class_name<T>());
 					lua_error(L);
@@ -473,7 +459,7 @@ namespace lua_tinker
 		sharedptr2user(const std::shared_ptr<T>& rht)
 			:m_holder(rht)
 #ifdef USE_TYPEID_OF_USERDATA
-			, UserDataWapper(&m_holder, get_type_idx<T>()) {}
+			, UserDataWapper(&m_holder, get_type_idx<std::shared_ptr<T>>()) {}
 #else
 			, UserDataWapper(&m_holder) {}
 #endif
@@ -927,15 +913,15 @@ namespace lua_tinker
 	void class_add(lua_State* L, const char* name, bool bInitShared = false)
 	{
 		class_name<T>::name(name);
-
 		lua_newtable(L);
 
 		lua_pushstring(L, "__name");
 		lua_pushstring(L, name);
 		lua_rawset(L, -3);
 #ifdef USE_TYPEID_OF_USERDATA
+		type_idx<T>::hash_code(get_type_idx<T>());
 		lua_pushstring(L, "__typeid");
-		lua_pushinteger(L, get_type_idx<T>());
+		lua_pushinteger(L, type_idx<T>::hash_code());
 		lua_rawset(L, -3);
 #endif
 		lua_pushstring(L, "__index");
@@ -956,15 +942,15 @@ namespace lua_tinker
 		{
 			std::string strSharedName = (std::string(name) + S_SHARED_PTR_NAME);
 			class_name< std::shared_ptr<T> >::name(strSharedName.c_str());
-
 			lua_newtable(L);
 
 			lua_pushstring(L, "__name");
 			lua_pushstring(L, strSharedName.c_str());
 			lua_rawset(L, -3);
 #ifdef USE_TYPEID_OF_USERDATA
+			type_idx<T>::hash_code(get_type_idx<std::shared_ptr<T>>());
 			lua_pushstring(L, "__typeid");
-			lua_pushinteger(L, get_type_idx<std::shared_ptr<T>>());
+			lua_pushinteger(L, type_idx<T>::hash_code());
 			lua_rawset(L, -3);
 #endif
 			lua_pushstring(L, "__index");
@@ -1056,6 +1042,17 @@ namespace lua_tinker
 			static std::string s_name;
 			if (name != NULL) s_name.assign(name);
 			return s_name;
+		}
+	};
+
+	template<typename T>
+	struct type_idx
+	{
+		static size_t hash_code(size_t typeidx = 0)
+		{
+			static size_t s_typeidx;
+			if (typeidx != 0) s_typeidx = typeidx;
+			return s_typeidx;
 		}
 	};
 

@@ -306,10 +306,7 @@ int main()
 	lua_tinker::class_def<ff>(L, "test4", &ff::test4);
 	lua_tinker::class_def<ff>(L, "test5", &ff::test5);
 	lua_tinker::class_mem<ff>(L, "m_val", &ff::m_val);
-
-
-
-
+	
 	std::string luabuf =
 		R"(g_int = 100;
 		function lua_test()
