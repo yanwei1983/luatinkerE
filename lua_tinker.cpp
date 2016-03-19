@@ -208,18 +208,29 @@ void lua_tinker::enum_stack(lua_State *L)
 	print_error(L, "%s", "-------------------------");
 }
 
-/*---------------------------------------------------------------------------*/
-/* _read                                                                      */
-/*---------------------------------------------------------------------------*/
 char* lua_tinker::_stack_help<char*>::_read(lua_State *L, int index)
 {
 	return (char*)lua_tostring(L, index);
 }
 
+void lua_tinker::_stack_help<char*>::_push(lua_State *L, char* ret)
+{
+	lua_pushstring(L, ret);
+}
+
+
+
 const char* lua_tinker::_stack_help<const char*>::_read(lua_State *L, int index)
 {
 	return (const char*)lua_tostring(L, index);
 }
+
+void lua_tinker::_stack_help<const char*>::_push(lua_State *L, const char* ret)
+{
+	lua_pushstring(L, ret);
+}
+
+
 
 bool lua_tinker::_stack_help<bool>::_read(lua_State *L, int index)
 {
@@ -228,37 +239,6 @@ bool lua_tinker::_stack_help<bool>::_read(lua_State *L, int index)
 	else
 		return lua_tointeger(L, index) != 0;
 }
-
-lua_tinker::table lua_tinker::_stack_help<lua_tinker::table>::_read(lua_State *L, int index)
-{
-	return table(L, index);
-}
-
-std::string lua_tinker::_stack_help<std::string>::_read(lua_State *L, int index)
-{
-	return std::string((const char*)lua_tostring(L, index));
-}
-
-std::string lua_tinker::_stack_help<const std::string&>::_read(lua_State *L, int index)
-{
-	return std::string((const char*)lua_tostring(L, index));
-}
-
-
-
-/*---------------------------------------------------------------------------*/
-/* _push                                                                      */
-/*---------------------------------------------------------------------------*/
-void lua_tinker::_stack_help<char*>::_push(lua_State *L, char* ret)
-{
-	lua_pushstring(L, ret);
-}
-
-void lua_tinker::_stack_help<const char*>::_push(lua_State *L, const char* ret)
-{
-	lua_pushstring(L, ret);
-}
-
 void lua_tinker::_stack_help<bool>::_push(lua_State *L, bool ret)
 {
 	lua_pushboolean(L, ret);
@@ -269,14 +249,32 @@ void lua_tinker::_stack_help<lua_tinker::lua_value*>::_push(lua_State *L, lua_va
 	if (ret) ret->to_lua(L); else lua_pushnil(L);
 }
 
-void lua_tinker::_stack_help<lua_tinker::table>::_push(lua_State *L, lua_tinker::table ret)
+
+lua_tinker::table lua_tinker::_stack_help<lua_tinker::table>::_read(lua_State *L, int index)
+{
+	return table(L, index);
+}
+
+void lua_tinker::_stack_help<lua_tinker::table>::_push(lua_State *L, const lua_tinker::table& ret)
 {
 	lua_pushvalue(L, ret.m_obj->m_index);
 }
 
-void lua_tinker::_stack_help<std::string>::_push(lua_State *L, std::string ret)
+
+std::string lua_tinker::_stack_help<std::string>::_read(lua_State *L, int index)
+{
+	return std::string((const char*)lua_tostring(L, index));
+}
+
+void lua_tinker::_stack_help<std::string>::_push(lua_State *L, const std::string& ret)
 {
 	lua_pushlstring(L, ret.data(), ret.size());
+}
+
+
+std::string lua_tinker::_stack_help<const std::string&>::_read(lua_State *L, int index)
+{
+	return std::string((const char*)lua_tostring(L, index));
 }
 
 void lua_tinker::_stack_help<const std::string&>::_push(lua_State *L, const std::string& ret)

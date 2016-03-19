@@ -9,19 +9,32 @@
 #include<utility>
 #include "lua_tinker.h"
 
-void test()
+void test_fun()
 {
-	std::cout << "test" << std::endl;
+	std::cout << "test_fun" << std::endl;
 }
-void test1(int n)
+void test_p_int(int n)
 {
-	std::cout << "test1(" << n << ")" << std::endl;
+	std::cout << "test_p_int(" << n << ")" << std::endl;
 }
-int test2(int n)
+int test_vint_p_int(int n)
 {
-	std::cout << "test2(" << n << ")" << std::endl;
-	return 0;
+	std::cout << "test_vint_p_int(" << n << ")" << std::endl;
+	return n;
 }
+int g_int = 0;
+int& test_vintr_err()
+{
+	std::cout << "test_vintr(" << g_int << ")" << std::endl;
+	return g_int;
+}
+
+void test_p_intr(int& n,int v)
+{
+	n+=v;
+	std::cout << "test_p_intr(" << n << ")" << std::endl;
+}
+
 class ff
 {
 public:
@@ -53,57 +66,57 @@ public:
 	{
 		std::cout << "ff::~ff()" << std::endl;
 	}
-	void test()
+	void test_memfn()
 	{
-		std::cout << "ff::test" << std::endl;
+		std::cout << "ff::test_memfn" << std::endl;
 	}
 	void test_const() const
 	{
 		std::cout << "ff::test" << std::endl;
 	}
-	void test1(int n)
+	void test_p_int(int n)
 	{
-		std::cout << "ff::test1(" << n << ")" << std::endl;
+		std::cout << "ff::test_p_int(" << n << ")" << std::endl;
 	}
-	int test2(int n)
+	int test_vint_p_int(int n)
 	{
-		std::cout << "ff::test2(" << n << ")" << std::endl;
+		std::cout << "ff::test_vint_p_int(" << n << ")" << std::endl;
 
 		return 0;
 	}
-	int test3(int n, ff* pff)
+	int test_vint_p_int_ff(int n, ff* pff)
 	{
-		std::cout << "ff::test3(" << n << "," << (int)pff << ")" << std::endl;
+		std::cout << "ff::test_vint_p_int_ff(" << n << "," << (int)pff << ")" << std::endl;
 
 		return 0;
 	}
-	void test4(ff* rht)
+	void test_p_ff(ff* rht)
 	{
-		std::cout << "ff::test4(" << (ptrdiff_t)rht << ")" << std::endl;
+		std::cout << "ff::test_p_ff(" << (ptrdiff_t)rht << ")" << std::endl;
 	}
-	void test5(const ff& rht)
+	void test_p_ffcr(const ff& rht)
 	{
-		std::cout << "ff::test5(" << (ptrdiff_t)&rht << ")" << std::endl;
+		std::cout << "ff::test_p_ffcr(" << (ptrdiff_t)&rht << ")" << std::endl;
 	}
 
 
 	int m_val;
 };
 ff g_ff;
-ff* test3()
+ff* test_v_ff()
 {
-	std::cout << "test3" << std::endl;
+	std::cout << "test_v_ff" << std::endl;
 	return &g_ff;
 }
 
-ff test4()
+ff test_v_ffv()
 {
-	std::cout << "test4" << std::endl;
+	std::cout << "test_v_ffv" << std::endl;
 	return g_ff;
 }
-ff& test5()
+ff& test_v_ffr()
 {
-	std::cout << "test5" << std::endl;
+	std::cout << "test_v_ffr" << std::endl;
 	return g_ff;
 }
 
@@ -265,12 +278,16 @@ int main()
 
 
 	lua_tinker::def(L, "Number2Interger", &Number2Interger);
-	lua_tinker::def(L, "test", &test);
-	lua_tinker::def(L, "test1", &test1);
-	lua_tinker::def(L, "test2", &test2);
-	lua_tinker::def(L, "test3", &test3);
-	lua_tinker::def(L, "test4", &test4);
-	lua_tinker::def(L, "test5", &test5);
+	lua_tinker::def(L, "test_fun", &test_fun);
+	lua_tinker::def(L, "test_p_int", &test_p_int);
+	lua_tinker::def(L, "test_vint_p_int", &test_vint_p_int);
+	lua_tinker::def(L, "test_vintr_err", &test_vintr_err);
+	lua_tinker::def(L, "test_p_intr", &test_p_intr);
+	lua_tinker::def(L, "test_v_ff", &test_v_ff);
+	lua_tinker::def(L, "test_v_ffv", &test_v_ffv);
+	lua_tinker::def(L, "test_v_ffr", &test_v_ffr);
+
+
 	lua_tinker::def(L, "push_string", &push_string);
 	lua_tinker::def(L, "push_string_ref", &push_string_ref);
 	lua_tinker::def(L, "read_lua_string", &read_lua_string);
@@ -298,14 +315,17 @@ int main()
 	//lua_tinker::class_con<ff>(L, lua_tinker::constructor<ff>::invoke);
 	lua_tinker::class_con<ff>(L, lua_tinker::constructor<ff, int, double, unsigned char>::invoke);
 
-	lua_tinker::class_def<ff>(L, "test", &ff::test);
+	lua_tinker::class_def<ff>(L, "test_memfn", &ff::test_memfn);
 	lua_tinker::class_def<ff>(L, "test_const", &ff::test_const);
-	lua_tinker::class_def<ff>(L, "test1", &ff::test1);
-	lua_tinker::class_def<ff>(L, "test2", &ff::test2);
-	lua_tinker::class_def<ff>(L, "test3", &ff::test3);
-	lua_tinker::class_def<ff>(L, "test4", &ff::test4);
-	lua_tinker::class_def<ff>(L, "test5", &ff::test5);
+	lua_tinker::class_def<ff>(L, "test_p_int", &ff::test_p_int);
+	lua_tinker::class_def<ff>(L, "test_vint_p_int", &ff::test_vint_p_int);
+	lua_tinker::class_def<ff>(L, "test_vint_p_int_ff", &ff::test_vint_p_int_ff);
+	lua_tinker::class_def<ff>(L, "test_p_ff", &ff::test_p_ff);
+	lua_tinker::class_def<ff>(L, "test_p_ffcr", &ff::test_p_ffcr);
 	lua_tinker::class_mem<ff>(L, "m_val", &ff::m_val);
+	
+	
+	
 	
 	std::string luabuf =
 		R"(g_int = 100;
@@ -327,39 +347,49 @@ int main()
 			--visot_ff(pFFWeak);		--error weak_ptr to shared_ptr
 			visot_ff_weak(pFFWeak);
 
-			local pFF_nodef_Shared = make_ff_nodef_shared();
+							local pFF_nodef_Shared = make_ff_nodef_shared();
 			visot_ff_nodef_shared(pFF_nodef_Shared);
 			local pFF_nodef = make_ff_nodef();
 			visot_ff_nodef(pFF_nodef);
 			visot_ff_nodef_shared(pFF_nodef_Shared);
-			local pFF = test4();
-			test();
-			test1(2);
-			test2(3);
-			local pFF = test3();
-			pFF:test();
-			pFF:test_const();
-			pFF:test1(3);
-			pFF:test2(45);
-			pFF:test3(123,pFF);
-			pFF:test3(123,nil);
-			pFF:test3(123,0);
-			local luaFF = ff(1,2,3);
-			test1(luaFF.m_val);
-			luaFF.m_val = 2;
-			test1(luaFF.m_val);
-			local luaFF1 = ff(1,2,3);
-			test1(luaFF1.m_val);
-			local luaFF2 = luaFF1
-			test1(luaFF2.m_val);
-			luaFF2:test3(321,luaFF1);
-			luaFF2:test4(luaFF1);
-			luaFF2:test5(luaFF1);
-		
-			local pFFref = test5()
-			pFFref:test4(luaFF1);
+			local pFF = test_v_ffv();
 
-					local string = push_string();
+			test_fun();
+			test_p_int(2);
+			test_vint_p_int(3);
+
+			local local_int = test_vintr_err();
+			test_vint_p_int(local_int);
+			test_p_intr(local_int,1);
+			test_vint_p_int(local_int);
+			test_p_intr(local_int,1);
+			test_vint_p_int(local_int);
+
+			local pFF = test_v_ff();
+			pFF:test_memfn();
+			pFF:test_const();
+			pFF:test_p_int(3);
+			pFF:test_vint_p_int(45);
+			pFF:test_vint_p_int_ff(123,pFF);
+			pFF:test_vint_p_int_ff(123,nil);
+			pFF:test_vint_p_int_ff(123,0);
+
+			local luaFF = ff(1,2,3);
+			test_p_int(luaFF.m_val);
+			luaFF.m_val = 2;
+			test_p_int(luaFF.m_val);
+			local luaFF1 = ff(1,2,3);
+			test_p_int(luaFF1.m_val);
+			local luaFF2 = luaFF1
+			test_p_int(luaFF2.m_val);
+			luaFF2:test_vint_p_int_ff(321,luaFF1);
+			luaFF2:test_p_ff(luaFF1);
+			luaFF2:test_p_ffcr(luaFF1);
+		
+			local pFFref = test_v_ffr()
+			pFFref:test_vint_p_int(luaFF1);
+
+			local string = push_string();
 			read_lua_string(string);
 			local string_ref = push_string_ref();
 			read_lua_string_ref(string_ref);
@@ -388,7 +418,7 @@ int main()
 		end
 		
 		function lua_test2(n)
-			test1(n)
+			test_p_int(n)
 			return n+1;
 		end
 		)";

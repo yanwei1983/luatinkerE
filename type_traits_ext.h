@@ -2,6 +2,8 @@
 #define type_traits_ext_h
 
 #include<memory>
+#include<string>
+#include<tuple>
 
 
 
@@ -216,5 +218,18 @@ struct get_shared<std::shared_ptr<T>>
 };
 template<typename T>
 using get_shared_t = typename get_shared<T>::type;
+
+
+
+
+template< class T > struct remove_r_reference { typedef T type; };
+
+template< class T > struct remove_r_reference<T&&> { typedef T type; };
+
+
+
+
+
+
 
 #endif
