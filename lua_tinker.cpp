@@ -9,6 +9,7 @@
 #include <iostream>
 #include "lua_tinker.h"
 #include<string>
+#include<cstring>
 #if defined(_MSC_VER)
 #define I64_FMT "I64"
 #elif defined(__APPLE__) 

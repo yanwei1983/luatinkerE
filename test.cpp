@@ -86,7 +86,7 @@ public:
 	}
 	int test_vint_p_int_ff(int n, ff* pff)
 	{
-		std::cout << "ff::test_vint_p_int_ff(" << n << "," << (int)pff << ")" << std::endl;
+		std::cout << "ff::test_vint_p_int_ff(" << n << "," << (ptrdiff_t)pff << ")" << std::endl;
 
 		return 0;
 	}
@@ -264,7 +264,7 @@ void print_ul(unsigned long long a)
 
 long long Number2Interger(double v)
 {
-	return long long(v);
+	return (long long)(v);
 }
 
 int main()

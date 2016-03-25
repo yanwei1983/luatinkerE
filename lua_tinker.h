@@ -39,8 +39,11 @@
 #define TRY_LUA_TINKER_INVOKE() try
 #define CATCH_LUA_TINKER_INVOKE() catch(...)
 
+
 namespace lua_tinker
 {
+
+
 	static const char* S_SHARED_PTR_NAME = "__shared_ptr";
 	// init LuaTinker
 	void    init(lua_State *L);
@@ -56,6 +59,27 @@ namespace lua_tinker
 	void    enum_stack(lua_State *L);
 	int     on_error(lua_State *L);
 	void    print_error(lua_State *L, const char* fmt, ...);
+
+	// class helper
+	int meta_get(lua_State *L);
+	int meta_set(lua_State *L);
+	void push_meta(lua_State *L, const char* name);
+
+	template<typename T>
+	struct class_name
+	{
+		// global name
+		static const char* name(const char* name = NULL)
+		{
+			return name_str(name).c_str();
+		}
+		static const std::string& name_str(const char* name = NULL)
+		{
+			static std::string s_name;
+			if (name != NULL) s_name.assign(name);
+			return s_name;
+		}
+	};
 
 	template<typename T>
 	using base_type = typename std::remove_cv<typename std::remove_reference<typename std::remove_pointer<T>::type>::type>::type;
@@ -99,203 +123,13 @@ namespace lua_tinker
 	template<typename T> struct class_name;
 	struct table;
 
-	// lua stack help to read/push
-	template<typename T, typename Enable = void>
-	struct _stack_help
-	{
-		static T _read(lua_State *L, int index)
-		{
-			return lua2type<T>(L, index);
-		}
-
-		//get userdata ptr from lua, can handle nil an 0
-		template<typename T>
-		static typename std::enable_if<std::is_pointer<T>::value, T>::type lua2type(lua_State *L, int index)
-		{
-			if (lua_isnoneornil(L, index))
-			{
-				return nullptr;
-			}
-			else if (lua_isnumber(L, index) && lua_tonumber(L, index) == 0)
-			{
-				return nullptr;
-			}
-			return _lua2type<T>(L, index);
-		}
-
-		//get userdata from lua 
-		template<typename T>
-		static typename std::enable_if<!std::is_pointer<T>::value, T>::type lua2type(lua_State *L, int index)
-		{
-			return _lua2type<T>(L, index);
-		}
-
-		template<typename T>
-		static T _lua2type(lua_State *L, int index)
-		{
-			if (!lua_isuserdata(L, index))
-			{
-				lua_pushfstring(L, "can't convert argument %d to class %s", index, get_class_name<T>());
-				lua_error(L);
-			}
-
-
-			UserDataWapper* pWapper = user2type<UserDataWapper*>(L, index);
-#ifdef USE_TYPEID_OF_USERDATA
-			if (pWapper->m_type_idx != get_type_idx<base_type<T>>())
-			{
-				lua_pushfstring(L, "can't convert argument %d to class %s", index, get_class_name<T>());
-				lua_error(L);
-			}
-#endif
-
-			return void2type<T>(pWapper->m_p);
-		}
-
-
-		//obj to lua
-		template<typename T>
-		static typename std::enable_if<!is_shared_ptr<T>::value, void>::type _push(lua_State *L, T&& val)
-		{
-			object2lua(L, std::forward<T>(val));
-			push_meta(L, get_class_name<T>());
-			lua_setmetatable(L, -2);
-		}
-
-		//shared_ptr to lua
-		template<typename T>
-		static typename std::enable_if<is_shared_ptr<T>::value, void>::type _push(lua_State *L, T&& val)
-		{
-			sharedobject2lua(L, std::forward<T>(val));
-			push_meta(L, get_class_name<T>());
-			lua_setmetatable(L, -2);
-		}
-	};
-
-	template<>
-	struct _stack_help<char*>
-	{
-		static char* _read(lua_State *L, int index);
-		static void  _push(lua_State *L, char* ret);
-	};
-
-	template<>
-	struct _stack_help<const char*>
-	{
-		static const char* _read(lua_State *L, int index);
-		static void  _push(lua_State *L, const char* ret);
-	};
-
-	template<>
-	struct _stack_help<bool>
-	{
-		static bool _read(lua_State *L, int index);
-		static void  _push(lua_State *L, bool ret);
-	};
-
-	//integral
+	//delcare
 	template<typename T>
-	struct _stack_help<T, typename std::enable_if<std::is_integral<T>::value>::type>
-	{
-		static T _read(lua_State *L, int index)
-		{
-			return (T)lua_tointeger(L, index);
-		}
-		static void  _push(lua_State *L, T ret)
-		{
-			lua_pushinteger(L, ret);
-		}
-	};
-
-	//float pointer
+	decltype(auto) read(lua_State *L, int index);
 	template<typename T>
-	struct _stack_help<T, typename std::enable_if<std::is_floating_point<T>::value>::type>
-	{
-		static T _read(lua_State *L, int index)
-		{
-			return (T)lua_tonumber(L, index);
-		}
-		static void  _push(lua_State *L, T ret)
-		{
-			lua_pushnumber(L, ret);
-		}
-	};
-
-	template<>
-	struct _stack_help<std::string>
-	{
-		static std::string _read(lua_State *L, int index);
-		static void _push(lua_State *L, const std::string& ret);
-	};
-	template<>
-	struct _stack_help<const std::string&>
-	{
-		static std::string _read(lua_State *L, int index);
-		static void _push(lua_State *L, const std::string& ret);
-
-
-	};
-
-
-	template<>
-	struct _stack_help<table>
-	{
-		static table _read(lua_State *L, int index);
-		static void _push(lua_State *L,const table& ret);
-	};
-
-	template<>
-	struct _stack_help<lua_value*>
-	{
-		static lua_value* _read(lua_State *L, int index);
-		static void _push(lua_State *L, lua_value* ret);
-	};
-
-	//enum
+	decltype(auto) read_nocheck(lua_State *L, int index);
 	template<typename T>
-	struct _stack_help<T, typename std::enable_if<std::is_enum<T>::value>::type>
-	{
-		static T _read(lua_State *L, int index)
-		{
-			return (T)lua_tointeger(L, index);
-		}
-		static void  _push(lua_State *L, T ret)
-		{
-			lua_pushinteger(L, (int)ret);
-		}
-	};
-
-	//stl container
-	template<typename T>
-	struct _stack_help<T, typename std::enable_if<is_container<base_type<T>>::value>::type>
-	{
-		static T _read(lua_State *L, int index) = delete;
-		//k,v container to lua
-		template<typename T>
-		static typename std::enable_if<is_associative_container<T>::value, void>::type  _push(lua_State *L, const T& ret)
-		{
-			lua_newtable(L);
-			for (auto it = ret.begin(); it != ret.end(); it++)
-			{
-				push(L, it->first);
-				push(L, it->second);
-				lua_settable(L, -3);
-			}
-		}
-		//t container to lua
-		template<typename T>
-		static typename std::enable_if<!is_associative_container<T>::value, void>::type  _push(lua_State *L, const T& ret)
-		{
-			lua_newtable(L);
-			auto it = ret.begin();
-			for (int i = 1; it != ret.end(); it++, i++)
-			{
-				push(L, i);
-				push(L, *it);
-				lua_settable(L, -3);
-			}
-		}
-	};
+	void push(lua_State *L, T ret);	//here need a T/T*/T& not a T&&
 
 
 
@@ -336,29 +170,7 @@ namespace lua_tinker
 	}
 
 
-	//read_weap
-	template<typename T>
-	decltype(auto) read(lua_State *L, int index)
-	{
-#ifdef LUA_CALL_CFUNC_NEED_ALL_PARAM
-		if (std::is_pointer<T>)
-		{
-			LUA_CHECK_HAVE_THIS_PARAM(L, index);
-		}
-		else
-		{
-			LUA_CHECK_HAVE_THIS_PARAM_AND_NOT_NIL(L, index);
-		}
-#endif
-		return _stack_help<T>::_read(L, index);
-	}
 
-	//read_weap
-	template<typename T>
-	decltype(auto) read_nocheck(lua_State *L, int index)
-	{
-		return _stack_help<T>::_read(L, index);
-	}
 
 
 	//userdata holder
@@ -490,12 +302,233 @@ namespace lua_tinker
 		return user2type<T>(L, lua_upvalueindex(1));
 	}
 
-	// push value_list to lua stack //here need a T/T*/T& not a T&&
-	template<typename T, typename ...Args>
-	void push_args(lua_State *L, T ret, Args...args) { push<T>(L, std::forward<T>(ret)); push_args<Args...>(L, std::forward<Args>(args)...); }
-	template<typename T, typename ...Args>
-	void push_args(lua_State *L, T ret) { push<T>(L, std::forward<T>(ret)); }
 
+
+
+
+
+
+	// lua stack help to read/push
+	template<typename T, typename Enable = void>
+	struct _stack_help
+	{
+		static T _read(lua_State *L, int index)
+		{
+			return lua2type<T>(L, index);
+		}
+
+		//get userdata ptr from lua, can handle nil an 0
+		template<typename _T>
+		static typename std::enable_if<std::is_pointer<_T>::value, _T>::type lua2type(lua_State *L, int index)
+		{
+			if (lua_isnoneornil(L, index))
+			{
+				return nullptr;
+			}
+			else if (lua_isnumber(L, index) && lua_tonumber(L, index) == 0)
+			{
+				return nullptr;
+			}
+			return _lua2type<_T>(L, index);
+		}
+
+		//get userdata from lua 
+		template<typename _T>
+		static typename std::enable_if<!std::is_pointer<_T>::value, _T>::type lua2type(lua_State *L, int index)
+		{
+			return _lua2type<_T>(L, index);
+		}
+
+		template<typename _T>
+		static _T _lua2type(lua_State *L, int index)
+		{
+			if (!lua_isuserdata(L, index))
+			{
+				lua_pushfstring(L, "can't convert argument %d to class %s", index, get_class_name<_T>());
+				lua_error(L);
+			}
+
+
+			UserDataWapper* pWapper = user2type<UserDataWapper*>(L, index);
+#ifdef USE_TYPEID_OF_USERDATA
+			if (pWapper->m_type_idx != get_type_idx<base_type<_T>>())
+			{
+				lua_pushfstring(L, "can't convert argument %d to class %s", index, get_class_name<T>());
+				lua_error(L);
+			}
+#endif
+
+			return void2type<T>(pWapper->m_p);
+		}
+
+
+		//obj to lua
+		template<typename _T>
+		static typename std::enable_if<!is_shared_ptr<_T>::value, void>::type _push(lua_State *L, _T&& val)
+		{
+			lua_tinker::object2lua(L, std::forward<_T>(val));
+			push_meta(L, get_class_name<_T>());
+			lua_setmetatable(L, -2);
+		}
+
+		//shared_ptr to lua
+		template<typename _T>
+		static typename std::enable_if<is_shared_ptr<_T>::value, void>::type _push(lua_State *L, _T&& val)
+		{
+			lua_tinker::sharedobject2lua(L, std::forward<_T>(val));
+			push_meta(L, get_class_name<_T>());
+			lua_setmetatable(L, -2);
+		}
+	};
+
+	template<>
+	struct _stack_help<char*>
+	{
+		static char* _read(lua_State *L, int index);
+		static void  _push(lua_State *L, char* ret);
+	};
+
+	template<>
+	struct _stack_help<const char*>
+	{
+		static const char* _read(lua_State *L, int index);
+		static void  _push(lua_State *L, const char* ret);
+	};
+
+	template<>
+	struct _stack_help<bool>
+	{
+		static bool _read(lua_State *L, int index);
+		static void  _push(lua_State *L, bool ret);
+	};
+
+	//integral
+	template<typename T>
+	struct _stack_help<T, typename std::enable_if<std::is_integral<T>::value>::type>
+	{
+		static T _read(lua_State *L, int index)
+		{
+			return (T)lua_tointeger(L, index);
+		}
+		static void  _push(lua_State *L, T ret)
+		{
+			lua_pushinteger(L, ret);
+		}
+	};
+
+	//float pointer
+	template<typename T>
+	struct _stack_help<T, typename std::enable_if<std::is_floating_point<T>::value>::type>
+	{
+		static T _read(lua_State *L, int index)
+		{
+			return (T)lua_tonumber(L, index);
+		}
+		static void  _push(lua_State *L, T ret)
+		{
+			lua_pushnumber(L, ret);
+		}
+	};
+
+	template<>
+	struct _stack_help<std::string>
+	{
+		static std::string _read(lua_State *L, int index);
+		static void _push(lua_State *L, const std::string& ret);
+	};
+	template<>
+	struct _stack_help<const std::string&>
+	{
+		static std::string _read(lua_State *L, int index);
+		static void _push(lua_State *L, const std::string& ret);
+
+
+	};
+
+
+	template<>
+	struct _stack_help<table>
+	{
+		static table _read(lua_State *L, int index);
+		static void _push(lua_State *L,const table& ret);
+	};
+
+	template<>
+	struct _stack_help<lua_value*>
+	{
+		static lua_value* _read(lua_State *L, int index);
+		static void _push(lua_State *L, lua_value* ret);
+	};
+
+	//enum
+	template<typename T>
+	struct _stack_help<T, typename std::enable_if<std::is_enum<T>::value>::type>
+	{
+		static T _read(lua_State *L, int index)
+		{
+			return (T)lua_tointeger(L, index);
+		}
+		static void  _push(lua_State *L, T ret)
+		{
+			lua_pushinteger(L, (int)ret);
+		}
+	};
+
+	//stl container
+	template<typename T>
+	struct _stack_help<T, typename std::enable_if<is_container<base_type<T>>::value>::type>
+	{
+		static T _read(lua_State *L, int index) = delete;
+		//k,v container to lua
+		template<typename _T>
+		static typename std::enable_if<is_associative_container<_T>::value, void>::type  _push(lua_State *L, const _T& ret)
+		{
+			lua_newtable(L);
+			for (auto it = ret.begin(); it != ret.end(); it++)
+			{
+				push(L, it->first);
+				push(L, it->second);
+				lua_settable(L, -3);
+			}
+		}
+		//t container to lua
+		template<typename _T>
+		static typename std::enable_if<!is_associative_container<_T>::value, void>::type  _push(lua_State *L, const _T& ret)
+		{
+			lua_newtable(L);
+			auto it = ret.begin();
+			for (int i = 1; it != ret.end(); it++, i++)
+			{
+				push(L, i);
+				push(L, *it);
+				lua_settable(L, -3);
+			}
+		}
+	};
+
+	//read_weap
+	template<typename T>
+	decltype(auto) read(lua_State *L, int index)
+	{
+#ifdef LUA_CALL_CFUNC_NEED_ALL_PARAM
+		if (std::is_pointer<T>)
+		{
+			LUA_CHECK_HAVE_THIS_PARAM(L, index);
+		}
+		else
+		{
+			LUA_CHECK_HAVE_THIS_PARAM_AND_NOT_NIL(L, index);
+		}
+#endif
+		return _stack_help<T>::_read(L, index);
+	}
+
+	//read_weap
+	template<typename T>
+	decltype(auto) read_nocheck(lua_State *L, int index)
+	{
+		return _stack_help<T>::_read(L, index);
+	}
 
 	//push warp
 	template<typename T>
@@ -503,6 +536,12 @@ namespace lua_tinker
 	{
 		_stack_help<T>::_push(L, std::forward<T>(ret));
 	}
+
+	// push value_list to lua stack //here need a T/T*/T& not a T&&
+	template<typename T, typename ...Args>
+	void push_args(lua_State *L, T ret, Args...args) { push<T>(L, std::forward<T>(ret)); push_args<Args...>(L, std::forward<Args>(args)...); }
+	template<typename T, typename ...Args>
+	void push_args(lua_State *L, T ret) { push<T>(L, std::forward<T>(ret)); }
 
 
 	// pop a value from lua stack
@@ -539,7 +578,7 @@ namespace lua_tinker
 	template<int nIdxParams, typename RVal, typename Func, typename ...Args, std::size_t... index>
 	RVal direct_invoke_invoke_helper(Func&& func, lua_State *L, std::index_sequence<index...>)
 	{
-		return std::invoke(std::forward<Func>(func), read<Args>(L, index + nIdxParams)...);
+		return stdext::invoke(std::forward<Func>(func), read<Args>(L, index + nIdxParams)...);
 	}
 
 	template<int nIdxParams, typename RVal, typename Func, typename ...Args>
@@ -889,10 +928,6 @@ namespace lua_tinker
 		return pop<RVal>(L);
 	} // }
 
-	// class helper
-	int meta_get(lua_State *L);
-	int meta_set(lua_State *L);
-	void push_meta(lua_State *L, const char* name);
 
 	// class init
 	template<typename T>
@@ -1005,21 +1040,7 @@ namespace lua_tinker
 		lua_pop(L, 1);
 	}
 
-	template<typename T>
-	struct class_name
-	{
-		// global name
-		static const char* name(const char* name = NULL)
-		{
-			return name_str(name).c_str();
-		}
-		static const std::string& name_str(const char* name = NULL)
-		{
-			static std::string s_name;
-			if (name != NULL) s_name.assign(name);
-			return s_name;
-		}
-	};
+	
 
 	// Table Object on Stack
 	struct table_obj
