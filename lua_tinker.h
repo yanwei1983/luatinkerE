@@ -254,12 +254,14 @@ namespace lua_tinker
 	struct sharedptr2user : UserDataWapper
 	{
 		sharedptr2user(const std::shared_ptr<T>& rht)
-			:m_holder(rht)
+			:UserDataWapper(&m_holder
 #ifdef USE_TYPEID_OF_USERDATA
-			, UserDataWapper(&m_holder, get_type_idx<std::shared_ptr<T>>()) {}
-#else
-			, UserDataWapper(&m_holder) {}
+			, get_type_idx<std::shared_ptr<T>>()		
 #endif
+				)
+			, m_holder(rht)
+		{}
+
 		//use weak_ptr to hold it
 		~sharedptr2user() { m_holder.reset(); }
 
@@ -808,9 +810,7 @@ namespace lua_tinker
 		V T::*_var;
 		mem_var(V T::*val) : _var(val) {}
 		void get(lua_State *L) { CHECK_CLASS_PTR(T); push(L, read<T*>(L, 1)->*(_var)); }
-		void set(lua_State *L) {
-			CHECK_CLASS_PTR(T); read<T*>(L, 1)->*(_var) = read<V>(L, 3);
-		}
+		void set(lua_State *L) { CHECK_CLASS_PTR(T); read<T*>(L, 1)->*(_var) = read<V>(L, 3);}
 	};
 
 	// constructor
@@ -926,7 +926,7 @@ namespace lua_tinker
 
 		lua_remove(L, -2);
 		return pop<RVal>(L);
-	} // }
+	}
 
 
 	// class init
