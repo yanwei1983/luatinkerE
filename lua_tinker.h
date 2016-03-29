@@ -19,6 +19,8 @@
 #include"type_traits_ext.h" 
 #include<memory>
 #include<typeindex>
+#include<functional>
+
 
 #ifdef  _DEBUG
 #define USE_TYPEID_OF_USERDATA
@@ -67,6 +69,22 @@ namespace lua_tinker
 
 	template<typename T>
 	struct class_name
+	{
+		// global name
+		static const char* name(const char* name = NULL)
+		{
+			return name_str(name).c_str();
+		}
+		static const std::string& name_str(const char* name = NULL)
+		{
+			static std::string s_name;
+			if (name != NULL) s_name.assign(name);
+			return s_name;
+		}
+	};
+
+	template<typename T>
+	struct function_name
 	{
 		// global name
 		static const char* name(const char* name = NULL)
@@ -614,9 +632,32 @@ namespace lua_tinker
 
 
 	//functor
-	template <typename RVal, typename CT, typename ... Args>
+	template <typename CT, typename RVal, typename ... Args>
 	struct member_functor
 	{
+		typedef std::function< RVal(CT*, Args...) > FunctionType;
+		FunctionType m_func;
+
+		member_functor(FunctionType func)
+			:UserDataWapper(&m_func)
+			,m_func(func)
+		{}
+		
+
+		template<typename T = CT,
+				typename U = typename std::enable_if<!std::is_const<T>::value>::type>
+		member_functor(RVal(CT::*func)(Args...)) 
+			:m_func(std::mem_fn(func)) 
+		{ }
+
+		member_functor(RVal(CT::*func)(Args...) const) 
+			:m_func(std::mem_fn(func)) 
+		{ }
+
+		~member_functor()
+		{}
+
+
 
 		static int invoke(lua_State *L)
 		{
@@ -638,59 +679,43 @@ namespace lua_tinker
 		template<typename T>
 		static typename std::enable_if<!std::is_void<T>::value, void>::type _invoke(lua_State *L)
 		{
-			using FuncType = RVal(CT::*)(Args...);
-			push<RVal>(L, direct_invoke_func<1, RVal, FuncType, CT*, Args...>(upvalue_<FuncType>(L), L));
+			using FuncWarpType = member_functor<CT, RVal, Args...>;
+			FuncWarpType* pFuncWarp = upvalue_<FuncWarpType*>(L);
+			push<RVal>(L, direct_invoke_func<1, RVal, FunctionType, CT*, Args...>(std::forward<FunctionType>(pFuncWarp->m_func), L));
 		}
 
 		template<typename T>
 		static typename std::enable_if<std::is_void<T>::value, void>::type _invoke(lua_State *L)
 		{
-			using FuncType = void(CT::*)(Args...);
-			direct_invoke_func<1, void, FuncType, CT*, Args...>(upvalue_<FuncType>(L), L);
+			using FuncWarpType = member_functor<CT, void, Args...>;
+			FuncWarpType* pFuncWarp = upvalue_<FuncWarpType*>(L);
+			
+			direct_invoke_func<1, void, FunctionType, CT*, Args...>(std::forward<FunctionType>(pFuncWarp->m_func), L);
 		}
 	};
 
+	template<class C, class R, class... Args>
+	member_functor<C, R, Args...> decl_member_function_type(std::function<R(C*,Args...)>) = delete;
+	template<class C, class R, class... Args>
+	member_functor<C, R, Args...> decl_member_function_type(R(C::*)(Args...)) = delete;
+	template<class C, class R, class... Args>
+	member_functor<C, R, Args...> decl_member_function_type(R(C::*)(Args...) const) = delete;
+	
+	
 
-	template<typename RVal, typename CT>
-	struct member_functor<RVal, CT>
-	{
-		static int invoke(lua_State *L)
-		{
-			CHECK_CLASS_PTR(CT);
-			TRY_LUA_TINKER_INVOKE()
-			{
-				_invoke<RVal>(L);
-				return 1;
-			}
-			CATCH_LUA_TINKER_INVOKE()
-			{
-				lua_pushfstring(L, "lua fail to invoke functor");
-				lua_error(L);
-			}
-			return 0;
-		}
-
-		template<typename T>
-		static typename std::enable_if<!std::is_void<T>::value, void>::type _invoke(lua_State *L)
-		{
-			using FuncType = RVal(CT::*)();
-			push<RVal>(L, direct_invoke_func<1, RVal, FuncType, CT*>(upvalue_<FuncType>(L), L));
-		}
-
-		template<typename T>
-		static typename std::enable_if<std::is_void<T>::value, void>::type _invoke(lua_State *L)
-		{
-			using FuncType = void(CT::*)();
-			direct_invoke_func<1, void, FuncType, CT*>(upvalue_<FuncType>(L), L);
-		}
-	};
-
-
-
-
+	
 	template <typename RVal, typename ... Args>
 	struct functor
 	{
+		typedef std::function< RVal(Args...) > FunctionType;
+		FunctionType m_func;
+
+		functor(FunctionType func)
+			:m_func(func)
+		{}
+
+		~functor()
+		{}
 
 		static int invoke(lua_State *L)
 		{
@@ -712,89 +737,27 @@ namespace lua_tinker
 		template<typename T>
 		static typename std::enable_if<!std::is_void<T>::value, void>::type _invoke(lua_State *L)
 		{
-			using FuncType = RVal(*)(Args...);
-			push<RVal>(L, direct_invoke_func<1, RVal, FuncType, Args...>(upvalue_<FuncType>(L), L));
+			using FuncWarpType = functor<RVal, Args...>;
+			FuncWarpType* pFuncWarp = upvalue_<FuncWarpType*>(L);
+			push<RVal>(L, direct_invoke_func<1, RVal, FunctionType, Args...>(std::forward<FunctionType>(pFuncWarp->m_func), L));
 		}
 
 		template<typename T>
 		static typename std::enable_if<std::is_void<T>::value, void>::type _invoke(lua_State *L)
 		{
-			using FuncType = void(*)(Args...);
-			direct_invoke_func<1, void, FuncType, Args...>(upvalue_<FuncType>(L), L);
+			using FuncWarpType = functor<void, Args...>;
+			FuncWarpType* pFuncWarp = upvalue_<FuncWarpType*>(L);
+			
+			direct_invoke_func<1, void, FunctionType, Args...>(std::forward<FunctionType>(pFuncWarp->m_func), L);
 		}
 	};
-
-
-	template<typename RVal>
-	struct functor<RVal>
+	template<class F>
+	struct decl_func_type {};
+	template<class R, class ... ARGS>
+	struct decl_func_type<R(ARGS...)>
 	{
-		static int invoke(lua_State *L)
-		{
-			TRY_LUA_TINKER_INVOKE()
-			{
-				_invoke<RVal>(L);
-				return 1;
-			}
-			CATCH_LUA_TINKER_INVOKE()
-			{
-				lua_pushfstring(L, "lua fail to invoke functor");
-				lua_error(L);
-			}
-			return 0;
-		}
-
-		template<typename T>
-		static typename std::enable_if<!std::is_void<T>::value, void>::type _invoke(lua_State *L)
-		{
-			using FuncType = RVal(*)();
-			push<RVal>(L, invoke_func<RVal, FuncType>(upvalue_<FuncType>(L)));
-		}
-
-		template<typename T>
-		static typename std::enable_if<std::is_void<T>::value, void>::type _invoke(lua_State *L)
-		{
-			using FuncType = void(*)();
-			invoke_func<void, FuncType>(upvalue_<FuncType>(L));
-		}
+		typedef functor<R, ARGS...> functor_type;
 	};
-
-	//functor push
-	template<typename RVal, typename T, typename ... Args>
-	void push_functor(lua_State *L, RVal(T::*)(Args...))
-	{
-		lua_pushcclosure(L, &member_functor<RVal, T, Args...>::invoke, 1);
-	}
-
-	template<typename RVal, typename T>
-	void push_functor(lua_State *L, RVal(T::*)())
-	{
-		lua_pushcclosure(L, &member_functor<RVal, T>::invoke, 1);
-	}
-
-	template<typename RVal, typename T, typename ... Args>
-	void push_functor(lua_State *L, RVal(T::*)(Args...)const)
-	{
-		lua_pushcclosure(L, &member_functor<RVal, T, Args...>::invoke, 1);
-	}
-
-	template<typename RVal, typename T>
-	void push_functor(lua_State *L, RVal(T::*)()const)
-	{
-		lua_pushcclosure(L, &member_functor<RVal, T>::invoke, 1);
-	}
-
-	template<typename RVal, typename ... Args>
-	void push_functor(lua_State *L, RVal(*)(Args...))
-	{
-		lua_pushcclosure(L, &functor<RVal, Args...>::invoke, 1);
-	}
-
-	template<typename RVal>
-	void push_functor(lua_State *L, RVal(*)())
-	{
-		lua_pushcclosure(L, &functor<RVal>::invoke, 1);
-	}
-
 
 	// member variable
 	struct var_base
@@ -846,18 +809,47 @@ namespace lua_tinker
 	template<typename T>
 	int destroyer(lua_State *L)
 	{
-		((UserDataWapper*)lua_touserdata(L, 1))->~UserDataWapper();
+		((T*)lua_touserdata(L, 1))->~T();
 		return 0;
 	}
 	int destroyer_shared_ptr(lua_State *L);
 
 	// global function
 	template<typename F>
-	void def(lua_State* L, const char* name, F func)
+	void def(lua_State* L, const char* name, F func )
 	{
-		lua_pushlightuserdata(L, (void*)func);
-		push_functor(L, func);
+		using Functor_Warp = decl_func_type< function_traits<F>::_CALLTYPE >::functor_type;
+		//register functor
+		if (function_name<Functor_Warp>::name_str().empty())
+		{
+			std::string strFuncName = name;
+			function_name< Functor_Warp >::name(strFuncName.c_str());
+			lua_newtable(L);
+
+			lua_pushstring(L, "__name");
+			lua_pushstring(L, strFuncName.c_str());
+			lua_rawset(L, -3);
+
+			lua_pushstring(L, "__gc");
+			lua_pushcclosure(L, &destroyer<Functor_Warp>, 0);
+			lua_rawset(L, -3);
+
+			lua_setglobal(L, strFuncName.c_str());
+		}
+
+		lua_pushstring(L, name);
+		new(lua_newuserdata(L, sizeof(Functor_Warp))) Functor_Warp(func);
+		push_meta(L, function_name<Functor_Warp>::name());
+		lua_setmetatable(L, -2);
+
+		lua_pushcclosure(L, &Functor_Warp::invoke, 1);
 		lua_setglobal(L, name);
+	}
+
+	template<typename RVal, typename ...Args>
+	void def(lua_State* L, const char* name, const std::function< RVal(Args...)>& func)
+	{
+		
 	}
 
 	// global variable
@@ -949,7 +941,7 @@ namespace lua_tinker
 		lua_rawset(L, -3);
 
 		lua_pushstring(L, "__gc");
-		lua_pushcclosure(L, destroyer<T>, 0);
+		lua_pushcclosure(L, destroyer<UserDataWapper>, 0);
 		lua_rawset(L, -3);
 
 		lua_setglobal(L, name);
@@ -962,14 +954,6 @@ namespace lua_tinker
 
 			lua_pushstring(L, "__name");
 			lua_pushstring(L, strSharedName.c_str());
-			lua_rawset(L, -3);
-
-			lua_pushstring(L, "__index");
-			lua_pushcclosure(L, meta_get, 0);
-			lua_rawset(L, -3);
-
-			lua_pushstring(L, "__newindex");
-			lua_pushcclosure(L, meta_set, 0);
 			lua_rawset(L, -3);
 
 			lua_pushstring(L, "__gc");
@@ -1018,13 +1002,39 @@ namespace lua_tinker
 		push_meta(L, get_class_name<T>());
 		if (lua_istable(L, -1))
 		{
+			using Functor_Warp = decltype(decl_member_function_type(func));
+			//register functor
+			if (function_name<Functor_Warp>::name_str().empty())
+			{
+				std::string strFuncName = (class_name<T>::name_str() + std::string(":") + std::string(name));
+				function_name< Functor_Warp >::name(strFuncName.c_str());
+				lua_newtable(L);
+
+				lua_pushstring(L, "__name");
+				lua_pushstring(L, strFuncName.c_str());
+				lua_rawset(L, -3);
+
+				lua_pushstring(L, "__gc");
+				lua_pushcclosure(L, &destroyer<Functor_Warp>, 0);
+				lua_rawset(L, -3);
+
+				lua_setglobal(L, strFuncName.c_str());
+			}
+
 			lua_pushstring(L, name);
-			new(lua_newuserdata(L, sizeof(F))) F(func);
-			push_functor(L, func);
+			new(lua_newuserdata(L, sizeof(Functor_Warp))) Functor_Warp(func);
+			push_meta(L, function_name<Functor_Warp>::name());
+			lua_setmetatable(L, -2);
+
+			lua_pushcclosure(L, &Functor_Warp::invoke, 1);
 			lua_rawset(L, -3);
+
+
+
 		}
 		lua_pop(L, 1);
 	}
+
 
 	// Tinker Class Variables
 	template<typename T, typename BASE, typename VAR>

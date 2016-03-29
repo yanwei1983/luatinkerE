@@ -269,6 +269,8 @@ long long Number2Interger(double v)
 
 int main()
 {
+
+
 	lua_State* L = luaL_newstate();
 	luaL_openlibs(L);
 	lua_tinker::init(L);
@@ -280,6 +282,10 @@ int main()
 	lua_tinker::def(L, "Number2Interger", &Number2Interger);
 	lua_tinker::def(L, "test_fun", &test_fun);
 	lua_tinker::def(L, "test_p_int", &test_p_int);
+	std::function<void(int)> func = [](int k) {std::cout << k; };
+	lua_tinker::def(L, "test_p_int1", func);
+	auto func_a = [](int k) {std::cout << k; };
+	lua_tinker::def(L, "test_p_int2", func_a);
 	lua_tinker::def(L, "test_vint_p_int", &test_vint_p_int);
 	lua_tinker::def(L, "test_vintr_err", &test_vintr_err);
 	lua_tinker::def(L, "test_p_intr", &test_p_intr);
