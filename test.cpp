@@ -282,10 +282,13 @@ int main()
 	lua_tinker::def(L, "Number2Interger", &Number2Interger);
 	lua_tinker::def(L, "test_fun", &test_fun);
 	lua_tinker::def(L, "test_p_int", &test_p_int);
-	std::function<void(int)> func = [](int k) {std::cout << k; };
-	lua_tinker::def(L, "test_p_int1", func);
-	auto func_a = [](int k) {std::cout << k; };
-	lua_tinker::def(L, "test_p_int2", func_a);
+	
+	{
+		std::function<void(int)> func = [](int k) {std::cout << k; };
+		lua_tinker::def(L, "test_p_int1", func);
+		auto func_a = [](int k) {std::cout << k; };
+		lua_tinker::def(L, "test_p_int2", func_a);
+	}
 	lua_tinker::def(L, "test_vint_p_int", &test_vint_p_int);
 	lua_tinker::def(L, "test_vintr_err", &test_vintr_err);
 	lua_tinker::def(L, "test_p_intr", &test_p_intr);
@@ -353,7 +356,7 @@ int main()
 			--visot_ff(pFFWeak);		--error weak_ptr to shared_ptr
 			visot_ff_weak(pFFWeak);
 
-							local pFF_nodef_Shared = make_ff_nodef_shared();
+			local pFF_nodef_Shared = make_ff_nodef_shared();
 			visot_ff_nodef_shared(pFF_nodef_Shared);
 			local pFF_nodef = make_ff_nodef();
 			visot_ff_nodef(pFF_nodef);
@@ -363,7 +366,8 @@ int main()
 			test_fun();
 			test_p_int(2);
 			test_vint_p_int(3);
-
+			test_p_int1(1);
+			test_p_int2(1);
 			local local_int = test_vintr_err();
 			test_vint_p_int(local_int);
 			test_p_intr(local_int,1);

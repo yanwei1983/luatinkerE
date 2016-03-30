@@ -84,22 +84,6 @@ namespace lua_tinker
 	};
 
 	template<typename T>
-	struct function_name
-	{
-		// global name
-		static const char* name(const char* name = NULL)
-		{
-			return name_str(name).c_str();
-		}
-		static const std::string& name_str(const char* name = NULL)
-		{
-			static std::string s_name;
-			if (name != NULL) s_name.assign(name);
-			return s_name;
-		}
-	};
-
-	template<typename T>
 	using base_type = typename std::remove_cv<typename std::remove_reference<typename std::remove_pointer<T>::type>::type>::type;
 
 	template<typename T>
@@ -639,8 +623,7 @@ namespace lua_tinker
 		FunctionType m_func;
 
 		member_functor(FunctionType func)
-			:UserDataWapper(&m_func)
-			,m_func(func)
+			:m_func(func)
 		{}
 		
 
@@ -820,36 +803,27 @@ namespace lua_tinker
 	{
 		using Functor_Warp = decl_func_type< function_traits<F>::_CALLTYPE >::functor_type;
 		//register functor
-		if (function_name<Functor_Warp>::name_str().empty())
 		{
-			std::string strFuncName = name;
-			function_name< Functor_Warp >::name(strFuncName.c_str());
 			lua_newtable(L);
 
-			lua_pushstring(L, "__name");
-			lua_pushstring(L, strFuncName.c_str());
-			lua_rawset(L, -3);
+			//lua_pushstring(L, "__name");
+			//lua_pushstring(L, name);
+			//lua_rawset(L, -3);
 
 			lua_pushstring(L, "__gc");
 			lua_pushcclosure(L, &destroyer<Functor_Warp>, 0);
 			lua_rawset(L, -3);
 
-			lua_setglobal(L, strFuncName.c_str());
+			lua_setglobal(L, name);
 		}
 
 		lua_pushstring(L, name);
 		new(lua_newuserdata(L, sizeof(Functor_Warp))) Functor_Warp(func);
-		push_meta(L, function_name<Functor_Warp>::name());
+		push_meta(L, name);
 		lua_setmetatable(L, -2);
 
 		lua_pushcclosure(L, &Functor_Warp::invoke, 1);
 		lua_setglobal(L, name);
-	}
-
-	template<typename RVal, typename ...Args>
-	void def(lua_State* L, const char* name, const std::function< RVal(Args...)>& func)
-	{
-		
 	}
 
 	// global variable
@@ -1004,15 +978,13 @@ namespace lua_tinker
 		{
 			using Functor_Warp = decltype(decl_member_function_type(func));
 			//register functor
-			if (function_name<Functor_Warp>::name_str().empty())
+			std::string strFuncName = (class_name<T>::name_str() + std::string(":") + std::string(name));
 			{
-				std::string strFuncName = (class_name<T>::name_str() + std::string(":") + std::string(name));
-				function_name< Functor_Warp >::name(strFuncName.c_str());
 				lua_newtable(L);
 
-				lua_pushstring(L, "__name");
-				lua_pushstring(L, strFuncName.c_str());
-				lua_rawset(L, -3);
+				//lua_pushstring(L, "__name");
+				//lua_pushstring(L, strFuncName.c_str());
+				//lua_rawset(L, -3);
 
 				lua_pushstring(L, "__gc");
 				lua_pushcclosure(L, &destroyer<Functor_Warp>, 0);
@@ -1023,7 +995,7 @@ namespace lua_tinker
 
 			lua_pushstring(L, name);
 			new(lua_newuserdata(L, sizeof(Functor_Warp))) Functor_Warp(func);
-			push_meta(L, function_name<Functor_Warp>::name());
+			push_meta(L, strFuncName.c_str());
 			lua_setmetatable(L, -2);
 
 			lua_pushcclosure(L, &Functor_Warp::invoke, 1);
