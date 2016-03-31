@@ -358,7 +358,7 @@ int main()
 			--visot_ff(pFFWeak);		--error weak_ptr to shared_ptr
 			visot_ff_weak(pFFWeak);
 			--pFFShared:test_memfn();	--need define _ALLOW_SHAREDPTR_INVOKE
-			pFFShared.m_val = 77;
+			--pFFShared.m_val = 77;
 
 			local pFF_nodef_Shared = make_ff_nodef_shared();
 			visot_ff_nodef_shared(pFF_nodef_Shared);
