@@ -614,6 +614,23 @@ namespace lua_tinker
 	//	return _get_args<nIdxParams, T...>(L, std::make_index_sequence<num_args>());
 	//}
 
+	static bool CheckSameMetaTable(lua_State* L, int nIndex, const char* tname)
+	{
+		bool bResult = true;
+		void *p = lua_touserdata(L, nIndex);
+		if (p != NULL)
+		{  /* value is a userdata? */
+			if (lua_getmetatable(L, nIndex))
+			{  /* does it have a metatable? */
+				push_meta(L, tname);  /* get correct metatable */
+				if (!lua_rawequal(L, -1, -2))  /* not the same? */
+					bResult = false;  /* value is a userdata with wrong metatable */
+				lua_pop(L, 2);  /* remove both metatables */
+				return bResult;
+			}
+		}
+		return false;
+	}
 
 	//functor
 	template <typename CT, typename RVal, typename ... Args>
@@ -645,23 +662,6 @@ namespace lua_tinker
 			return 0;
 		}
 
-		static bool CheckSameMetaTable(lua_State* L, int nIndex, const char* tname)
-		{
-			bool bResult = true;
-			void *p = lua_touserdata(L, nIndex);
-			if (p != NULL)
-			{  /* value is a userdata? */
-				if (lua_getmetatable(L, nIndex))
-				{  /* does it have a metatable? */
-					push_meta(L, tname);  /* get correct metatable */
-					if (!lua_rawequal(L, -1, -2))  /* not the same? */
-						bResult = false;  /* value is a userdata with wrong metatable */
-					lua_pop(L, 2);  /* remove both metatables */
-					return bResult;
-				}
-			}
-			return false;
-		}
 		template<typename T>
 		static typename std::enable_if<!std::is_void<T>::value, void>::type _invoke(lua_State *L)
 		{
@@ -679,7 +679,7 @@ namespace lua_tinker
 		{
 			using FuncType = void(CT::*)(Args...);
 #ifdef _ALLOW_SHAREDPTR_INVOKE
-			if (CheckSameMetaTable(L, 1, get_class_name<CT>()))
+			if (CheckSameMetaTable(L, 1, get_class_name<CT>()) == false)
 				direct_invoke_func<1, void, FuncType, std::shared_ptr<CT>, Args...>(upvalue_<FuncType>(L), L); 
 			else
 #endif
@@ -813,8 +813,26 @@ namespace lua_tinker
 	{
 		V T::*_var;
 		mem_var(V T::*val) : _var(val) {}
-		void get(lua_State *L) { CHECK_CLASS_PTR(T); push(L, read<T*>(L, 1)->*(_var)); }
-		void set(lua_State *L) { CHECK_CLASS_PTR(T); read<T*>(L, 1)->*(_var) = read<V>(L, 3);}
+		void get(lua_State *L) 
+		{ 
+			CHECK_CLASS_PTR(T); 
+#ifdef _ALLOW_SHAREDPTR_INVOKE
+			if (CheckSameMetaTable(L, 1, get_class_name<T>()) == false)
+				push(L, read<std::shared_ptr<T>>(L, 1).get()->*(_var));
+			else
+#endif
+				push(L, read<T*>(L, 1)->*(_var));
+		}
+		void set(lua_State *L) 
+		{ 
+			CHECK_CLASS_PTR(T); 
+#ifdef _ALLOW_SHAREDPTR_INVOKE
+			if (CheckSameMetaTable(L, 1, get_class_name<T>()) == false)
+				read<std::shared_ptr<T>>(L, 1).get()->*(_var) = read<V>(L, 3);
+			else
+#endif
+				read<T*>(L, 1)->*(_var) = read<V>(L, 3);
+		}
 	};
 
 	// constructor
