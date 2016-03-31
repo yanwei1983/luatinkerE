@@ -269,8 +269,6 @@ long long Number2Interger(double v)
 
 int main()
 {
-
-
 	lua_State* L = luaL_newstate();
 	luaL_openlibs(L);
 	lua_tinker::init(L);
@@ -284,10 +282,17 @@ int main()
 	lua_tinker::def(L, "test_p_int", &test_p_int);
 	
 	{
-		std::function<void(int)> func = [](int k) {std::cout << k; };
-		lua_tinker::def(L, "test_p_int1", func);
-		auto func_a = [](int k) {std::cout << k; };
-		lua_tinker::def(L, "test_p_int2", func_a);
+		std::function<void(int,int)> func = [](int k,int j) {	std::cout << "test_p_int1(" << k <<"," << j << ")" << std::endl;};
+		lua_tinker::def(L, "test_p_int1", func);	//can hold function
+
+		std::function<void(int,int)> func_a = [](int k,int j) {std::cout << "test_p_int2(" << k << "," << j << ")" << std::endl; };
+		lua_tinker::def(L, "test_p_int2", func_a);  //can use F::operator() -> function
+
+		//auto func_c = std::bind(func, std::placeholders::_1, 88); // can not use F::operator ->
+		std::function<void(int)> func_c = std::bind(func, std::placeholders::_1, 88);
+		
+		lua_tinker::def(L, "test_p_int3", func_c);
+
 	}
 	lua_tinker::def(L, "test_vint_p_int", &test_vint_p_int);
 	lua_tinker::def(L, "test_vintr_err", &test_vintr_err);
@@ -366,8 +371,10 @@ int main()
 			test_fun();
 			test_p_int(2);
 			test_vint_p_int(3);
-			test_p_int1(1);
-			test_p_int2(1);
+			test_p_int1(1,2);
+			test_p_int2(3,4);
+			test_p_int3(5);
+
 			local local_int = test_vintr_err();
 			test_vint_p_int(local_int);
 			test_p_intr(local_int,1);
