@@ -292,7 +292,6 @@ int main()
 		std::function<void(int)> func_c = std::bind(func, std::placeholders::_1, 88);
 		
 		lua_tinker::def(L, "test_p_int3", func_c);
-
 	}
 	lua_tinker::def(L, "test_vint_p_int", &test_vint_p_int);
 	lua_tinker::def(L, "test_vintr_err", &test_vintr_err);
@@ -339,8 +338,6 @@ int main()
 	lua_tinker::class_mem<ff>(L, "m_val", &ff::m_val);
 	
 	
-	
-	
 	std::string luabuf =
 		R"(g_int = 100;
 		function lua_test()
@@ -360,6 +357,7 @@ int main()
 			local pFFWeak = make_ff_weak();
 			--visot_ff(pFFWeak);		--error weak_ptr to shared_ptr
 			visot_ff_weak(pFFWeak);
+			--pFFShared:test_memfn();	--need define _ALLOW_SHAREDPTR_INVOKE
 
 			local pFF_nodef_Shared = make_ff_nodef_shared();
 			visot_ff_nodef_shared(pFF_nodef_Shared);

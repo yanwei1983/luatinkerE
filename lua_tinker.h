@@ -26,7 +26,7 @@
 #define USE_TYPEID_OF_USERDATA
 #endif //  _DEBUG
 
-
+//#define _ALLOW_SHAREDPTR_INVOKE
 
 #ifdef LUA_CALL_CFUNC_NEED_ALL_PARAM
 #define LUA_CHECK_HAVE_THIS_PARAM(L,index) if(lua_isnone(L,index)){lua_pushfstring(L, "need argument %d to call cfunc", index);lua_error(L);}
@@ -645,18 +645,46 @@ namespace lua_tinker
 			return 0;
 		}
 
+		static bool CheckSameMetaTable(lua_State* L, int nIndex, const char* tname)
+		{
+			bool bResult = true;
+			void *p = lua_touserdata(L, nIndex);
+			if (p != NULL)
+			{  /* value is a userdata? */
+				if (lua_getmetatable(L, nIndex))
+				{  /* does it have a metatable? */
+					push_meta(L, tname);  /* get correct metatable */
+					if (!lua_rawequal(L, -1, -2))  /* not the same? */
+						bResult = false;  /* value is a userdata with wrong metatable */
+					lua_pop(L, 2);  /* remove both metatables */
+					return bResult;
+				}
+			}
+			return false;
+		}
 		template<typename T>
 		static typename std::enable_if<!std::is_void<T>::value, void>::type _invoke(lua_State *L)
 		{
 			using FuncType = RVal(CT::*)(Args...);
-			push<RVal>(L, direct_invoke_func<1, RVal, FuncType, CT*, Args...>(upvalue_<FuncType>(L), L));
+#ifdef _ALLOW_SHAREDPTR_INVOKE
+			if(CheckSameMetaTable(L,1,get_class_name<CT>()) == false)
+				push<RVal>(L, direct_invoke_func<1, RVal, FuncType, std::shared_ptr<CT>, Args...>(upvalue_<FuncType>(L), L)); 
+			else
+#endif
+				push<RVal>(L, direct_invoke_func<1, RVal, FuncType, CT*, Args...>(upvalue_<FuncType>(L), L));
 		}
 
 		template<typename T>
 		static typename std::enable_if<std::is_void<T>::value, void>::type _invoke(lua_State *L)
 		{
 			using FuncType = void(CT::*)(Args...);
-			direct_invoke_func<1, void, FuncType, CT*, Args...>(upvalue_<FuncType>(L), L);
+#ifdef _ALLOW_SHAREDPTR_INVOKE
+			if (CheckSameMetaTable(L, 1, get_class_name<CT>()))
+				direct_invoke_func<1, void, FuncType, std::shared_ptr<CT>, Args...>(upvalue_<FuncType>(L), L); 
+			else
+#endif
+				direct_invoke_func<1, void, FuncType, CT*, Args...>(upvalue_<FuncType>(L), L);
+
 		}
 
 		static int invoke_function(lua_State *L)
@@ -965,6 +993,19 @@ namespace lua_tinker
 			lua_pushcclosure(L, destroyer_shared_ptr, 0);
 			lua_rawset(L, -3);
 
+#ifdef _ALLOW_SHAREDPTR_INVOKE
+			lua_pushstring(L, "__index");
+			lua_pushcclosure(L, meta_get, 0);
+			lua_rawset(L, -3);
+
+			lua_pushstring(L, "__newindex");
+			lua_pushcclosure(L, meta_set, 0);
+			lua_rawset(L, -3);
+
+			lua_pushstring(L, "__parent");
+			push_meta(L, name);
+			lua_rawset(L, -3);
+#endif
 			lua_setglobal(L, strSharedName.c_str());
 		}
 
