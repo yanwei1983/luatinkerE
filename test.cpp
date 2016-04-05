@@ -393,6 +393,7 @@ int main()
 			local luaFF = ff(1,2,3);
 			test_p_int(luaFF.m_val);
 			luaFF.m_val = 2;
+
 			test_p_int(luaFF.m_val);
 			local luaFF1 = ff(1,2,3);
 			test_p_int(luaFF1.m_val);
@@ -437,6 +438,17 @@ int main()
 			test_p_int(n)
 			return n+1;
 		end
+
+		g_ChargePrizeList = 
+		{
+			[1] = {charge = 1000, itemtype=1,},
+			[2] = {charge = 3000, itemtype=2,},
+			[3] = {charge = 6000, itemtype=3,},
+			[4] = {charge = 10000, itemtype=4,},
+			[5] = {charge = 30000, itemtype=5,},
+			[6] = {charge = 50000, itemtype=5,},
+		};
+
 		)";
 	lua_tinker::dostring(L, luabuf.c_str());
 	int a = lua_tinker::get<int>(L, "g_int");
@@ -444,6 +456,9 @@ int main()
 	lua_tinker::call<void>(L, "lua_test");
 	int b = lua_tinker::call<int>(L, "lua_test2", 1);
 	printf("%d\n", b);
+
+	std::vector<std::map<std::string, int> > test_vec = lua_tinker::get< decltype(test_vec) >(L, "g_ChargePrizeList");
+	std::map<int, std::map<std::string, int> > test_map = lua_tinker::get< decltype(test_map) >(L, "g_ChargePrizeList");
 
 	//lua_gc(L, LUA_GCSTEP, 1);
 	lua_gc(L, LUA_GCCOLLECT, 0);

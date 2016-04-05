@@ -482,7 +482,57 @@ namespace lua_tinker
 	template<typename T>
 	struct _stack_help<T, typename std::enable_if<is_container<base_type<T>>::value>::type>
 	{
-		static T _read(lua_State *L, int index) = delete;
+		static T _read(lua_State *L, int index)
+		{
+			return _readfromtable<T>(L, index);
+		}
+
+		//support map,multimap,unordered_map,unordered_multimap
+		template<typename _T>
+		static typename std::enable_if<is_associative_container<_T>::value, _T>::type _readfromtable(lua_State *L, int index)
+		{
+			if (!lua_istable(L, index))
+			{
+				lua_pushfstring(L, "convert k-v container from argument %d must be a table", index);
+				lua_error(L);
+			}
+
+			_T t;
+			lua_pushnil(L);
+			while (lua_next(L, -2) != 0)
+			{
+				if (lua_isnoneornil(L, -2) || lua_isnoneornil(L, -1))
+					break;
+				t.emplace(std::make_pair(read<T::key_type>(L, -2), read<T::mapped_type>(L, -1)));
+				lua_remove(L, -1);
+			}
+			return t;
+		}
+
+		//support list,vector,deque
+		template<typename _T>
+		static typename std::enable_if<!is_associative_container<_T>::value, _T>::type _readfromtable(lua_State *L, int index)
+		{
+			if (!lua_istable(L, index))
+			{
+				lua_pushfstring(L, "convert container from argument %d must be a table", index);
+				lua_error(L);
+			}
+
+			_T t;
+			lua_pushnil(L);
+			while (lua_next(L, -2) != 0)
+			{
+				if (lua_isnoneornil(L, -2) || lua_isnoneornil(L, -1))
+					break;
+				t.emplace_back(read<T::value_type>(L, -1));
+				lua_remove(L, -1);
+			}
+			return t;
+		}
+
+
+
 		//k,v container to lua
 		template<typename _T>
 		static typename std::enable_if<is_associative_container<_T>::value, void>::type  _push(lua_State *L, const _T& ret)
