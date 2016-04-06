@@ -27,9 +27,11 @@ remove int64 like function just use luaInteger in lua5.3
 
 
 
-加入stl容器类向lua导出一个table的功能  
-stl container can push a table to lua 
+加入stl容器类向lua导入/导出一个table的功能  
+stl container can push a table to lua/ read a table from lua 
 
+可以从lua中返回多个返回值用tuple包裹  
+can pop tuple from lua to warp multi-return value
 
 
 使用weak_ptr来存储导出到lua的shared_ptr对象  
