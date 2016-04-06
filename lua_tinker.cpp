@@ -286,14 +286,14 @@ void lua_tinker::_stack_help<const std::string&>::_push(lua_State *L, const std:
 /*---------------------------------------------------------------------------*/
 /* pop                                                                       */
 /*---------------------------------------------------------------------------*/
-template<>
-void lua_tinker::pop(lua_State *L)
+
+void lua_tinker::pop<void>::apply(lua_State *L)
 {
-	lua_pop(L, 1);
+	//lua_pop(L, 1);
 }
 
-template<>
-lua_tinker::table lua_tinker::pop(lua_State *L)
+
+lua_tinker::table lua_tinker::pop<lua_tinker::table>::apply(lua_State *L)
 {
 	return table(L, lua_gettop(L));
 }

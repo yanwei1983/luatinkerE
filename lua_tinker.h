@@ -600,10 +600,44 @@ namespace lua_tinker
 
 	// pop a value from lua stack
 	template<typename T>
-	T pop(lua_State *L) { T t = read_nocheck<T>(L, -1); lua_pop(L, 1); return t; }
+	struct pop
+	{
+		static constexpr const int nresult = 1;
+		static T apply(lua_State *L) { T t = read_nocheck<T>(L, -1); lua_pop(L, 1); return t; }
+	};
 
-	template<>  void    pop(lua_State *L);
-	template<>  table   pop(lua_State *L);
+	template<typename ...TS>
+	struct pop< std::tuple<TS...> >
+	{
+		static constexpr const int nresult = sizeof...(TS);
+
+		static std::tuple<TS...> apply(lua_State* L)
+		{
+			return apply_help(L, std::make_index_sequence<nresult>{});
+		}
+
+		template<std::size_t... index>
+		static std::tuple<TS...> apply_help(lua_State *L, std::index_sequence<index...>)
+		{
+			std::tuple<TS...> t = std::make_tuple(read_nocheck<TS>(L, index-nresult)...);
+			lua_pop(L, nresult);
+			return t;
+		}
+	};
+	
+	template<>
+	struct pop<void>
+	{
+		static constexpr const int nresult = 0;
+		static void apply(lua_State *L);
+	};
+
+	template<> 
+	struct pop<table>
+	{
+		static constexpr const int nresult = 1;
+		static table apply(lua_State *L);
+	};
 
 
 	//invoke func tuple hold params
@@ -965,7 +999,7 @@ namespace lua_tinker
 	T get(lua_State* L, const char* name)
 	{
 		lua_getglobal(L, name);
-		return pop<T>(L);
+		return pop<T>::apply(L);
 	}
 
 	template<typename T>
@@ -984,7 +1018,10 @@ namespace lua_tinker
 		lua_getglobal(L, name);
 		if (lua_isfunction(L, -1))
 		{
-			lua_pcall(L, 0, 1, errfunc);
+			if (lua_pcall(L, 0, pop<RVal>::nresult, errfunc) != 0)
+			{
+				lua_pop(L, pop<RVal>::nresult);
+			}
 		}
 		else
 		{
@@ -992,7 +1029,7 @@ namespace lua_tinker
 		}
 
 		lua_remove(L, errfunc);
-		return pop<RVal>(L);
+		return pop<RVal>::apply(L);
 	}
 
 	template<typename RVal, typename ...Args>
@@ -1007,9 +1044,9 @@ namespace lua_tinker
 		{
 			push_args(L, arg...);
 
-			if (lua_pcall(L, sizeof...(Args), 1, errfunc) != 0)
+			if (lua_pcall(L, sizeof...(Args), pop<RVal>::nresult, errfunc) != 0)
 			{
-				lua_pop(L, 1);
+				lua_pop(L, pop<RVal>::nresult);
 			}
 		}
 		else
@@ -1017,8 +1054,8 @@ namespace lua_tinker
 			print_error(L, "lua_tinker::call() attempt to call global `%s' (not a function)", name);
 		}
 
-		lua_remove(L, -2);
-		return pop<RVal>(L);
+		lua_remove(L, errfunc);
+		return pop<RVal>::apply(L);
 	}
 
 
@@ -1224,7 +1261,7 @@ namespace lua_tinker
 				lua_pushnil(m_L);
 			}
 
-			return pop<T>(m_L);
+			return pop<T>::apply(m_L);
 		}
 
 		template<typename T>
@@ -1240,7 +1277,7 @@ namespace lua_tinker
 				lua_pushnil(m_L);
 			}
 
-			return pop<T>(m_L);
+			return pop<T>::apply(m_L);
 		}
 
 		lua_State*      m_L;

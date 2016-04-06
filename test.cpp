@@ -360,28 +360,28 @@ int main()
 			--pFFShared:test_memfn();	--need define _ALLOW_SHAREDPTR_INVOKE
 			--pFFShared.m_val = 77;
 
-			local pFF_nodef_Shared = make_ff_nodef_shared();
+				local pFF_nodef_Shared = make_ff_nodef_shared();
 			visot_ff_nodef_shared(pFF_nodef_Shared);
 			local pFF_nodef = make_ff_nodef();
 			visot_ff_nodef(pFF_nodef);
 			visot_ff_nodef_shared(pFF_nodef_Shared);
 			local pFF = test_v_ffv();
 
-			test_fun();
+				test_fun();
 			test_p_int(2);
 			test_vint_p_int(3);
 			test_p_int1(1,2);
 			test_p_int2(3,4);
 			test_p_int3(5);
 
-			local local_int = test_vintr_err();
+				local local_int = test_vintr_err();
 			test_vint_p_int(local_int);
 			test_p_intr(local_int,1);
 			test_vint_p_int(local_int);
 			test_p_intr(local_int,1);
 			test_vint_p_int(local_int);
 
-			local pFF = test_v_ff();
+				local pFF = test_v_ff();
 			pFF:test_memfn();
 			pFF:test_const();
 			pFF:test_p_int(3);
@@ -390,11 +390,11 @@ int main()
 			pFF:test_vint_p_int_ff(123,nil);
 			pFF:test_vint_p_int_ff(123,0);
 
-			local luaFF = ff(1,2,3);
+				local luaFF = ff(1,2,3);
 			test_p_int(luaFF.m_val);
 			luaFF.m_val = 2;
 
-			test_p_int(luaFF.m_val);
+				test_p_int(luaFF.m_val);
 			local luaFF1 = ff(1,2,3);
 			test_p_int(luaFF1.m_val);
 			local luaFF2 = luaFF1
@@ -406,7 +406,7 @@ int main()
 			local pFFref = test_v_ffr()
 			pFFref:test_vint_p_int(luaFF1);
 
-			local string = push_string();
+				local string = push_string();
 			read_lua_string(string);
 			local string_ref = push_string_ref();
 			read_lua_string_ref(string_ref);
@@ -439,7 +439,7 @@ int main()
 			return n+1;
 		end
 
-		g_ChargePrizeList = 
+			g_ChargePrizeList = 
 		{
 			[1] = {charge = 1000, itemtype=1,},
 			[2] = {charge = 3000, itemtype=2,},
@@ -449,12 +449,22 @@ int main()
 			[6] = {charge = 50000, itemtype=5,},
 		};
 
+		function lua_test3()
+			return 1,2.0,3,4.0,"5"
+		end
+
 		)";
 	lua_tinker::dostring(L, luabuf.c_str());
 	int a = lua_tinker::get<int>(L, "g_int");
 	printf("%d\n", a);
 	lua_tinker::call<void>(L, "lua_test");
 	int b = lua_tinker::call<int>(L, "lua_test2", 1);
+	int c = 0;
+	double d = 0.0;
+	char e = 0;
+	float f = 0.0;
+	std::string g;
+	std::tie(c, d, e, f, g) = lua_tinker::call< std::tuple<int, double, char, float, std::string> >(L, "lua_test3");
 	printf("%d\n", b);
 
 	std::vector<std::map<std::string, int> > test_vec = lua_tinker::get< decltype(test_vec) >(L, "g_ChargePrizeList");
