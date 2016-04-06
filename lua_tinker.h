@@ -592,11 +592,11 @@ namespace lua_tinker
 	}
 
 	// push value_list to lua stack //here need a T/T*/T& not a T&&
+	static void push_args(lua_State *L) {}
 	template<typename T, typename ...Args>
 	void push_args(lua_State *L, T ret, Args...args) { push<T>(L, std::forward<T>(ret)); push_args<Args...>(L, std::forward<Args>(args)...); }
 	template<typename T, typename ...Args>
 	void push_args(lua_State *L, T ret) { push<T>(L, std::forward<T>(ret)); }
-
 
 	// pop a value from lua stack
 	template<typename T>
@@ -1009,29 +1009,6 @@ namespace lua_tinker
 	}
 
 	// call lua func
-	template<typename RVal>
-	RVal call(lua_State* L, const char* name)
-	{
-		lua_pushcclosure(L, on_error, 0);
-		int errfunc = lua_gettop(L);
-
-		lua_getglobal(L, name);
-		if (lua_isfunction(L, -1))
-		{
-			if (lua_pcall(L, 0, pop<RVal>::nresult, errfunc) != 0)
-			{
-				lua_pop(L, pop<RVal>::nresult);
-			}
-		}
-		else
-		{
-			print_error(L, "lua_tinker::call() attempt to call global `%s' (not a function)", name);
-		}
-
-		lua_remove(L, errfunc);
-		return pop<RVal>::apply(L);
-	}
-
 	template<typename RVal, typename ...Args>
 	RVal call(lua_State* L, const char* name, Args... arg)
 	{
