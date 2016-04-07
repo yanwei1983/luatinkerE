@@ -3,8 +3,8 @@ lua_tinker for c++14 and lua 5.3
 
 ##why luatinker"E"?
 
-0xE=14, ^_^  
-we use Variadic Template and index_sequence, SFINAE enable_if and type_traits, tuple, function, forward_ref, decltype(auto), and more  
+0xE=14, ^_^
+we use Variadic Template and index_sequence, SFINAE enable_if and type_traits, tuple, function, forward_ref, decltype(auto), and more 
 complied with vc2015,gcc5.3,clang3.8
 
 
