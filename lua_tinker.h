@@ -195,7 +195,7 @@ namespace lua_tinker
 #endif
 
 		virtual ~UserDataWapper() {}
-
+		virtual bool isSharedPtr() const { return false; }
 		void* m_p;
 #ifdef USE_TYPEID_OF_USERDATA
 		size_t  m_type_idx;
@@ -263,7 +263,7 @@ namespace lua_tinker
 				)
 			, m_holder(rht)
 		{}
-
+		virtual bool isSharedPtr() const override { return true; }
 		//use weak_ptr to hold it
 		~sharedptr2user() { m_holder.reset(); }
 
@@ -354,15 +354,27 @@ namespace lua_tinker
 
 
 			UserDataWapper* pWapper = user2type<UserDataWapper*>(L, index);
-#ifdef USE_TYPEID_OF_USERDATA
-			if (pWapper->m_type_idx != get_type_idx<base_type<_T>>())
+#ifdef _ALLOW_SHAREDPTR_INVOKE
+			if (pWapper->isSharedPtr() && std::is_pointer<_T>::value)
 			{
-				lua_pushfstring(L, "can't convert argument %d to class %s", index, get_class_name<T>());
-				lua_error(L);
+				//try covert shared_ptr<T> to T*
+				typedef std::shared_ptr< base_type<_T> >shared_obj;
+				shared_obj shared_ptr = void2type<shared_obj>(pWapper->m_p);
+				return void2type<T>(shared_ptr.get());
 			}
+			else
 #endif
+			{
 
-			return void2type<T>(pWapper->m_p);
+#ifdef USE_TYPEID_OF_USERDATA
+				if (pWapper->m_type_idx != get_type_idx<base_type<_T>>())
+				{
+					lua_pushfstring(L, "can't convert argument %d to class %s", index, get_class_name<T>());
+					lua_error(L);
+				}
+#endif
+				return void2type<T>(pWapper->m_p);
+			}
 		}
 
 
@@ -750,24 +762,14 @@ namespace lua_tinker
 		static typename std::enable_if<!std::is_void<T>::value, void>::type _invoke(lua_State *L)
 		{
 			using FuncType = RVal(CT::*)(Args...);
-#ifdef _ALLOW_SHAREDPTR_INVOKE
-			if(CheckSameMetaTable(L,1,get_class_name<CT>()) == false)
-				push<RVal>(L, direct_invoke_func<1, RVal, FuncType, std::shared_ptr<CT>, Args...>(upvalue_<FuncType>(L), L)); 
-			else
-#endif
-				push<RVal>(L, direct_invoke_func<1, RVal, FuncType, CT*, Args...>(upvalue_<FuncType>(L), L));
+			push<RVal>(L, direct_invoke_func<1, RVal, FuncType, CT*, Args...>(upvalue_<FuncType>(L), L));
 		}
 
 		template<typename T>
 		static typename std::enable_if<std::is_void<T>::value, void>::type _invoke(lua_State *L)
 		{
 			using FuncType = void(CT::*)(Args...);
-#ifdef _ALLOW_SHAREDPTR_INVOKE
-			if (CheckSameMetaTable(L, 1, get_class_name<CT>()) == false)
-				direct_invoke_func<1, void, FuncType, std::shared_ptr<CT>, Args...>(upvalue_<FuncType>(L), L); 
-			else
-#endif
-				direct_invoke_func<1, void, FuncType, CT*, Args...>(upvalue_<FuncType>(L), L);
+			direct_invoke_func<1, void, FuncType, CT*, Args...>(upvalue_<FuncType>(L), L);
 
 		}
 
@@ -791,18 +793,14 @@ namespace lua_tinker
 		template<typename T>
 		static typename std::enable_if<!std::is_void<T>::value, void>::type _invoke_function(lua_State *L)
 		{
-			using FuncWarpType = member_functor<CT, RVal, Args...>;
-			FuncWarpType* pFuncWarp = upvalue_<FuncWarpType*>(L);
-			push<RVal>(L, direct_invoke_func<1, RVal, FunctionType, CT*, Args...>(std::forward<FunctionType>(pFuncWarp->m_func), L));
+
+			push<RVal>(L, direct_invoke_func<1, RVal, FunctionType, CT*, Args...>(std::forward<FunctionType>(func), L));
 		}
 
 		template<typename T>
 		static typename std::enable_if<std::is_void<T>::value, void>::type _invoke_function(lua_State *L)
 		{
-			using FuncWarpType = member_functor<CT, void, Args...>;
-			FuncWarpType* pFuncWarp = upvalue_<FuncWarpType*>(L);
-			
-			direct_invoke_func<1, void, FunctionType, CT*, Args...>(std::forward<FunctionType>(pFuncWarp->m_func), L);
+			direct_invoke_func<1, void, FunctionType, CT*, Args...>(std::forward<FunctionType>(func), L);
 		}
 	};
 
@@ -900,22 +898,12 @@ namespace lua_tinker
 		void get(lua_State *L) 
 		{ 
 			CHECK_CLASS_PTR(T); 
-#ifdef _ALLOW_SHAREDPTR_INVOKE
-			if (CheckSameMetaTable(L, 1, get_class_name<T>()) == false)
-				push(L, read<std::shared_ptr<T>>(L, 1).get()->*(_var));
-			else
-#endif
-				push(L, read<T*>(L, 1)->*(_var));
+			push(L, read<T*>(L, 1)->*(_var));
 		}
 		void set(lua_State *L) 
 		{ 
 			CHECK_CLASS_PTR(T); 
-#ifdef _ALLOW_SHAREDPTR_INVOKE
-			if (CheckSameMetaTable(L, 1, get_class_name<T>()) == false)
-				read<std::shared_ptr<T>>(L, 1).get()->*(_var) = read<V>(L, 3);
-			else
-#endif
-				read<T*>(L, 1)->*(_var) = read<V>(L, 3);
+			read<T*>(L, 1)->*(_var) = read<V>(L, 3);
 		}
 	};
 
