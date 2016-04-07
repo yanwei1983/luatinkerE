@@ -25,7 +25,7 @@ class_add函数增加参数bInitShared来注册导出类对应的shared_ptr对�
 未注册shared_ptr对象统一使用默认metatable来GC
 可以向lua注册一个std::function对象（通过functor/memberfunctor warp类）  
 通过定义 _ALLOW_SHAREDPTR_INVOKE 可以允许已注册的shared_ptr对象调用类成员函数  
-分支args_num_overload是简单的使用参数个数对导出到lua的函数进行重载
+分支args_num_overload是简单的将c++参数列表转换为luatype后存储到int64作为函数签名，运行时进行非精确匹配
 
 
 use Variadic Template to modify old func "functor/memberfunctor/constructor/call "  
@@ -39,4 +39,5 @@ class_add function adds argument bInitShared to register a class objects's share
 Unregistered shared_ptr objects using the default same metatable to gc
 can register a std::function obj through function_warp  
 can def _ALLOW_SHAREDPTR_INVOKE to allow shared_ptr to invoke member_func  
-branches "args_num_overload" sample use args num to overload function which export to lua
+branches "args_num_overload" was simple convert c++ params list to luatype, then stored in int64 as a function signature, do non-exact matching when function name invoked
+
