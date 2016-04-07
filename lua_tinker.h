@@ -732,6 +732,7 @@ namespace lua_tinker
 	template <typename CT, typename RVal, typename ... Args>
 	struct member_functor
 	{
+		using FuncType = RVal(CT::*)(Args...);
 		typedef std::function< RVal(CT*, Args...) > FunctionType;
 		FunctionType m_func;
 
@@ -761,15 +762,13 @@ namespace lua_tinker
 		template<typename T>
 		static typename std::enable_if<!std::is_void<T>::value, void>::type _invoke(lua_State *L)
 		{
-			using FuncType = RVal(CT::*)(Args...);
 			push<RVal>(L, direct_invoke_func<1, RVal, FuncType, CT*, Args...>(upvalue_<FuncType>(L), L));
 		}
 
 		template<typename T>
 		static typename std::enable_if<std::is_void<T>::value, void>::type _invoke(lua_State *L)
 		{
-			using FuncType = void(CT::*)(Args...);
-			direct_invoke_func<1, void, FuncType, CT*, Args...>(upvalue_<FuncType>(L), L);
+			direct_invoke_func<1, RVal, FuncType, CT*, Args...>(upvalue_<FuncType>(L), L);
 
 		}
 
@@ -793,14 +792,13 @@ namespace lua_tinker
 		template<typename T>
 		static typename std::enable_if<!std::is_void<T>::value, void>::type _invoke_function(lua_State *L)
 		{
-
 			push<RVal>(L, direct_invoke_func<1, RVal, FunctionType, CT*, Args...>(std::forward<FunctionType>(func), L));
 		}
 
 		template<typename T>
 		static typename std::enable_if<std::is_void<T>::value, void>::type _invoke_function(lua_State *L)
 		{
-			direct_invoke_func<1, void, FunctionType, CT*, Args...>(std::forward<FunctionType>(func), L);
+			direct_invoke_func<1, RVal, FunctionType, CT*, Args...>(std::forward<FunctionType>(func), L);
 		}
 	};
 
@@ -808,7 +806,10 @@ namespace lua_tinker
 	template <typename RVal, typename ... Args>
 	struct functor
 	{
+		using FuncType = RVal(*)(Args...);
 		typedef std::function< RVal(Args...) > FunctionType;
+		using FuncWarpType = functor<RVal, Args...>;
+
 		FunctionType m_func;
 
 		functor(FunctionType func)
@@ -836,15 +837,13 @@ namespace lua_tinker
 		template<typename T>
 		static typename std::enable_if<!std::is_void<T>::value, void>::type _invoke(lua_State *L)
 		{
-			using FuncType = RVal(*)(Args...);
 			push<RVal>(L, direct_invoke_func<1, RVal, FuncType,  Args...>(std::forward<FuncType>(upvalue_<FuncType>(L)), L));
 		}
 
 		template<typename T>
 		static typename std::enable_if<std::is_void<T>::value, void>::type _invoke(lua_State *L)
 		{
-			using FuncType = void(*)(Args...);
-			direct_invoke_func<1, void, FuncType, Args...>(std::forward<FuncType>(upvalue_<FuncType>(L)), L);
+			direct_invoke_func<1, RVal, FuncType, Args...>(std::forward<FuncType>(upvalue_<FuncType>(L)), L);
 		}
 
 
@@ -866,7 +865,6 @@ namespace lua_tinker
 		template<typename T>
 		static typename std::enable_if<!std::is_void<T>::value, void>::type _invoke_function(lua_State *L)
 		{
-			using FuncWarpType = functor<RVal, Args...>;
 			FuncWarpType* pFuncWarp = upvalue_<FuncWarpType*>(L);
 			push<RVal>(L, direct_invoke_func<1, RVal, FunctionType, Args...>(std::forward<FunctionType>(pFuncWarp->m_func), L));
 		}
@@ -874,10 +872,8 @@ namespace lua_tinker
 		template<typename T>
 		static typename std::enable_if<std::is_void<T>::value, void>::type _invoke_function(lua_State *L)
 		{
-			using FuncWarpType = functor<void, Args...>;
 			FuncWarpType* pFuncWarp = upvalue_<FuncWarpType*>(L);
-
-			direct_invoke_func<1, void, FunctionType, Args...>(std::forward<FunctionType>(pFuncWarp->m_func), L);
+			direct_invoke_func<1, RVal, FunctionType, Args...>(std::forward<FunctionType>(pFuncWarp->m_func), L);
 		}
 	};
 
