@@ -8,7 +8,7 @@
 #include<iostream>
 #include<utility>
 #include "lua_tinker.h"
-
+#include "lua_tinker_overload_func.h"
 void test_fun()
 {
 	std::cout << "test_fun" << std::endl;
@@ -360,9 +360,13 @@ int main()
 	lua_tinker::def(L, "addUL", &addUL);
 	lua_tinker::def(L, "print_ul", &print_ul);
 
-	lua_tinker::def(L, "test_overload", lua_tinker::args_num_overload_functor((int(*)(int)) (&test_overload),
+	/*lua_tinker::def(L, "test_overload", lua_tinker::args_num_overload_functor((int(*)(int)) (&test_overload),
 																		(int(*)(int,double))(&test_overload),
 																		(int(*)(int,int,double))(&test_overload) ));
+	*/
+	lua_tinker::def(L, "test_overload", lua_tinker::args_type_overload_functor((int(*)(int)) (&test_overload),
+																		(int(*)(int, double))(&test_overload),
+																		(int(*)(int, int, double))(&test_overload)));
 
 	lua_tinker::class_add<ff>(L, "ff", true);
 
@@ -377,11 +381,16 @@ int main()
 	lua_tinker::class_def<ff>(L, "test_p_ff", &ff::test_p_ff);
 	lua_tinker::class_def<ff>(L, "test_p_ffcr", &ff::test_p_ffcr);
 	lua_tinker::class_mem<ff>(L, "m_val", &ff::m_val);
-	lua_tinker::class_def<ff>(L, "test_overload", 
-								lua_tinker::args_num_overload_member_functor(
-											(int(ff::*)(int)) (&ff::test_overload),
-											(int(ff::*)(int, double))(&ff::test_overload),
-											(int(ff::*)(int, int, double))(&ff::test_overload)) );
+	//lua_tinker::class_def<ff>(L, "test_overload", 
+	//							lua_tinker::args_num_overload_member_functor(
+	//										(int(ff::*)(int)) (&ff::test_overload),
+	//										(int(ff::*)(int, double))(&ff::test_overload),
+	//										(int(ff::*)(int, int, double))(&ff::test_overload)) );
+	lua_tinker::class_def<ff>(L, "test_overload",
+									lua_tinker::args_type_overload_member_functor(
+										(int(ff::*)(int)) (&ff::test_overload),
+										(int(ff::*)(int, double))(&ff::test_overload),
+										(int(ff::*)(int, int, double))(&ff::test_overload)));
 
 
 	

@@ -20,13 +20,12 @@
 #include<memory>
 #include<typeindex>
 #include<functional>
-#include<map>
 
 #ifdef  _DEBUG
 #define USE_TYPEID_OF_USERDATA
 #endif //  _DEBUG
 
-//#define _ALLOW_SHAREDPTR_INVOKE
+#define _ALLOW_SHAREDPTR_INVOKE
 
 #ifdef LUA_CALL_CFUNC_NEED_ALL_PARAM
 #define LUA_CHECK_HAVE_THIS_PARAM(L,index) if(lua_isnone(L,index)){lua_pushfstring(L, "need argument %d to call cfunc", index);lua_error(L);}
@@ -316,6 +315,8 @@ namespace lua_tinker
 	template<typename T, typename Enable = void>
 	struct _stack_help
 	{
+		static constexpr int cover_to_lua_type()	{return LUA_TUSERDATA;}
+
 		static T _read(lua_State *L, int index)
 		{
 			return lua2type<T>(L, index);
@@ -400,6 +401,7 @@ namespace lua_tinker
 	template<>
 	struct _stack_help<char*>
 	{
+		static constexpr int cover_to_lua_type() { return LUA_TSTRING; }
 		static char* _read(lua_State *L, int index);
 		static void  _push(lua_State *L, char* ret);
 	};
@@ -407,6 +409,7 @@ namespace lua_tinker
 	template<>
 	struct _stack_help<const char*>
 	{
+		static constexpr int cover_to_lua_type() { return LUA_TSTRING; }
 		static const char* _read(lua_State *L, int index);
 		static void  _push(lua_State *L, const char* ret);
 	};
@@ -414,6 +417,8 @@ namespace lua_tinker
 	template<>
 	struct _stack_help<bool>
 	{
+		static constexpr int cover_to_lua_type() { return LUA_TBOOLEAN; }
+
 		static bool _read(lua_State *L, int index);
 		static void  _push(lua_State *L, bool ret);
 	};
@@ -422,6 +427,8 @@ namespace lua_tinker
 	template<typename T>
 	struct _stack_help<T, typename std::enable_if<std::is_integral<T>::value>::type>
 	{
+		static constexpr int cover_to_lua_type() { return LUA_TNUMBER; }
+
 		static T _read(lua_State *L, int index)
 		{
 			return (T)lua_tointeger(L, index);
@@ -436,6 +443,8 @@ namespace lua_tinker
 	template<typename T>
 	struct _stack_help<T, typename std::enable_if<std::is_floating_point<T>::value>::type>
 	{
+		static constexpr int cover_to_lua_type() { return LUA_TNUMBER; }
+
 		static T _read(lua_State *L, int index)
 		{
 			return (T)lua_tonumber(L, index);
@@ -449,12 +458,15 @@ namespace lua_tinker
 	template<>
 	struct _stack_help<std::string>
 	{
+		static constexpr int cover_to_lua_type() { return LUA_TSTRING; }
+
 		static std::string _read(lua_State *L, int index);
 		static void _push(lua_State *L, const std::string& ret);
 	};
 	template<>
 	struct _stack_help<const std::string&>
 	{
+		static constexpr int cover_to_lua_type() { return LUA_TSTRING; }
 		static std::string _read(lua_State *L, int index);
 		static void _push(lua_State *L, const std::string& ret);
 
@@ -465,6 +477,7 @@ namespace lua_tinker
 	template<>
 	struct _stack_help<table>
 	{
+		static constexpr int cover_to_lua_type() { return LUA_TTABLE; }
 		static table _read(lua_State *L, int index);
 		static void _push(lua_State *L,const table& ret);
 	};
@@ -472,6 +485,7 @@ namespace lua_tinker
 	template<>
 	struct _stack_help<lua_value*>
 	{
+		static constexpr int cover_to_lua_type() { return LUA_TUSERDATA; }
 		static lua_value* _read(lua_State *L, int index);
 		static void _push(lua_State *L, lua_value* ret);
 	};
@@ -480,6 +494,7 @@ namespace lua_tinker
 	template<typename T>
 	struct _stack_help<T, typename std::enable_if<std::is_enum<T>::value>::type>
 	{
+		static constexpr int cover_to_lua_type() { return LUA_TNUMBER; }
 		static T _read(lua_State *L, int index)
 		{
 			return (T)lua_tointeger(L, index);
@@ -939,62 +954,6 @@ namespace lua_tinker
 		return new Functor_Warp(func);
 	}
 
-	struct args_num_overload_functor_base
-	{
-		std::map<int, functor_base*> m_overload_funcmap;
-		int m_nParamsOffset = 0;
-
-		args_num_overload_functor_base()
-		{
-		}
-
-		virtual ~args_num_overload_functor_base()
-		{
-			for (auto it : m_overload_funcmap)
-			{
-				delete it.second;
-			}
-		}
-		args_num_overload_functor_base(args_num_overload_functor_base&& rht)
-			:m_overload_funcmap(rht.m_overload_funcmap)
-		{
-			rht.m_overload_funcmap.clear();
-		}
-
-
-		int apply(lua_State* L)
-		{
-			int nParamsCount = lua_gettop(L)- m_nParamsOffset;
-			auto itFind = m_overload_funcmap.find(nParamsCount);
-			if (itFind != m_overload_funcmap.end())
-				return itFind->second->apply(L);
-			else
-				return -1;
-		}
-
-		static int invoke_function(lua_State* L)
-		{
-			args_num_overload_functor_base* pFunctor = upvalue_<args_num_overload_functor_base*>(L);
-			return pFunctor->apply(L);
-		}
-	};
-	struct args_num_overload_functor : public args_num_overload_functor_base
-	{
-		template<typename ...F>
-		args_num_overload_functor(F ... f)
-		{
-			m_overload_funcmap = { { function_traits<F>::args_num, make_functor_ptr(f) }... };
-		}
-	};
-	struct args_num_overload_member_functor : public args_num_overload_functor_base
-	{
-		template<typename ...F>
-		args_num_overload_member_functor(F ... f)
-		{
-			m_overload_funcmap = { { function_traits<F>::args_num, make_member_functor_ptr(f) }... };
-			m_nParamsOffset = 1;
-		}
-	};
 
 
 	// member variable
@@ -1090,19 +1049,20 @@ namespace lua_tinker
 
 	}
 
-	static void def(lua_State* L, const char* name, args_num_overload_functor&& functor )
+	template<typename overload_functor>
+	static void def(lua_State* L, const char* name, overload_functor&& functor )
 	{
-		new(lua_newuserdata(L, sizeof(args_num_overload_functor))) args_num_overload_functor(std::move(functor));
+		new(lua_newuserdata(L, sizeof(overload_functor))) overload_functor(std::move(functor));
 		//register functor
 		{
 			lua_newtable(L);
 			lua_pushstring(L, "__gc");
-			lua_pushcclosure(L, &destroyer<args_num_overload_functor>, 0);
+			lua_pushcclosure(L, &destroyer<overload_functor>, 0);
 			lua_rawset(L, -3);
 			lua_setmetatable(L, -2);
 		}
 
-		lua_pushcclosure(L, &args_num_overload_functor::invoke_function, 1);
+		lua_pushcclosure(L, &overload_functor::invoke_function, 1);
 		lua_setglobal(L, name);
 
 	}
@@ -1305,25 +1265,25 @@ namespace lua_tinker
 		lua_pop(L, 1);
 	}
 
-	template<typename T>
-	void class_def(lua_State* L, const char* name, args_num_overload_member_functor&& functor)
+	template<typename T, typename overload_functor>
+	void class_def(lua_State* L, const char* name, overload_functor&& functor)
 	{
 		push_meta(L, get_class_name<T>());
 		if (lua_istable(L, -1))
 		{
 			lua_pushstring(L, name);
-			new(lua_newuserdata(L, sizeof(args_num_overload_member_functor))) args_num_overload_member_functor(std::move(functor));
+			new(lua_newuserdata(L, sizeof(overload_functor))) overload_functor(std::move(functor));
 			//register metatable for gc
 			{
 				lua_newtable(L);
 				lua_pushstring(L, "__gc");
-				lua_pushcclosure(L, &destroyer<args_num_overload_member_functor>, 0);
+				lua_pushcclosure(L, &destroyer<overload_functor>, 0);
 				lua_rawset(L, -3);
 
 				lua_setmetatable(L, -2);
 			}
 
-			lua_pushcclosure(L, &args_num_overload_member_functor::invoke_function, 1);
+			lua_pushcclosure(L, &overload_functor::invoke_function, 1);
 			lua_rawset(L, -3);
 		}
 		lua_pop(L, 1);
