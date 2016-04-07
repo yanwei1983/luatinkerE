@@ -355,7 +355,7 @@ namespace lua_tinker
 
 			UserDataWapper* pWapper = user2type<UserDataWapper*>(L, index);
 #ifdef _ALLOW_SHAREDPTR_INVOKE
-			if (pWapper->isSharedPtr() && std::is_pointer<_T>::value)
+			if (std::is_pointer<_T>::value && pWapper->isSharedPtr())
 			{
 				//try covert shared_ptr<T> to T*
 				typedef std::shared_ptr< base_type<_T> >shared_obj;
