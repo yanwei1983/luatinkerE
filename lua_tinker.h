@@ -20,6 +20,8 @@
 #include<memory>
 #include<typeindex>
 #include<functional>
+#include<set>
+#include<map>
 
 #ifdef  _DEBUG
 #define USE_TYPEID_OF_USERDATA
@@ -48,9 +50,7 @@ namespace lua_tinker
 	static const char* S_SHARED_PTR_NAME = "__shared_ptr";
 	// init LuaTinker
 	void    init(lua_State *L);
-
-	void	init_shared_ptr(lua_State *L);
-
+	
 	// string-buffer excution
 	void    dofile(lua_State *L, const char *filename);
 	void    dostring(lua_State *L, const char* buff);
@@ -589,6 +589,13 @@ namespace lua_tinker
 		}
 	};
 
+
+	typedef std::set<int> REGIDX_VEC;
+	typedef std::map<lua_State*, REGIDX_VEC> LUAFUNC_MAP;
+	extern LUAFUNC_MAP s_luafunction_map;
+
+
+
 	template<typename RVal,typename ...Args>
 	struct _stack_help< std::function<RVal(Args...)> >
 	{
@@ -613,13 +620,37 @@ namespace lua_tinker
 				{}
 				~lua_function_ref()
 				{
+					//if find it, than unref, else maybe lua is closed
+					auto itMap = s_luafunction_map.find(m_L);
+					if (itMap == s_luafunction_map.end())
+						return;
+					auto& refSet = itMap->second;
+					auto itFunc = refSet.find(m_regidx);
+					if (itFunc == refSet.end())
+						return;
+
 					luaL_unref(m_L, LUA_REGISTRYINDEX, m_regidx);
+					refSet.erase(itFunc);
 				}
 			};
 			
 			std::shared_ptr<lua_function_ref> callback_ref(new lua_function_ref(L, lua_callback));
 			auto func = [L, callback_ref](Args... arg)
 			{
+				auto itMap = s_luafunction_map.find(L);
+				if (itMap == s_luafunction_map.end())
+				{
+					throw std::exception("lua is closed before function call");
+				}
+
+				auto& refSet = itMap->second;
+				auto itFunc = refSet.find(callback_ref->m_regidx);
+				if (itFunc == refSet.end())
+				{
+					lua_pushfstring(L, "function lost, maybe lua is colsed");
+					lua_error(L);
+				}
+
 				lua_pushcclosure(L, on_error, 0);
 				int errfunc = lua_gettop(L);
 
@@ -635,6 +666,7 @@ namespace lua_tinker
 				return pop<RVal>::apply(L);
 				
 			};
+			s_luafunction_map[L].insert(lua_callback);
 
 			return std::function<RVal(Args...)>(func);
 
@@ -1080,7 +1112,6 @@ namespace lua_tinker
 		((T*)lua_touserdata(L, 1))->~T();
 		return 0;
 	}
-	int destroyer_shared_ptr(lua_State *L);
 
 	// global function
 	template<typename R,typename ...ARGS>
@@ -1215,7 +1246,7 @@ namespace lua_tinker
 			lua_rawset(L, -3);
 
 			lua_pushstring(L, "__gc");
-			lua_pushcclosure(L, destroyer_shared_ptr, 0);
+			lua_pushcclosure(L, destroyer<UserDataWapper>, 0);
 			lua_rawset(L, -3);
 
 #ifdef _ALLOW_SHAREDPTR_INVOKE

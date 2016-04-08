@@ -600,6 +600,7 @@ R"(		g_int = 100;
 	lua_gc(L, LUA_GCCOLLECT, 0);
 	lua_close(L);
 
+	//g_func_lua(1); //will throw a exception
 	return 0;
 }
 

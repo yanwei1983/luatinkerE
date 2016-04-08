@@ -18,18 +18,56 @@
 #define I64_FMT "ll"
 #endif
 
+
+namespace lua_tinker
+{
+	LUAFUNC_MAP s_luafunction_map;
+}
 /*---------------------------------------------------------------------------*/
 /* init                                                                      */
 /*---------------------------------------------------------------------------*/
-void lua_tinker::init(lua_State *L)
+
+static void _clear_luafunctionref_onluaclose(lua_State* L)
 {
-	init_shared_ptr(L);
+	auto itMap = lua_tinker::s_luafunction_map.find(L);
+	if (itMap == lua_tinker::s_luafunction_map.end())
+		return;
+	lua_tinker::s_luafunction_map.erase(itMap);
+}
+
+struct lua_close_callback
+{
+	lua_State * m_L;
+	lua_close_callback(lua_State *L)
+		:m_L(L)
+	{
+
+	}
+	~lua_close_callback()
+	{
+		_clear_luafunctionref_onluaclose(m_L);
+	}
+};
+
+static void init_close_callback(lua_State *L)
+{
+
+	new(lua_newuserdata(L, sizeof(lua_close_callback))) lua_close_callback(L);
+	//register functor
+	{
+		lua_newtable(L);
+		lua_pushstring(L, "__gc");
+		lua_pushcclosure(L, &lua_tinker::destroyer<lua_close_callback>, 0);
+		lua_rawset(L, -3);
+		lua_setmetatable(L, -2);
+	}
+	lua_setglobal(L, "___lua_close_callback"); //pop
 }
 
 /*---------------------------------------------------------------------------*/
-void lua_tinker::init_shared_ptr(lua_State *L)
+static void init_shared_ptr(lua_State *L)
 {
-
+	using namespace lua_tinker;
 	lua_newtable(L);
 
 	lua_pushstring(L, "__name");
@@ -45,18 +83,18 @@ void lua_tinker::init_shared_ptr(lua_State *L)
 	lua_rawset(L, -3);
 
 	lua_pushstring(L, "__gc");
-	lua_pushcclosure(L, destroyer_shared_ptr, 0);
+	lua_pushcclosure(L, &destroyer<UserDataWapper>, 0);
 	lua_rawset(L, -3);
 
 	lua_setglobal(L, S_SHARED_PTR_NAME); //pop table
 }
 
-int lua_tinker::destroyer_shared_ptr(lua_State *L)
+void lua_tinker::init(lua_State *L)
 {
-	((UserDataWapper*)lua_touserdata(L, 1))->~UserDataWapper();
-	return 0;
-}
+	init_shared_ptr(L);
 
+	init_close_callback(L);
+}
 
 /*---------------------------------------------------------------------------*/
 /* excution                                                                  */
