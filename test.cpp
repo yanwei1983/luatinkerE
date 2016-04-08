@@ -322,6 +322,20 @@ std::function<int(int)> get_c_function()
 	};
 	return std::function<int(int)>(func);
 }
+
+
+//func must be release before lua close.....user_conctrl
+std::function<int(int)> g_func_lua;
+void store_lua_function(std::function<int(int)> func)
+{
+	g_func_lua = func;
+}
+
+int use_stored_lua_function()
+{
+	return g_func_lua(1);
+}
+
 int main()
 {
 	lua_State* L = luaL_newstate();
@@ -379,6 +393,8 @@ int main()
 	lua_tinker::def(L, "print_ul", &print_ul);
 	lua_tinker::def(L, "test_lua_function", &test_lua_function);
 	lua_tinker::def(L, "get_c_function", &get_c_function);
+	lua_tinker::def(L, "store_lua_function", &store_lua_function);
+	lua_tinker::def(L, "use_stored_lua_function", &use_stored_lua_function);
 
 
 	lua_tinker::def(L, "test_overload", lua_tinker::args_type_overload_functor((int(*)(int)) (&test_overload),
@@ -522,6 +538,9 @@ R"(		g_int = 100;
 			test_lua_function( function (intval)
 									return localtest(intval);
 								end);
+			store_lua_function(localtest);
+			use_stored_lua_function();
+			use_stored_lua_function();
 			local c_func = get_c_function();
 			c_func(1);
 		end
@@ -572,6 +591,11 @@ R"(		g_int = 100;
 	std::vector<std::map<std::string, int> > test_vec = lua_tinker::get< decltype(test_vec) >(L, "g_ChargePrizeList");
 	std::map<int, std::map<std::string, int> > test_map = lua_tinker::get< decltype(test_map) >(L, "g_ChargePrizeList");
 
+	
+	//func must be release before lua close.....user_conctrl
+	g_func_lua = nullptr;
+
+	
 	//lua_gc(L, LUA_GCSTEP, 1);
 	lua_gc(L, LUA_GCCOLLECT, 0);
 	lua_close(L);

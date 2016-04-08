@@ -594,20 +594,36 @@ namespace lua_tinker
 	{
 		static constexpr int cover_to_lua_type() { return LUA_TFUNCTION; }
 
+		//func must be release before lua close.....user_conctrl
 		static std::function<RVal(Args...)> _read(lua_State *L, int index)
 		{
 			if (lua_isfunction(L, index) == false)
 			{
 				print_error(L, "can't convert argument %d to function", index);
 			}
-			int lua_callback = luaL_ref(L, LUA_REGISTRYINDEX);
 
-			auto func = [L, lua_callback](Args... arg)
+			int lua_callback = luaL_ref(L, LUA_REGISTRYINDEX);
+			struct lua_function_ref
+			{
+				lua_State* m_L;
+				int m_regidx;
+				lua_function_ref(lua_State* L,int regidx)
+					:m_L(L)
+					,m_regidx(regidx)
+				{}
+				~lua_function_ref()
+				{
+					luaL_unref(m_L, LUA_REGISTRYINDEX, m_regidx);
+				}
+			};
+			
+			std::shared_ptr<lua_function_ref> callback_ref(new lua_function_ref(L, lua_callback));
+			auto func = [L, callback_ref](Args... arg)
 			{
 				lua_pushcclosure(L, on_error, 0);
 				int errfunc = lua_gettop(L);
 
-				lua_rawgeti(L, LUA_REGISTRYINDEX, lua_callback);
+				lua_rawgeti(L, LUA_REGISTRYINDEX, callback_ref->m_regidx);
 
 				push_args(L, arg...);
 
@@ -616,7 +632,6 @@ namespace lua_tinker
 				}
 
 				lua_remove(L, errfunc);
-				luaL_unref(L, LUA_REGISTRYINDEX, lua_callback);
 				return pop<RVal>::apply(L);
 				
 			};
