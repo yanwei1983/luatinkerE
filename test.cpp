@@ -519,6 +519,9 @@ R"(		g_int = 100;
 				return intval +1;
 			end
 			print( test_lua_function(localtest) );
+			test_lua_function( function (intval)
+									return localtest(intval);
+								end);
 			local c_func = get_c_function();
 			c_func(1);
 		end
