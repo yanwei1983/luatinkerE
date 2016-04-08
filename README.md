@@ -24,7 +24,7 @@ complied with vc2015,gcc5.3,clang3.8
 class_add函数增加参数bInitShared来注册导出类对应的shared_ptr对象  
 未注册shared_ptr对象统一使用默认metatable来GC  
 可以向lua注册一个std::function对象（通过functor/memberfunctor warp类）  
-可以向read/push一个std::function对象来对应luafunction(使用LUA_REGISTRYINDEX和内嵌的lambda)  
+可以向read/push一个std::function对象来对应luafunction(使用LUA_REGISTRYINDEX和内嵌的lambda)，引用的std::function对象全部释放后自动从lua中unref, 如果lua关闭后再调用该对象将产生一个std::exception  
 通过定义 _ALLOW_SHAREDPTR_INVOKE 可以允许已注册的shared_ptr对象调用类成员函数  
 通过定义 _ALLOW_SHAREDPTR_INVOKE 将允许shared_ptr对象转换为T*（包括作为函数参数时）  
 头文件lua_tinker_overload_func.h 是简单的将c++参数列表转换为luatype后存储到int64作为函数签名，运行时进行非精确匹配
@@ -42,6 +42,6 @@ Unregistered shared_ptr objects using the default same metatable to gc
 can register a std::function obj through function_warp  
 can read/push a function obj with luafunction(use LUA_REGISTRYINDEX and in-function lambda)  
 can def _ALLOW_SHAREDPTR_INVOKE to allow shared_ptr to invoke member_func  
-when def _ALLOW_SHAREDPTR_INVOKE will allow shared_ptr obj convert to T*(including as a function parameter)  
+when def _ALLOW_SHAREDPTR_INVOKE will allow shared_ptr obj convert to T*(including as a function parameter),when all  std::function obj is released,lua_function will unref from lua regtable, if invoke function when lua was closed will throw a std::exception  
 header file "lua_tinker_overload_func.h" was simple convert c++ params list to luatype, then stored in int64 as a function signature, do non-exact matching when function name invoked
 
