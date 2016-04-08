@@ -13,7 +13,7 @@ namespace lua_tinker
 		template<typename Func, std::size_t index>
 		constexpr static int get_func_argv()
 		{
-			return _stack_help<typename function_traits<Func>::argv<index>::type>::cover_to_lua_type();
+			return _stack_help<typename function_traits<Func>::template argv<index>::type>::cover_to_lua_type();
 		}
 
 		template<typename Func, std::size_t args_num>

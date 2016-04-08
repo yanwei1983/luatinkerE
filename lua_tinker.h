@@ -131,13 +131,23 @@ namespace lua_tinker
 	template<typename T> struct class_name;
 	struct table;
 
-	//delcare
+	//forward delcare
 	template<typename T>
 	decltype(auto) read(lua_State *L, int index);
 	template<typename T>
 	decltype(auto) read_nocheck(lua_State *L, int index);
 	template<typename T>
 	void push(lua_State *L, T ret);	//here need a T/T*/T& not a T&&
+
+
+	template<typename R, typename ...ARGS>
+	void _def(lua_State* L, R(func)(ARGS...));
+	template<typename R, typename ...ARGS>
+	void _def(lua_State* L, std::function<R(ARGS...)> func);
+	template<typename overload_functor>
+	void _def(lua_State* L, overload_functor&& functor);
+	template<typename Func>
+	void def(lua_State* L, const char* name, Func&& func);
 
 
 
@@ -275,6 +285,56 @@ namespace lua_tinker
 
 		std::weak_ptr<T> m_holder;
 	};
+
+	// pop a value from lua stack
+	template<typename T>
+	struct pop
+	{
+		static constexpr const int nresult = 1;
+		static T apply(lua_State *L) { T t = read_nocheck<T>(L, -1); lua_pop(L, 1); return t; }
+	};
+
+	template<typename ...TS>
+	struct pop< std::tuple<TS...> >
+	{
+		static constexpr const int nresult = sizeof...(TS);
+
+		static std::tuple<TS...> apply(lua_State* L)
+		{
+			return apply_help(L, std::make_index_sequence<nresult>{});
+		}
+
+		template<std::size_t... index>
+		static std::tuple<TS...> apply_help(lua_State *L, std::index_sequence<index...>)
+		{
+			std::tuple<TS...> t = std::make_tuple(read_nocheck<TS>(L, (int)(index - nresult))...);
+			lua_pop(L, nresult);
+			return t;
+		}
+	};
+
+	template<>
+	struct pop<void>
+	{
+		static constexpr const int nresult = 0;
+		static void apply(lua_State *L);
+	};
+
+	template<>
+	struct pop<table>
+	{
+		static constexpr const int nresult = 1;
+		static table apply(lua_State *L);
+	};
+
+
+	// push value_list to lua stack //here need a T/T*/T& not a T&&
+	static void push_args(lua_State *L) {}
+	template<typename T, typename ...Args>
+	void push_args(lua_State *L, T ret, Args...args) { push<T>(L, std::forward<T>(ret)); push_args<Args...>(L, std::forward<Args>(args)...); }
+	template<typename T, typename ...Args>
+	void push_args(lua_State *L, T ret) { push<T>(L, std::forward<T>(ret)); }
+
 
 	// to lua
 	// userdata pointer to lua 
@@ -539,7 +599,7 @@ namespace lua_tinker
 			{
 				if (lua_isnoneornil(L, -2) || lua_isnoneornil(L, -1))
 					break;
-				t.emplace(std::make_pair(read<T::key_type>(L, -2), read<T::mapped_type>(L, -1)));
+				t.emplace(std::make_pair(read<typename T::key_type>(L, -2), read<typename T::mapped_type>(L, -1)));
 				lua_remove(L, -1);
 			}
 			return t;
@@ -561,7 +621,7 @@ namespace lua_tinker
 			{
 				if (lua_isnoneornil(L, -2) || lua_isnoneornil(L, -1))
 					break;
-				t.emplace_back(read<T::value_type>(L, -1));
+				t.emplace_back(read<typename T::value_type>(L, -1));
 				lua_remove(L, -1);
 			}
 			return t;
@@ -647,7 +707,7 @@ namespace lua_tinker
 				auto itMap = s_luafunction_map.find(L);
 				if (itMap == s_luafunction_map.end())
 				{
-					throw std::exception("lua is closed before function call");
+					throw std::exception(); //"lua is closed before function call"
 				}
 
 				auto& refSet = itMap->second;
@@ -717,53 +777,6 @@ namespace lua_tinker
 		_stack_help<T>::_push(L, std::forward<T>(ret));
 	}
 
-	// push value_list to lua stack //here need a T/T*/T& not a T&&
-	static void push_args(lua_State *L) {}
-	template<typename T, typename ...Args>
-	void push_args(lua_State *L, T ret, Args...args) { push<T>(L, std::forward<T>(ret)); push_args<Args...>(L, std::forward<Args>(args)...); }
-	template<typename T, typename ...Args>
-	void push_args(lua_State *L, T ret) { push<T>(L, std::forward<T>(ret)); }
-
-	// pop a value from lua stack
-	template<typename T>
-	struct pop
-	{
-		static constexpr const int nresult = 1;
-		static T apply(lua_State *L) { T t = read_nocheck<T>(L, -1); lua_pop(L, 1); return t; }
-	};
-
-	template<typename ...TS>
-	struct pop< std::tuple<TS...> >
-	{
-		static constexpr const int nresult = sizeof...(TS);
-
-		static std::tuple<TS...> apply(lua_State* L)
-		{
-			return apply_help(L, std::make_index_sequence<nresult>{});
-		}
-
-		template<std::size_t... index>
-		static std::tuple<TS...> apply_help(lua_State *L, std::index_sequence<index...>)
-		{
-			std::tuple<TS...> t = std::make_tuple(read_nocheck<TS>(L, index-nresult)...);
-			lua_pop(L, nresult);
-			return t;
-		}
-	};
-	
-	template<>
-	struct pop<void>
-	{
-		static constexpr const int nresult = 0;
-		static void apply(lua_State *L);
-	};
-
-	template<> 
-	struct pop<table>
-	{
-		static constexpr const int nresult = 1;
-		static table apply(lua_State *L);
-	};
 
 
 	//invoke func tuple hold params
