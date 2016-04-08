@@ -8,7 +8,7 @@
 #include<iostream>
 #include<utility>
 #include "lua_tinker.h"
-
+#include "lua_tinker_overload_func.h"
 void test_fun()
 {
 	std::cout << "test_fun" << std::endl;
@@ -380,14 +380,10 @@ int main()
 	lua_tinker::def(L, "test_lua_function", &test_lua_function);
 	lua_tinker::def(L, "get_c_function", &get_c_function);
 
-	/*lua_tinker::def(L, "test_overload", lua_tinker::args_num_overload_functor((int(*)(int)) (&test_overload),
-																		(int(*)(int,double))(&test_overload),
-																		(int(*)(int,int,double))(&test_overload) ));
-	*/
-	/*lua_tinker::def(L, "test_overload", lua_tinker::args_type_overload_functor((int(*)(int)) (&test_overload),
+
+	lua_tinker::def(L, "test_overload", lua_tinker::args_type_overload_functor((int(*)(int)) (&test_overload),
 																		(int(*)(int, double))(&test_overload),
 																		(int(*)(int, int, double))(&test_overload)));
-	*/
 	lua_tinker::class_add<ff>(L, "ff", true);
 
 	//lua_tinker::class_con<ff>(L, lua_tinker::constructor<ff>::invoke);
@@ -401,16 +397,12 @@ int main()
 	lua_tinker::class_def<ff>(L, "test_p_ff", &ff::test_p_ff);
 	lua_tinker::class_def<ff>(L, "test_p_ffcr", &ff::test_p_ffcr);
 	lua_tinker::class_mem<ff>(L, "m_val", &ff::m_val);
-	//lua_tinker::class_def<ff>(L, "test_overload", 
-	//							lua_tinker::args_num_overload_member_functor(
-	//										(int(ff::*)(int)) (&ff::test_overload),
-	//										(int(ff::*)(int, double))(&ff::test_overload),
-	//										(int(ff::*)(int, int, double))(&ff::test_overload)) );
-	//lua_tinker::class_def<ff>(L, "test_overload",
-	//								lua_tinker::args_type_overload_member_functor(
-	//									(int(ff::*)(int)) (&ff::test_overload),
-	//									(int(ff::*)(int, double))(&ff::test_overload),
-	//									(int(ff::*)(int, int, double))(&ff::test_overload)));
+
+	lua_tinker::class_def<ff>(L, "test_overload",
+									lua_tinker::args_type_overload_member_functor(
+										(int(ff::*)(int)) (&ff::test_overload),
+										(int(ff::*)(int, double))(&ff::test_overload),
+										(int(ff::*)(int, int, double))(&ff::test_overload)));
 
 
 	
@@ -427,37 +419,37 @@ R"(		g_int = 100;
 			print_ul(ul_c);
 			print(ul_c);
 
-				local pFFShared =  make_ff();
+			local pFFShared =  make_ff();
 			visot_ff(pFFShared);
 			--visot_ff_weak(pFFShared);	--error shared_ptr to weak_ptr
 			local pFFWeak = make_ff_weak();
 			--visot_ff(pFFWeak);		--error weak_ptr to shared_ptr
 			visot_ff_weak(pFFWeak);
-			--pFFShared:test_memfn();	--need define _ALLOW_SHAREDPTR_INVOKE
-			--pFFShared.m_val = 77;
+			pFFShared:test_memfn();	--need define _ALLOW_SHAREDPTR_INVOKE
+			pFFShared.m_val = 77;
 
-				local pFF_nodef_Shared = make_ff_nodef_shared();
+								local pFF_nodef_Shared = make_ff_nodef_shared();
 			visot_ff_nodef_shared(pFF_nodef_Shared);
 			local pFF_nodef = make_ff_nodef();
 			visot_ff_nodef(pFF_nodef);
 			visot_ff_nodef_shared(pFF_nodef_Shared);
 			local pFF = test_v_ffv();
 
-				test_fun();
+								test_fun();
 			test_p_int(2);
 			test_vint_p_int(3);
 			test_p_int1(1,2);
 			test_p_int2(3,4);
 			test_p_int3(5);
 
-				local local_int = test_vintr_err();
+								local local_int = test_vintr_err();
 			test_vint_p_int(local_int);
 			test_p_intr(local_int,1);
 			test_vint_p_int(local_int);
 			test_p_intr(local_int,1);
 			test_vint_p_int(local_int);
 
-				local pFF = test_v_ff();
+								local pFF = test_v_ff();
 			pFF:test_memfn();
 			pFF:test_const();
 			pFF:test_p_int(3);
@@ -466,11 +458,11 @@ R"(		g_int = 100;
 			pFF:test_vint_p_int_ff(123,nil);
 			pFF:test_vint_p_int_ff(123,0);
 
-				local luaFF = ff(1,2,3);
+			local luaFF = ff(1,2,3);
 			test_p_int(luaFF.m_val);
 			luaFF.m_val = 2;
 
-				test_p_int(luaFF.m_val);
+			test_p_int(luaFF.m_val);
 			local luaFF1 = ff(1,2,3);
 			test_p_int(luaFF1.m_val);
 			local luaFF2 = luaFF1
@@ -483,10 +475,10 @@ R"(		g_int = 100;
 
 
 
-				local pFFref = test_v_ffr()
+			local pFFref = test_v_ffr()
 			pFFref:test_vint_p_int(luaFF1);
 
-				local string = push_string();
+			local string = push_string();
 			read_lua_string(string);
 			local string_ref = push_string_ref();
 			read_lua_string_ref(string_ref);

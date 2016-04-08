@@ -337,7 +337,8 @@ struct function_traits<_RET(_ARGS...)> {
 	typedef _RET return_type;
 	using _CALLTYPE = _RET(_ARGS...);
 	
-	static const size_t argc = sizeof...(_ARGS);
+	static constexpr const size_t args_num = sizeof...(_ARGS);
+	static constexpr const size_t argc = sizeof...(_ARGS);
 	template <size_t i> struct argv {
 		typedef typename std::tuple_element<i, std::tuple<_ARGS...> >::type type;
 	};
