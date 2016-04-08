@@ -870,7 +870,7 @@ namespace lua_tinker
 			{
 				using FuncWarpType = member_functor<CT, RVal, Args...>;
 				FuncWarpType* pFuncWarp = upvalue_<FuncWarpType*>(L);
-				_invoke_function<RVal>(L,m_pfunc);
+				_invoke_function<RVal>(L, pFuncWarp->m_pfunc);
 				return 1;
 			}
 			CATCH_LUA_TINKER_INVOKE()
