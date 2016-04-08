@@ -336,6 +336,11 @@ int use_stored_lua_function()
 	return g_func_lua(1);
 }
 
+void on_lua_close(lua_State* L)
+{
+	std::cout << "on_lua_close" << std::endl;
+}
+
 int main()
 {
 	lua_State* L = luaL_newstate();
@@ -421,7 +426,7 @@ int main()
 										(int(ff::*)(int, int, double))(&ff::test_overload)));
 
 
-	
+	lua_tinker::register_lua_close_callback(L, lua_tinker::Lua_Close_CallBack_Func(on_lua_close) );
 	std::string luabuf =
 R"(		g_int = 100;
 		function lua_test()

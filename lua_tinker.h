@@ -22,6 +22,7 @@
 #include<functional>
 #include<set>
 #include<map>
+#include<vector>
 
 #ifdef  _DEBUG
 #define USE_TYPEID_OF_USERDATA
@@ -50,6 +51,13 @@ namespace lua_tinker
 	// init LuaTinker
 	void    init(lua_State *L);
 	
+	// close callback func
+	typedef std::function<void(lua_State*)> Lua_Close_CallBack_Func;
+	typedef std::vector<Lua_Close_CallBack_Func> CLOSE_CALLBACK_VEC;
+	typedef std::map<lua_State*, CLOSE_CALLBACK_VEC> CLOSE_CALLBACK_MAP;
+	extern CLOSE_CALLBACK_MAP s_close_callback_map;
+	void	register_lua_close_callback(lua_State* L, Lua_Close_CallBack_Func&& callback_func);
+
 	// string-buffer excution
 	void    dofile(lua_State *L, const char *filename);
 	void    dostring(lua_State *L, const char* buff);

@@ -24,7 +24,15 @@ namespace lua_tinker
 	const char* S_SHARED_PTR_NAME = "__shared_ptr";
 
 	LUAFUNC_MAP s_luafunction_map;
+	CLOSE_CALLBACK_MAP s_close_callback_map;
+
 }
+
+void	lua_tinker::register_lua_close_callback(lua_State* L, Lua_Close_CallBack_Func&& callback_func)
+{
+	s_close_callback_map[L].emplace_back(callback_func);
+}
+
 /*---------------------------------------------------------------------------*/
 /* init                                                                      */
 /*---------------------------------------------------------------------------*/
@@ -48,6 +56,13 @@ struct lua_close_callback
 	~lua_close_callback()
 	{
 		_clear_luafunctionref_onluaclose(m_L);
+		for (const auto& v : lua_tinker::s_close_callback_map)
+		{
+			for(const auto& func : v.second)
+			{
+				func(m_L);
+			}
+		}
 	}
 };
 
