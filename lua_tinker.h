@@ -45,9 +45,8 @@
 
 namespace lua_tinker
 {
+	extern const char* S_SHARED_PTR_NAME;
 
-
-	static const char* S_SHARED_PTR_NAME = "__shared_ptr";
 	// init LuaTinker
 	void    init(lua_State *L);
 	

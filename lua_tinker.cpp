@@ -21,6 +21,8 @@
 
 namespace lua_tinker
 {
+	const char* S_SHARED_PTR_NAME = "__shared_ptr";
+
 	LUAFUNC_MAP s_luafunction_map;
 }
 /*---------------------------------------------------------------------------*/
