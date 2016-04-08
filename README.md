@@ -42,6 +42,6 @@ Unregistered shared_ptr objects using the default same metatable to gc
 can register a std::function obj through function_warp  
 can read/push a function obj with luafunction(use LUA_REGISTRYINDEX and in-function lambda)  
 can def _ALLOW_SHAREDPTR_INVOKE to allow shared_ptr to invoke member_func  
-when def _ALLOW_SHAREDPTR_INVOKE will allow shared_ptr obj convert to T*(including as a function parameter)
+when def _ALLOW_SHAREDPTR_INVOKE will allow shared_ptr obj convert to T*(including as a function parameter)  
 header file "lua_tinker_overload_func.h" was simple convert c++ params list to luatype, then stored in int64 as a function signature, do non-exact matching when function name invoked
 
