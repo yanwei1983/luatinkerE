@@ -494,6 +494,8 @@ namespace lua_tinker
 	template<typename T>
 	struct _stack_help<T, typename std::enable_if<is_container<base_type<T>>::value>::type>
 	{
+		static constexpr int cover_to_lua_type() { return LUA_TTABLE; }
+
 		static T _read(lua_State *L, int index)
 		{
 			return _readfromtable<T>(L, index);
@@ -571,6 +573,62 @@ namespace lua_tinker
 			}
 		}
 	};
+
+	template<typename RVal,typename ...Args>
+	struct _stack_help< std::function<RVal(Args...)> >
+	{
+		static constexpr int cover_to_lua_type() { return LUA_TFUNCTION; }
+
+		static std::function<RVal(Args...)> _read(lua_State *L, int index)
+		{
+			if (lua_isfunction(L, index) == false)
+			{
+			}
+			int lua_callback = luaL_ref(L, LUA_REGISTRYINDEX);
+
+			auto func = [L, lua_callback](Args... arg)
+			{
+				lua_pushcclosure(L, on_error, 0);
+				int errfunc = lua_gettop(L);
+
+				lua_rawgeti(L, LUA_REGISTRYINDEX, lua_callback);
+
+				push_args(L, arg...);
+
+				if (lua_pcall(L, sizeof...(Args), pop<RVal>::nresult, errfunc) != 0)
+				{
+				}
+
+				lua_remove(L, errfunc);
+				luaL_unref(L, LUA_REGISTRYINDEX, lua_callback);
+				return pop<RVal>::apply(L);
+				
+			};
+
+			return std::function<RVal(Args...)>(func);
+
+		}
+
+		static void  _push(lua_State *L, const std::function<RVal(Args...)>& func)
+		{
+			using Functor_Warp = functor<RVal, Args...>;
+
+			new(lua_newuserdata(L, sizeof(Functor_Warp))) Functor_Warp(func);
+			//register functor
+			{
+				lua_newtable(L);
+				lua_pushstring(L, "__gc");
+				lua_pushcclosure(L, &destroyer<Functor_Warp>, 0);
+				lua_rawset(L, -3);
+				lua_setmetatable(L, -2);
+			}
+
+			lua_pushcclosure(L, &Functor_Warp::invoke_function, 1);
+			
+
+		}
+	};
+
 
 	//read_weap
 	template<typename T>
@@ -1007,7 +1065,6 @@ namespace lua_tinker
 
 			if (lua_pcall(L, sizeof...(Args), pop<RVal>::nresult, errfunc) != 0)
 			{
-				lua_pop(L, pop<RVal>::nresult);
 			}
 		}
 		else

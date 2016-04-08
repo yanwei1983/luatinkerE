@@ -99,6 +99,24 @@ public:
 		std::cout << "ff::test_p_ffcr(" << (ptrdiff_t)&rht << ")" << std::endl;
 	}
 
+	int test_overload(int)
+	{
+		std::cout << "ff::test_overload(int)" << std::endl;
+		return 0;
+	}
+
+	int test_overload(int, double)
+	{
+		std::cout << "ff::test_overload(int,double)" << std::endl;
+		return 0;
+	}
+
+	int test_overload(int, int, double)
+	{
+		std::cout << "ff::test_overload(int,int, double)" << std::endl;
+		return 0;
+	}
+
 
 	int m_val;
 };
@@ -267,6 +285,43 @@ long long Number2Interger(double v)
 	return (long long)(v);
 }
 
+
+int test_overload(int)
+{
+	std::cout << "test_overload(int)" << std::endl;
+	return 0;
+}
+
+int test_overload(int,double)
+{
+	std::cout << "test_overload(int,double)" << std::endl;
+	return 0;
+}
+
+int test_overload(int,int, double)
+{
+	std::cout << "test_overload(int,int, double)" << std::endl;
+	return 0;
+}
+
+int test_lua_function(std::function<int(int)> func)
+{
+	std::cout << "test_lua_function" << std::endl;
+	return func(1);
+}
+
+std::function<int(int)> get_c_function()
+{
+	std::cout << "get_c_function" << std::endl;
+
+	auto func = [](int v)->int
+	{
+		std::cout << "get_c_function_invoke" << std::endl;
+
+		return v + 1;
+	};
+	return std::function<int(int)>(func);
+}
 int main()
 {
 	lua_State* L = luaL_newstate();
@@ -322,7 +377,17 @@ int main()
 
 	lua_tinker::def(L, "addUL", &addUL);
 	lua_tinker::def(L, "print_ul", &print_ul);
+	lua_tinker::def(L, "test_lua_function", &test_lua_function);
+	lua_tinker::def(L, "get_c_function", &get_c_function);
 
+	/*lua_tinker::def(L, "test_overload", lua_tinker::args_num_overload_functor((int(*)(int)) (&test_overload),
+																		(int(*)(int,double))(&test_overload),
+																		(int(*)(int,int,double))(&test_overload) ));
+	*/
+	/*lua_tinker::def(L, "test_overload", lua_tinker::args_type_overload_functor((int(*)(int)) (&test_overload),
+																		(int(*)(int, double))(&test_overload),
+																		(int(*)(int, int, double))(&test_overload)));
+	*/
 	lua_tinker::class_add<ff>(L, "ff", true);
 
 	//lua_tinker::class_con<ff>(L, lua_tinker::constructor<ff>::invoke);
@@ -336,10 +401,21 @@ int main()
 	lua_tinker::class_def<ff>(L, "test_p_ff", &ff::test_p_ff);
 	lua_tinker::class_def<ff>(L, "test_p_ffcr", &ff::test_p_ffcr);
 	lua_tinker::class_mem<ff>(L, "m_val", &ff::m_val);
-	
+	//lua_tinker::class_def<ff>(L, "test_overload", 
+	//							lua_tinker::args_num_overload_member_functor(
+	//										(int(ff::*)(int)) (&ff::test_overload),
+	//										(int(ff::*)(int, double))(&ff::test_overload),
+	//										(int(ff::*)(int, int, double))(&ff::test_overload)) );
+	//lua_tinker::class_def<ff>(L, "test_overload",
+	//								lua_tinker::args_type_overload_member_functor(
+	//									(int(ff::*)(int)) (&ff::test_overload),
+	//									(int(ff::*)(int, double))(&ff::test_overload),
+	//									(int(ff::*)(int, int, double))(&ff::test_overload)));
+
+
 	
 	std::string luabuf =
-		R"(g_int = 100;
+R"(		g_int = 100;
 		function lua_test()
 			local ul_a = addUL(0x8000000000000000, 1);
 			print_ul(ul_a);
@@ -351,7 +427,7 @@ int main()
 			print_ul(ul_c);
 			print(ul_c);
 
-					local pFFShared =  make_ff();
+				local pFFShared =  make_ff();
 			visot_ff(pFFShared);
 			--visot_ff_weak(pFFShared);	--error shared_ptr to weak_ptr
 			local pFFWeak = make_ff_weak();
@@ -402,8 +478,12 @@ int main()
 			luaFF2:test_vint_p_int_ff(321,luaFF1);
 			luaFF2:test_p_ff(luaFF1);
 			luaFF2:test_p_ffcr(luaFF1);
-		
-			local pFFref = test_v_ffr()
+			--luaFF:test_overload(luaFF:test_overload(1),luaFF:test_overload(1,0.0),1);
+
+
+
+
+				local pFFref = test_v_ffr()
 			pFFref:test_vint_p_int(luaFF1);
 
 				local string = push_string();
@@ -432,6 +512,16 @@ int main()
 				print(string.format("[%d]=%d",idx,v));
 			end
 		
+			--test_overload(1,test_overload(1,0.0), test_overload(1));
+
+			local function localtest(intval)
+				print("localtest():");
+				print(intval);
+				return intval +1;
+			end
+			print( test_lua_function(localtest) );
+			local c_func = get_c_function();
+			c_func(1);
 		end
 		
 		function lua_test2(n)
@@ -439,7 +529,7 @@ int main()
 			return n+1;
 		end
 
-			g_ChargePrizeList = 
+		g_ChargePrizeList = 
 		{
 			[1] = {charge = 1000, itemtype=1,},
 			[2] = {charge = 3000, itemtype=2,},
