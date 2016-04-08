@@ -418,7 +418,8 @@ R"(		g_int = 100;
 			local ul_c = ul_a + ul_b;
 			print_ul(ul_c);
 			print(ul_c);
-
+		end
+		function lua_test11()
 			local pFFShared =  make_ff();
 			visot_ff(pFFShared);
 			--visot_ff_weak(pFFShared);	--error shared_ptr to weak_ptr
@@ -427,29 +428,33 @@ R"(		g_int = 100;
 			visot_ff_weak(pFFWeak);
 			pFFShared:test_memfn();	--need define _ALLOW_SHAREDPTR_INVOKE
 			pFFShared.m_val = 77;
-
-								local pFF_nodef_Shared = make_ff_nodef_shared();
+		end
+		function lua_test12()
+			local pFF_nodef_Shared = make_ff_nodef_shared();
 			visot_ff_nodef_shared(pFF_nodef_Shared);
 			local pFF_nodef = make_ff_nodef();
 			visot_ff_nodef(pFF_nodef);
 			visot_ff_nodef_shared(pFF_nodef_Shared);
 			local pFF = test_v_ffv();
-
-								test_fun();
+		end
+		function lua_test13()
+			test_fun();
 			test_p_int(2);
 			test_vint_p_int(3);
 			test_p_int1(1,2);
 			test_p_int2(3,4);
 			test_p_int3(5);
-
-								local local_int = test_vintr_err();
+		end
+		function lua_test14()
+			local local_int = test_vintr_err();
 			test_vint_p_int(local_int);
 			test_p_intr(local_int,1);
 			test_vint_p_int(local_int);
 			test_p_intr(local_int,1);
 			test_vint_p_int(local_int);
-
-								local pFF = test_v_ff();
+		end
+		function lua_test15()
+			local pFF = test_v_ff();
 			pFF:test_memfn();
 			pFF:test_const();
 			pFF:test_p_int(3);
@@ -457,11 +462,11 @@ R"(		g_int = 100;
 			pFF:test_vint_p_int_ff(123,pFF);
 			pFF:test_vint_p_int_ff(123,nil);
 			pFF:test_vint_p_int_ff(123,0);
-
+		end
+		function lua_test16()
 			local luaFF = ff(1,2,3);
 			test_p_int(luaFF.m_val);
 			luaFF.m_val = 2;
-
 			test_p_int(luaFF.m_val);
 			local luaFF1 = ff(1,2,3);
 			test_p_int(luaFF1.m_val);
@@ -470,19 +475,22 @@ R"(		g_int = 100;
 			luaFF2:test_vint_p_int_ff(321,luaFF1);
 			luaFF2:test_p_ff(luaFF1);
 			luaFF2:test_p_ffcr(luaFF1);
-			--luaFF:test_overload(luaFF:test_overload(1),luaFF:test_overload(1,0.0),1);
-
-
-
-
+		end
+		function lua_test17()
+			local luaFF = ff(1,2,3);
+			luaFF:test_overload(luaFF:test_overload(1),luaFF:test_overload(1,0.0),1);
+			test_overload(1,test_overload(1,0.0), test_overload(1));
+		end
+		function lua_test18()
+			local luaFF1 = ff(1,2,3);
 			local pFFref = test_v_ffr()
 			pFFref:test_vint_p_int(luaFF1);
-
 			local string = push_string();
 			read_lua_string(string);
 			local string_ref = push_string_ref();
 			read_lua_string_ref(string_ref);
-		
+		end
+		function lua_test19()
 			local map_table = push_map();
 			print("print map_table")
 			for k,v in pairs(map_table) do
@@ -503,9 +511,8 @@ R"(		g_int = 100;
 			for idx,v in ipairs(set_table) do
 				print(string.format("[%d]=%d",idx,v));
 			end
-		
-			--test_overload(1,test_overload(1,0.0), test_overload(1));
-
+		end
+		function lua_test20()
 			local function localtest(intval)
 				print("localtest():");
 				print(intval);
@@ -540,6 +547,16 @@ R"(		g_int = 100;
 	int a = lua_tinker::get<int>(L, "g_int");
 	printf("%d\n", a);
 	lua_tinker::call<void>(L, "lua_test");
+	lua_tinker::call<void>(L, "lua_test11");
+	lua_tinker::call<void>(L, "lua_test12");
+	lua_tinker::call<void>(L, "lua_test13");
+	lua_tinker::call<void>(L, "lua_test14");
+	lua_tinker::call<void>(L, "lua_test15");
+	lua_tinker::call<void>(L, "lua_test16");
+	lua_tinker::call<void>(L, "lua_test17");
+	lua_tinker::call<void>(L, "lua_test18");
+	lua_tinker::call<void>(L, "lua_test19");
+	lua_tinker::call<void>(L, "lua_test20");
 	int b = lua_tinker::call<int>(L, "lua_test2", 1);
 	int c = 0;
 	double d = 0.0;
