@@ -26,7 +26,7 @@ class_add函数增加参数bInitShared来注册导出类对应的shared_ptr对�
 可以向lua注册一个std::function对象（通过functor/memberfunctor warp类）  
 可以向read/push一个std::function对象来对应luafunction(使用LUA_REGISTRYINDEX和内嵌的lambda)，引用的std::function对象全部释放后自动从lua中unref, 如果lua关闭后再调用该对象将产生一个std::exception  
 通过定义 _ALLOW_SHAREDPTR_INVOKE 可以允许已注册的shared_ptr对象调用类成员函数  
-通过定义 _ALLOW_SHAREDPTR_INVOKE 将允许shared_ptr对象转换为T*（包括作为函数参数时） 
+通过定义 _ALLOW_SHAREDPTR_INVOKE 将允许shared_ptr对象转换为T*（包括作为函数参数时）  
 通过调用register_lua_close_callback注册回调函数，当lua关闭时回调  
 头文件lua_tinker_overload_func.h 是简单的将c++参数列表转换为luatype后存储到int64作为函数签名，运行时进行非精确匹配
 
