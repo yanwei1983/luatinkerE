@@ -1356,7 +1356,7 @@ namespace lua_tinker
 		lua_pushcclosure(L, &Functor_Warp::invoke_function, 1);
 	}
 
-	template<typename T, typename overload_functor>
+	template<typename overload_functor>
 	void _class_def(lua_State* L, overload_functor&& functor)
 	{
 		new(lua_newuserdata(L, sizeof(overload_functor))) overload_functor(std::move(functor));
@@ -1380,7 +1380,7 @@ namespace lua_tinker
 		{
 			//register functor
 			lua_pushstring(L, name);
-			_class_def<T>(L, std::forward<Func>(func) );
+			_class_def(L, std::forward<Func>(func) );
 			lua_rawset(L, -3);
 		}
 		lua_pop(L, 1);
