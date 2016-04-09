@@ -34,8 +34,19 @@ void test_p_intr(int& n,int v)
 	n+=v;
 	std::cout << "test_p_intr(" << n << ")" << std::endl;
 }
+class ff_base
+{
+public:
+	ff_base() {}
+	virtual ~ff_base() {}
 
-class ff
+	void test_base_callfn()
+	{
+		std::cout << "ff::test_base_callfn" << std::endl;
+	}
+};
+
+class ff : public ff_base
 {
 public:
 	ff(int a = 0, double b = 0, unsigned char c = 0) :m_val(a)
@@ -120,6 +131,7 @@ public:
 
 	int m_val;
 };
+
 ff g_ff;
 ff* test_v_ff()
 {
@@ -405,7 +417,11 @@ int main()
 	lua_tinker::def(L, "test_overload", lua_tinker::args_type_overload_functor((int(*)(int)) (&test_overload),
 																		(int(*)(int, double))(&test_overload),
 																		(int(*)(int, int, double))(&test_overload)));
+	lua_tinker::class_add<ff_base>(L, "ff_base", true);
 	lua_tinker::class_add<ff>(L, "ff", true);
+	lua_tinker::class_inh<ff,ff_base>(L);
+
+	lua_tinker::class_def<ff_base>(L, "test_base_callfn", &ff_base::test_base_callfn);
 
 	//lua_tinker::class_con<ff>(L, lua_tinker::constructor<ff>::invoke);
 	lua_tinker::class_con<ff>(L, lua_tinker::constructor<ff, int, double, unsigned char>::invoke);
@@ -428,7 +444,7 @@ int main()
 
 	lua_tinker::register_lua_close_callback(L, lua_tinker::Lua_Close_CallBack_Func(on_lua_close) );
 	std::string luabuf =
-R"(		g_int = 100;
+		R"(		g_int = 100;
 		function lua_test()
 			local ul_a = addUL(0x8000000000000000, 1);
 			print_ul(ul_a);
@@ -476,6 +492,7 @@ R"(		g_int = 100;
 		end
 		function lua_test15()
 			local pFF = test_v_ff();
+			pFF:test_base_callfn();
 			pFF:test_memfn();
 			pFF:test_const();
 			pFF:test_p_int(3);
@@ -491,7 +508,7 @@ R"(		g_int = 100;
 			test_p_int(luaFF.m_val);
 			local luaFF1 = ff(1,2,3);
 			test_p_int(luaFF1.m_val);
-			local luaFF2 = luaFF1
+			local luaFF2 = luaFF1;
 			test_p_int(luaFF2.m_val);
 			luaFF2:test_vint_p_int_ff(321,luaFF1);
 			luaFF2:test_p_ff(luaFF1);

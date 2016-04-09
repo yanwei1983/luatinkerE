@@ -73,6 +73,13 @@ namespace lua_tinker
 	int meta_set(lua_State *L);
 	void push_meta(lua_State *L, const char* name);
 
+#ifdef USE_TYPEID_OF_USERDATA
+	// inherit map
+	typedef std::map<size_t, size_t> InheritMap;
+	extern InheritMap s_inherit_map;
+	bool IsInherit(size_t idTypeDerived, size_t idTypeBase);
+#endif
+
 	template<typename T>
 	struct class_name
 	{
@@ -437,8 +444,12 @@ namespace lua_tinker
 #ifdef USE_TYPEID_OF_USERDATA
 				if (pWapper->m_type_idx != get_type_idx<base_type<_T>>())
 				{
-					lua_pushfstring(L, "can't convert argument %d to class %s", index, get_class_name<T>());
-					lua_error(L);
+					//maybe derived to base
+					if (IsInherit(pWapper->m_type_idx, get_type_idx<base_type<_T>>()) == false)
+					{
+						lua_pushfstring(L, "can't convert argument %d to class %s", index, get_class_name<T>());
+						lua_error(L);
+					}
 				}
 #endif
 				return void2type<T>(pWapper->m_p);
@@ -1299,6 +1310,12 @@ namespace lua_tinker
 			lua_rawset(L, -3);
 		}
 		lua_pop(L, 1);
+
+#ifdef USE_TYPEID_OF_USERDATA
+		//add inheritence map
+		s_inherit_map[get_type_idx<base_type<T>>()] = get_type_idx<base_type<P>>();
+#endif
+
 	}
 
 	// Tinker Class Constructor

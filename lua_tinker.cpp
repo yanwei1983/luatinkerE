@@ -26,6 +26,10 @@ namespace lua_tinker
 	LUAFUNC_MAP s_luafunction_map;
 	CLOSE_CALLBACK_MAP s_close_callback_map;
 
+#ifdef USE_TYPEID_OF_USERDATA
+	InheritMap s_inherit_map;
+#endif
+
 }
 
 void	lua_tinker::register_lua_close_callback(lua_State* L, Lua_Close_CallBack_Func&& callback_func)
@@ -158,6 +162,28 @@ void lua_tinker::dobuffer(lua_State *L, const char* buff, size_t len)
 	lua_remove(L, errfunc);
 	lua_pop(L, 1);
 }
+
+
+#ifdef USE_TYPEID_OF_USERDATA
+
+bool lua_tinker::IsInherit(size_t idTypeDerived, size_t idTypeBase)
+{
+	auto itFind = s_inherit_map.find(idTypeDerived);
+	if (itFind == s_inherit_map.end())
+		return false;
+
+	while (true)
+	{
+		size_t idTypePerent = itFind->second;
+		if (idTypePerent == idTypeBase)
+			return true;
+
+		itFind = s_inherit_map.find(idTypeDerived);
+		if (itFind == s_inherit_map.end())
+			return false;
+	}
+}
+#endif
 
 /*---------------------------------------------------------------------------*/
 /* debug helpers                                                             */
