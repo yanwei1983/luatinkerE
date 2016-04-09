@@ -211,12 +211,19 @@ std::weak_ptr<ff> make_ff_weak()
 	return std::weak_ptr<ff>(g_ff_shared);
 }
 
-
-void visot_ff(std::shared_ptr<ff> pFF)
+void visot_ff(ff* pFF)
 {
 	if (pFF)
 	{
 		std::cout << "visot_ff(" << pFF->m_val << ")" << std::endl;
+	}
+}
+
+void visot_ff_shared(std::shared_ptr<ff> pFF)
+{
+	if (pFF)
+	{
+		std::cout << "visot_ff_shared(" << pFF->m_val << ")" << std::endl;
 	}
 }
 
@@ -398,6 +405,7 @@ int main()
 
 	lua_tinker::def(L, "make_ff", &make_ff);
 	lua_tinker::def(L, "visot_ff", &visot_ff);
+	lua_tinker::def(L, "visot_ff_shared", &visot_ff_shared);
 	lua_tinker::def(L, "make_ff_weak", &make_ff_weak);
 	lua_tinker::def(L, "visot_ff_weak", &visot_ff_weak);
 
@@ -443,6 +451,12 @@ int main()
 
 
 	lua_tinker::register_lua_close_callback(L, lua_tinker::Lua_Close_CallBack_Func(on_lua_close) );
+	
+	
+	
+	
+	
+	
 	std::string luabuf =
 		R"(		g_int = 100;
 		function lua_test()
@@ -458,7 +472,8 @@ int main()
 		end
 		function lua_test11()
 			local pFFShared =  make_ff();
-			visot_ff(pFFShared);
+			--visot_ff(pFFShared);		--sharedptr->raw_ptr
+			visot_ff_shared(pFFShared);
 			--visot_ff_weak(pFFShared);	--error shared_ptr to weak_ptr
 			local pFFWeak = make_ff_weak();
 			--visot_ff(pFFWeak);		--error weak_ptr to shared_ptr

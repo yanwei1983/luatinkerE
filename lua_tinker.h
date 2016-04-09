@@ -429,31 +429,19 @@ namespace lua_tinker
 
 
 			UserDataWapper* pWapper = user2type<UserDataWapper*>(L, index);
-#ifdef _ALLOW_SHAREDPTR_INVOKE
-			if (std::is_pointer<_T>::value && pWapper->isSharedPtr())
-			{
-				//try covert shared_ptr<T> to T*
-				typedef std::shared_ptr< base_type<_T> >shared_obj;
-				shared_obj shared_ptr = void2type<shared_obj>(pWapper->m_p);
-				return void2type<T>(shared_ptr.get());
-			}
-			else
-#endif
-			{
 
 #ifdef USE_TYPEID_OF_USERDATA
-				if (pWapper->m_type_idx != get_type_idx<base_type<_T>>())
+			if (pWapper->m_type_idx != get_type_idx<base_type<_T>>())
+			{
+				//maybe derived to base
+				if (IsInherit(pWapper->m_type_idx, get_type_idx<base_type<_T>>()) == false)
 				{
-					//maybe derived to base
-					if (IsInherit(pWapper->m_type_idx, get_type_idx<base_type<_T>>()) == false)
-					{
-						lua_pushfstring(L, "can't convert argument %d to class %s", index, get_class_name<T>());
-						lua_error(L);
-					}
+					lua_pushfstring(L, "can't convert argument %d to class %s", index, get_class_name<T>());
+					lua_error(L);
 				}
-#endif
-				return void2type<T>(pWapper->m_p);
 			}
+#endif
+			return void2type<T>(pWapper->m_p);
 		}
 
 
@@ -825,6 +813,18 @@ namespace lua_tinker
 		return direct_invoke_invoke_helper<nIdxParams, RVal, Func, Args...>(std::forward<Func>(func), L, std::make_index_sequence<sizeof...(Args)>{});
 	}
 
+	template<int nIdxParams, typename RVal, typename Func, typename CT, typename ...Args, std::size_t... index>
+	RVal direct_invoke_invoke_helper(Func&& func, lua_State *L, CT* pClassPtr, std::index_sequence<index...>)
+	{
+		return stdext::invoke(std::forward<Func>(func), pClassPtr, read<Args>(L, index + nIdxParams)...);
+	}
+
+	template<int nIdxParams, typename RVal, typename Func, typename CT, typename ...Args>
+	RVal direct_invoke_member_func(Func&& func, lua_State *L, CT* pClassPtr)
+	{
+		return direct_invoke_invoke_helper<nIdxParams, RVal, Func, CT, Args...>(std::forward<Func>(func), L, pClassPtr, std::make_index_sequence<sizeof...(Args)>{});
+	}
+
 	//make params to tuple
 	//template<typename...T>
 	//struct ParamHolder
@@ -866,6 +866,26 @@ namespace lua_tinker
 		return false;
 	}
 
+	template <typename T>
+	T* _read_classptr_from_index1(lua_State* L)
+	{
+		//index 1 must be userdata
+		UserDataWapper* pWapper = user2type<UserDataWapper*>(L, 1);
+#ifdef _ALLOW_SHAREDPTR_INVOKE
+		if (pWapper->isSharedPtr())
+		{
+			//try covert shared_ptr<T> to T*, don't need check type_idx because call invoke,must be obj:func(), use matatable __parent
+			typedef std::shared_ptr<T>  shared_obj;
+			shared_obj shared_ptr = void2type<shared_obj>(pWapper->m_p);
+			return void2type<T*>(shared_ptr.get());
+		}
+		else
+#endif
+		{
+			return void2type<T*>(pWapper->m_p);
+		}
+	}
+
 	//functor
 	struct functor_base
 	{
@@ -892,7 +912,7 @@ namespace lua_tinker
 			CHECK_CLASS_PTR(CT);
 			TRY_LUA_TINKER_INVOKE()
 			{
-				_invoke_function<RVal>(L, m_func);
+				_invoke_function<RVal>(L, m_func, _read_classptr_from_index1<CT>(L));
 				return 1;
 			}
 			CATCH_LUA_TINKER_INVOKE()
@@ -901,16 +921,14 @@ namespace lua_tinker
 				lua_error(L);
 			}
 			return 0;
-		}
-
-
+		}	
 
 		static int invoke(lua_State *L)
 		{
 			CHECK_CLASS_PTR(CT);
 			TRY_LUA_TINKER_INVOKE()
 			{
-				_invoke<RVal>(L);
+				_invoke<RVal>(L, upvalue_<FuncType>(L), _read_classptr_from_index1<CT>(L));
 				return 1;
 			}
 			CATCH_LUA_TINKER_INVOKE()
@@ -922,18 +940,18 @@ namespace lua_tinker
 		}
 
 		template<typename T>
-		static auto _invoke(lua_State *L)
+		static auto _invoke(lua_State *L, FuncType&& func, CT* pClassPtr)
 			->typename std::enable_if<!std::is_void<T>::value, void>::type
 		{
-			push<RVal>(L, direct_invoke_func<1, RVal, FuncType, CT*, Args...>(upvalue_<FuncType>(L), L));
+			push<RVal>(L, direct_invoke_member_func<2, RVal, FuncType, CT, Args...>(std::forward<FuncType>(func), L, pClassPtr));
 		}
 
 		template<typename T>
-		static auto _invoke(lua_State *L)
+		static auto _invoke(lua_State *L, FuncType&& func, CT* pClassPtr)
 			->typename std::enable_if<std::is_void<T>::value, void>::type
 		{
 
-			direct_invoke_func<1, RVal, FuncType, CT*, Args...>(upvalue_<FuncType>(L), L);
+			direct_invoke_member_func<2, RVal, FuncType, CT, Args...>(std::forward<FuncType>(func), L, pClassPtr);
 
 
 		}
@@ -947,8 +965,7 @@ namespace lua_tinker
 			TRY_LUA_TINKER_INVOKE()
 			{
 				using FuncWarpType = member_functor<CT, RVal, Args...>;
-				FuncWarpType* pFuncWarp = upvalue_<FuncWarpType*>(L);
-				_invoke_function<RVal>(L, pFuncWarp->m_pfunc);
+				_invoke_function<RVal>(L, upvalue_<FuncWarpType*>(L)->m_pfunc, _read_classptr_from_index1<CT>(L));
 				return 1;
 			}
 			CATCH_LUA_TINKER_INVOKE()
@@ -961,17 +978,17 @@ namespace lua_tinker
 		}
 
 		template<typename T, typename F>
-		static auto _invoke_function(lua_State *L, F&& func)
+		static auto _invoke_function(lua_State *L, F&& func, CT* pClassPtr)
 			->typename std::enable_if<!std::is_void<T>::value, void>::type
 		{
-			push<RVal>(L, direct_invoke_func<1, RVal, FunctionType, CT*, Args...>(std::forward<FunctionType>(func), L));
+			push<RVal>(L, direct_invoke_member_func<2, RVal, FunctionType, CT, Args...>(std::forward<FunctionType>(func), L, pClassPtr));
 		}
 
 		template<typename T, typename F>
-		static auto _invoke_function(lua_State *L, F&& func)
+		static auto _invoke_function(lua_State *L, F&& func, CT* pClassPtr)
 			->typename std::enable_if<std::is_void<T>::value, void>::type
 		{
-			direct_invoke_func<1, RVal, FunctionType, CT*, Args...>(std::forward<FunctionType>(func), L);
+			direct_invoke_member_func<2, RVal, FunctionType, CT, Args...>(std::forward<FunctionType>(func), L, pClassPtr);
 
 		}
 	};
@@ -1098,12 +1115,12 @@ namespace lua_tinker
 		void get(lua_State *L) 
 		{ 
 			CHECK_CLASS_PTR(T); 
-			push(L, read<T*>(L, 1)->*(_var));
+			push(L, _read_classptr_from_index1<T>(L)->*(_var));
 		}
 		void set(lua_State *L) 
 		{ 
 			CHECK_CLASS_PTR(T); 
-			read<T*>(L, 1)->*(_var) = read<V>(L, 3);
+			_read_classptr_from_index1<T>(L)->*(_var) = read<V>(L, 3);
 		}
 	};
 
