@@ -209,6 +209,17 @@ namespace lua_tinker
 #endif
 		{}
 
+		//push a const to lua will lost constant qualifier
+		template<typename T>
+		explicit UserDataWapper(const T* p)
+			: m_p(const_cast<T*>(p))
+			,m_bConst(true)
+#ifdef USE_TYPEID_OF_USERDATA
+			, m_type_idx(get_type_idx<T>())
+#endif
+		{}
+
+
 #ifdef USE_TYPEID_OF_USERDATA
 		template<typename T>
 		explicit UserDataWapper(T* p, size_t nTypeIdx)
@@ -223,6 +234,10 @@ namespace lua_tinker
 #ifdef USE_TYPEID_OF_USERDATA
 		size_t  m_type_idx;
 #endif
+//#ifdef USERDATA_HOLD_CONST
+//		bool is_const() const {	return m_bConst;}
+//		bool m_bConst = false;
+//#endif
 	};
 
 	template <class... Args>
@@ -441,7 +456,9 @@ namespace lua_tinker
 				}
 			}
 #endif
+		
 			return void2type<T>(pWapper->m_p);
+
 		}
 
 

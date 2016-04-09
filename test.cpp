@@ -144,6 +144,7 @@ ff test_v_ffv()
 	std::cout << "test_v_ffv" << std::endl;
 	return g_ff;
 }
+
 ff& test_v_ffr()
 {
 	std::cout << "test_v_ffr" << std::endl;
@@ -217,6 +218,15 @@ void visot_ff(ff* pFF)
 	{
 		std::cout << "visot_ff(" << pFF->m_val << ")" << std::endl;
 	}
+}
+
+void visot_ff_ref(ff& refFF)
+{
+	std::cout << "visot_ff(" << refFF.m_val << ")" << std::endl;
+}
+void visot_ff_const_ref(const ff& refFF)
+{
+	std::cout << "visot_ff(" << refFF.m_val << ")" << std::endl;
 }
 
 void visot_ff_shared(std::shared_ptr<ff> pFF)
@@ -405,6 +415,8 @@ int main()
 
 	lua_tinker::def(L, "make_ff", &make_ff);
 	lua_tinker::def(L, "visot_ff", &visot_ff);
+	lua_tinker::def(L, "visot_ff_ref", &visot_ff_ref);
+	lua_tinker::def(L, "visot_ff_const_ref", &visot_ff_const_ref);
 	lua_tinker::def(L, "visot_ff_shared", &visot_ff_shared);
 	lua_tinker::def(L, "make_ff_weak", &make_ff_weak);
 	lua_tinker::def(L, "visot_ff_weak", &visot_ff_weak);
@@ -540,6 +552,10 @@ int main()
 		function lua_test18()
 			local luaFF1 = ff(1,2,3);
 			local pFFref = test_v_ffr()
+			visot_ff_ref(luaFF1);
+			visot_ff_const_ref(luaFF1);
+			visot_ff_ref(pFFref);
+			visot_ff_const_ref(pFFref);
 			pFFref:test_vint_p_int(luaFF1);
 			local string = push_string();
 			read_lua_string(string);
