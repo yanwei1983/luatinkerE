@@ -1257,7 +1257,13 @@ namespace lua_tinker
 		return pop<RVal>::apply(L);
 	}
 
-
+	template<typename T>
+	int _get_raw_ptr(lua_State *L)
+	{
+		std::shared_ptr<T> ptrT = read< std::shared_ptr<T> >(L, 1);
+		push<T*>(L, ptrT.get());
+		return 1;
+	}
 	// class init
 	template<typename T>
 	void class_add(lua_State* L, const char* name, bool bInitShared = false)
@@ -1310,7 +1316,20 @@ namespace lua_tinker
 			push_meta(L, name);
 			lua_rawset(L, -3);
 #endif
+			{//register _get_raw_ptr func
+				lua_pushstring(L, "_get_raw_ptr");
+				lua_pushcclosure(L, &_get_raw_ptr<T>, 0);
+				lua_rawset(L, -3);
+			}
+
+
+
+
 			lua_setglobal(L, strSharedName.c_str());
+
+
+
+
 		}
 
 	}

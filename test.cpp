@@ -472,7 +472,7 @@ int main()
 		end
 		function lua_test11()
 			local pFFShared =  make_ff();
-			--visot_ff(pFFShared);		--sharedptr->raw_ptr
+			--visot_ff(pFFShared);		--error sharedptr->raw_ptr
 			visot_ff_shared(pFFShared);
 			--visot_ff_weak(pFFShared);	--error shared_ptr to weak_ptr
 			local pFFWeak = make_ff_weak();
@@ -480,6 +480,9 @@ int main()
 			visot_ff_weak(pFFWeak);
 			pFFShared:test_memfn();	--need define _ALLOW_SHAREDPTR_INVOKE
 			pFFShared.m_val = 77;
+			local raw_pff = pFFShared:_get_raw_ptr();
+			raw_pff.m_val = 88;
+			print(raw_pff.m_val);
 		end
 		function lua_test12()
 			local pFF_nodef_Shared = make_ff_nodef_shared();
