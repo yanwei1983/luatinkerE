@@ -44,6 +44,6 @@ can register a std::function obj through function_warp
 can read/push a function obj with luafunction(use LUA_REGISTRYINDEX and in-function lambda)  ,when all std::function obj was released,lua_function will unref from lua regtable, if invoke function when lua was closed will throw a std::exception  
 can def _ALLOW_SHAREDPTR_INVOKE to allow shared_ptr to invoke member_func  
 call register_lua_close_callback reg a callback func, when lua close it will be callback  
-allow to push a const obj/ref/pointer, but it will lost const qualifier, plz used carefully 
+allow to push a const obj/ref/pointer, but it will lost const qualifier, plz used carefully   
 header file "lua_tinker_overload_func.h" was simple convert c++ params list to luatype, then stored in int64 as a function signature, do non-exact matching when function name invoked
 
