@@ -107,6 +107,8 @@ namespace lua_tinker
 	template<typename T, typename BASE, typename VAR>
 	void class_mem(lua_State* L, const char* name, VAR BASE::*val);
 
+	template<typename T, typename GET_FUNC, typename SET_FUNC>
+	void class_property(lua_State* L, const char* name, GET_FUNC&& get_func, SET_FUNC&& set_func);
 
 	namespace detail
 	{
@@ -1210,31 +1212,6 @@ namespace lua_tinker
 		}
 	}
 
-	// member variable
-	struct var_base
-	{
-		virtual ~var_base() {};
-		virtual void get(lua_State *L) = 0;
-		virtual void set(lua_State *L) = 0;
-	};
-
-	template<typename T, typename V>
-	struct mem_var : var_base
-	{
-		V T::*_var;
-		mem_var(V T::*val) : _var(val) {}
-		virtual void get(lua_State *L) override
-		{
-			CHECK_CLASS_PTR(T);
-			detail::push(L, detail::_read_classptr_from_index1<T, true>(L)->*(_var));
-		}
-		virtual void set(lua_State *L) override
-		{
-			CHECK_CLASS_PTR(T);
-			detail::_read_classptr_from_index1<T, false>(L)->*(_var) = detail::read<V>(L, 3);
-		}
-	};
-
 	// constructor
 	template<typename T, typename ...Args>
 	struct constructor : public detail::functor_base
@@ -1538,6 +1515,30 @@ namespace lua_tinker
 		lua_pop(L, 1);
 	}
 
+	// member variable
+	struct var_base
+	{
+		virtual ~var_base() {};
+		virtual void get(lua_State *L) = 0;
+		virtual void set(lua_State *L) = 0;
+	};
+
+	template<typename T, typename V>
+	struct mem_var : var_base
+	{
+		V T::*_var;
+		mem_var(V T::*val) : _var(val) {}
+		virtual void get(lua_State *L) override
+		{
+			CHECK_CLASS_PTR(T);
+			detail::push(L, detail::_read_classptr_from_index1<T, true>(L)->*(_var));
+		}
+		virtual void set(lua_State *L) override
+		{
+			CHECK_CLASS_PTR(T);
+			detail::_read_classptr_from_index1<T, false>(L)->*(_var) = detail::read<V>(L, 3);
+		}
+	};
 
 	// Tinker Class Variables
 	template<typename T, typename BASE, typename VAR>
