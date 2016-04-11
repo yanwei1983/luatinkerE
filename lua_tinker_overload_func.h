@@ -8,7 +8,7 @@ namespace lua_tinker
 {
 
 
-	namespace detial
+	namespace detail
 	{
 		template<typename Func, std::size_t index>
 		constexpr static int get_func_argv()
@@ -53,11 +53,33 @@ namespace lua_tinker
 				return;
 			sig = (sig & ~(0xF << (idx * 4))) | ((c & 0xF) << (idx * 4));
 		}
+
+
+
+		template <typename RVal, typename ... Args>
+		decltype(auto) make_functor_ptr(RVal(func)(Args...))
+		{
+			using Functor_Warp = functor<RVal, Args...>;
+			return new Functor_Warp(func);
+		}
+
+		template<typename CT, typename RVal, typename ... Args>
+		decltype(auto) make_member_functor_ptr(RVal(CT::*func)(Args...))
+		{
+			using Functor_Warp = member_functor<false, CT, RVal, Args...>;
+			return new Functor_Warp(func);
+		}
+		template<typename CT, typename RVal, typename ... Args>
+		decltype(auto) make_member_functor_ptr(RVal(CT::*func)(Args...)const)
+		{
+			using Functor_Warp = member_functor<true, CT, RVal, Args...>;
+			return new Functor_Warp(func);
+		}
 	};
 
 	struct args_type_overload_functor_base
 	{
-		typedef std::map<long long, std::shared_ptr<functor_base> > overload_funcmap_t;
+		typedef std::map<long long, std::shared_ptr<detail::functor_base> > overload_funcmap_t;
 		overload_funcmap_t m_overload_funcmap;
 		int m_nParamsOffset = 0;
 
@@ -83,7 +105,7 @@ namespace lua_tinker
 			int nParamsCount = lua_gettop(L) - m_nParamsOffset;
 			for (int i = 0; i < nParamsCount; i++)
 			{
-				detial::_set_signature(sig, i, lua_type(L, i + m_nParamsOffset + 1));
+				detail::_set_signature(sig, i, lua_type(L, i + m_nParamsOffset + 1));
 			}
 			auto itFind = m_overload_funcmap.find(sig);
 			if (itFind != m_overload_funcmap.end())
@@ -99,10 +121,12 @@ namespace lua_tinker
 
 		static int invoke_function(lua_State* L)
 		{
-			args_type_overload_functor_base* pFunctor = upvalue_<args_type_overload_functor_base*>(L);
+			args_type_overload_functor_base* pFunctor = detail::upvalue_<args_type_overload_functor_base*>(L);
 			return pFunctor->apply(L);
 		}
 	};
+
+
 	struct args_type_overload_functor : public args_type_overload_functor_base
 	{
 		template<typename ...Args>
@@ -115,7 +139,7 @@ namespace lua_tinker
 		void emplace(F f)
 		{
 			bool bInsertd = false;
-			std::tie(std::ignore, bInsertd) = m_overload_funcmap.emplace(detial::function_signature<F>::m_sig, std::shared_ptr<functor_base>(make_functor_ptr(f)));
+			std::tie(std::ignore, bInsertd) = m_overload_funcmap.emplace(detail::function_signature<F>::m_sig, std::shared_ptr<detail::functor_base>(detail::make_functor_ptr(f)));
 			assert(bInsertd == true);
 		}
 		template<typename T,typename... Args>
@@ -137,7 +161,7 @@ namespace lua_tinker
 		void emplace(F&& f)
 		{
 			bool bInsertd = false;
-			std::tie(std::ignore, bInsertd) = m_overload_funcmap.emplace(detial::function_signature<F>::m_sig, std::shared_ptr<functor_base>(make_member_functor_ptr(f)) );
+			std::tie(std::ignore, bInsertd) = m_overload_funcmap.emplace(detail::function_signature<F>::m_sig, std::shared_ptr<detail::functor_base>(detail::make_member_functor_ptr(f)) );
 			assert(bInsertd == true);
 		}
 		template<typename T, typename... Args>
@@ -146,6 +170,9 @@ namespace lua_tinker
 			emplace(f); emplace(args...);
 		}
 	};
+
+
+
 	struct args_type_overload_constructor : public args_type_overload_functor_base
 	{
 		template<typename ...Args>
@@ -171,7 +198,7 @@ namespace lua_tinker
 			static void apply(overload_funcmap_t& map)
 			{
 				bool bInsertd = false;
-				std::tie(std::ignore, bInsertd) = map.emplace(detial::function_signature<void(Args...)>::m_sig, std::shared_ptr<functor_base>(new constructor<T, Args...>()));
+				std::tie(std::ignore, bInsertd) = map.emplace(detail::function_signature<void(Args...)>::m_sig, std::shared_ptr<detail::functor_base>(new constructor<T, Args...>()));
 				assert(bInsertd == true);
 			}
 		};

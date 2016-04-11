@@ -22,14 +22,16 @@
 namespace lua_tinker
 {
 	const char* S_SHARED_PTR_NAME = "__shared_ptr";
-
-	LUAFUNC_MAP s_luafunction_map;
 	CLOSE_CALLBACK_MAP s_close_callback_map;
 
-#ifdef LUATINKER_USERDATA_CHECK_TYPEINFO
-	InheritMap s_inherit_map;
-#endif
+	namespace detail
+	{
+		LUAFUNC_MAP s_luafunction_map;
 
+#ifdef LUATINKER_USERDATA_CHECK_TYPEINFO
+		InheritMap s_inherit_map;
+#endif
+	}
 }
 
 void	lua_tinker::register_lua_close_callback(lua_State* L, Lua_Close_CallBack_Func&& callback_func)
@@ -43,10 +45,10 @@ void	lua_tinker::register_lua_close_callback(lua_State* L, Lua_Close_CallBack_Fu
 
 static void _clear_luafunctionref_onluaclose(lua_State* L)
 {
-	auto itMap = lua_tinker::s_luafunction_map.find(L);
-	if (itMap == lua_tinker::s_luafunction_map.end())
+	auto itMap = lua_tinker::detail::s_luafunction_map.find(L);
+	if (itMap == lua_tinker::detail::s_luafunction_map.end())
 		return;
-	lua_tinker::s_luafunction_map.erase(itMap);
+	lua_tinker::detail::s_luafunction_map.erase(itMap);
 }
 
 struct lua_close_callback
@@ -78,7 +80,7 @@ static void init_close_callback(lua_State *L)
 	{
 		lua_newtable(L);
 		lua_pushstring(L, "__gc");
-		lua_pushcclosure(L, &lua_tinker::destroyer<lua_close_callback>, 0);
+		lua_pushcclosure(L, &lua_tinker::detail::destroyer<lua_close_callback>, 0);
 		lua_rawset(L, -3);
 		lua_setmetatable(L, -2);
 	}
@@ -96,15 +98,15 @@ static void init_shared_ptr(lua_State *L)
 	lua_rawset(L, -3);
 
 	lua_pushstring(L, "__index");
-	lua_pushcclosure(L, meta_get, 0);
+	lua_pushcclosure(L, detail::meta_get, 0);
 	lua_rawset(L, -3);
 
 	lua_pushstring(L, "__newindex");
-	lua_pushcclosure(L, meta_set, 0);
+	lua_pushcclosure(L, detail::meta_set, 0);
 	lua_rawset(L, -3);
 
 	lua_pushstring(L, "__gc");
-	lua_pushcclosure(L, &destroyer<UserDataWapper>, 0);
+	lua_pushcclosure(L, &detail::destroyer<detail::UserDataWapper>, 0);
 	lua_rawset(L, -3);
 
 	lua_setglobal(L, S_SHARED_PTR_NAME); //pop table
@@ -166,7 +168,7 @@ void lua_tinker::dobuffer(lua_State *L, const char* buff, size_t len)
 
 #ifdef LUATINKER_USERDATA_CHECK_TYPEINFO
 
-bool lua_tinker::IsInherit(size_t idTypeDerived, size_t idTypeBase)
+bool lua_tinker::detail::IsInherit(size_t idTypeDerived, size_t idTypeBase)
 {
 	auto itFind = s_inherit_map.find(idTypeDerived);
 	if (itFind == s_inherit_map.end())
@@ -183,6 +185,7 @@ bool lua_tinker::IsInherit(size_t idTypeDerived, size_t idTypeBase)
 			return false;
 	}
 }
+
 #endif
 
 /*---------------------------------------------------------------------------*/
@@ -290,76 +293,76 @@ void lua_tinker::enum_stack(lua_State *L)
 	print_error(L, "%s", "-------------------------");
 }
 
-char* lua_tinker::_stack_help<char*>::_read(lua_State *L, int index)
+char* lua_tinker::detail::_stack_help<char*>::_read(lua_State *L, int index)
 {
 	return (char*)lua_tostring(L, index);
 }
 
-void lua_tinker::_stack_help<char*>::_push(lua_State *L, char* ret)
+void lua_tinker::detail::_stack_help<char*>::_push(lua_State *L, char* ret)
 {
 	lua_pushstring(L, ret);
 }
 
 
 
-const char* lua_tinker::_stack_help<const char*>::_read(lua_State *L, int index)
+const char* lua_tinker::detail::_stack_help<const char*>::_read(lua_State *L, int index)
 {
 	return (const char*)lua_tostring(L, index);
 }
 
-void lua_tinker::_stack_help<const char*>::_push(lua_State *L, const char* ret)
+void lua_tinker::detail::_stack_help<const char*>::_push(lua_State *L, const char* ret)
 {
 	lua_pushstring(L, ret);
 }
 
 
 
-bool lua_tinker::_stack_help<bool>::_read(lua_State *L, int index)
+bool lua_tinker::detail::_stack_help<bool>::_read(lua_State *L, int index)
 {
 	if (lua_isboolean(L, index))
 		return lua_toboolean(L, index) != 0;
 	else
 		return lua_tointeger(L, index) != 0;
 }
-void lua_tinker::_stack_help<bool>::_push(lua_State *L, bool ret)
+void lua_tinker::detail::_stack_help<bool>::_push(lua_State *L, bool ret)
 {
 	lua_pushboolean(L, ret);
 }
 
-void lua_tinker::_stack_help<lua_tinker::lua_value*>::_push(lua_State *L, lua_value* ret)
+void lua_tinker::detail::_stack_help<lua_tinker::lua_value*>::_push(lua_State *L, lua_value* ret)
 {
 	if (ret) ret->to_lua(L); else lua_pushnil(L);
 }
 
 
-lua_tinker::table lua_tinker::_stack_help<lua_tinker::table>::_read(lua_State *L, int index)
+lua_tinker::table lua_tinker::detail::_stack_help<lua_tinker::table>::_read(lua_State *L, int index)
 {
-	return table(L, index);
+	return lua_tinker::table(L, index);
 }
 
-void lua_tinker::_stack_help<lua_tinker::table>::_push(lua_State *L, const lua_tinker::table& ret)
+void lua_tinker::detail::_stack_help<lua_tinker::table>::_push(lua_State *L, const lua_tinker::table& ret)
 {
 	lua_pushvalue(L, ret.m_obj->m_index);
 }
 
 
-std::string lua_tinker::_stack_help<std::string>::_read(lua_State *L, int index)
+std::string lua_tinker::detail::_stack_help<std::string>::_read(lua_State *L, int index)
 {
 	return std::string((const char*)lua_tostring(L, index));
 }
 
-void lua_tinker::_stack_help<std::string>::_push(lua_State *L, const std::string& ret)
+void lua_tinker::detail::_stack_help<std::string>::_push(lua_State *L, const std::string& ret)
 {
 	lua_pushlstring(L, ret.data(), ret.size());
 }
 
 
-std::string lua_tinker::_stack_help<const std::string&>::_read(lua_State *L, int index)
+std::string lua_tinker::detail::_stack_help<const std::string&>::_read(lua_State *L, int index)
 {
 	return std::string((const char*)lua_tostring(L, index));
 }
 
-void lua_tinker::_stack_help<const std::string&>::_push(lua_State *L, const std::string& ret)
+void lua_tinker::detail::_stack_help<const std::string&>::_push(lua_State *L, const std::string& ret)
 {
 	lua_pushlstring(L, ret.data(), ret.size());
 }
@@ -368,15 +371,15 @@ void lua_tinker::_stack_help<const std::string&>::_push(lua_State *L, const std:
 /* pop                                                                       */
 /*---------------------------------------------------------------------------*/
 
-void lua_tinker::pop<void>::apply(lua_State *L)
+void lua_tinker::detail::pop<void>::apply(lua_State *L)
 {
 	//lua_pop(L, 1);
 }
 
 
-lua_tinker::table lua_tinker::pop<lua_tinker::table>::apply(lua_State *L)
+lua_tinker::table lua_tinker::detail::pop<lua_tinker::table>::apply(lua_State *L)
 {
-	return table(L, lua_gettop(L));
+	return lua_tinker::table(L, lua_gettop(L));
 }
 
 /*---------------------------------------------------------------------------*/
@@ -404,7 +407,7 @@ static void invoke_parent(lua_State *L)
 }
 
 /*---------------------------------------------------------------------------*/
-int lua_tinker::meta_get(lua_State *L)
+int lua_tinker::detail::meta_get(lua_State *L)
 {
 	lua_getmetatable(L, 1);
 	lua_pushvalue(L, 2);
@@ -412,7 +415,7 @@ int lua_tinker::meta_get(lua_State *L)
 
 	if (lua_isuserdata(L, -1) != 0)
 	{
-		user2type<var_base*>(L, -1)->get(L);
+		detail::user2type<var_base*>(L, -1)->get(L);
 		lua_remove(L, -2);
 	}
 	else if (lua_isnil(L, -1))
@@ -421,7 +424,7 @@ int lua_tinker::meta_get(lua_State *L)
 		invoke_parent(L);
 		if (lua_isuserdata(L, -1))
 		{
-			user2type<var_base*>(L, -1)->get(L);
+			detail::user2type<var_base*>(L, -1)->get(L);
 			lua_remove(L, -2);
 		}
 		else if (lua_isnil(L, -1))
@@ -436,7 +439,7 @@ int lua_tinker::meta_get(lua_State *L)
 }
 
 /*---------------------------------------------------------------------------*/
-int lua_tinker::meta_set(lua_State *L)
+int lua_tinker::detail::meta_set(lua_State *L)
 {
 	lua_getmetatable(L, 1);
 	lua_pushvalue(L, 2);
@@ -444,7 +447,7 @@ int lua_tinker::meta_set(lua_State *L)
 
 	if (lua_isuserdata(L, -1))
 	{
-		user2type<var_base*>(L, -1)->set(L);
+		detail::user2type<var_base*>(L, -1)->set(L);
 	}
 	else if (lua_isnil(L, -1))
 	{
@@ -454,7 +457,7 @@ int lua_tinker::meta_set(lua_State *L)
 		invoke_parent(L);
 		if (lua_isuserdata(L, -1))
 		{
-			user2type<var_base*>(L, -1)->set(L);
+			detail::user2type<var_base*>(L, -1)->set(L);
 		}
 		else if (lua_isnil(L, -1))
 		{
@@ -467,7 +470,7 @@ int lua_tinker::meta_set(lua_State *L)
 }
 
 /*---------------------------------------------------------------------------*/
-void lua_tinker::push_meta(lua_State *L, const char* name)
+void lua_tinker::detail::push_meta(lua_State *L, const char* name)
 {
 	lua_getglobal(L, name);
 }
