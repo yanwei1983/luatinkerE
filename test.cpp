@@ -49,9 +49,21 @@ public:
 class ff : public ff_base
 {
 public:
-	ff(int a = 0, double b = 0, unsigned char c = 0) :m_val(a)
+	ff()
 	{
-		std::cout << "ff::ff(int a)" << std::endl;
+		std::cout << "ff::ff()" << std::endl;
+	}
+	ff(int a) :m_val(a)
+	{
+		std::cout << "ff::ff(int)" << std::endl;
+	}
+	ff(double a)
+	{
+		std::cout << "ff::ff(double)" << std::endl;
+	}
+	ff(int a, double, unsigned char) :m_val(a)
+	{
+		std::cout << "ff::ff(int,double,unsigned char)" << std::endl;
 	}
 	ff(const ff& rht) :m_val(rht.m_val)
 	{
@@ -135,7 +147,7 @@ public:
 	}
 
 
-	int m_val;
+	int m_val = 0;
 };
 
 ff g_ff;
@@ -447,9 +459,9 @@ int main()
 	lua_tinker::def(L, "use_stored_lua_function", &use_stored_lua_function);
 
 
-	lua_tinker::def(L, "test_overload", lua_tinker::args_type_overload_functor((int(*)(int)) (&test_overload),
-																		(int(*)(int, double))(&test_overload),
-																		(int(*)(int, int, double))(&test_overload)));
+	lua_tinker::def(L, "test_overload", lua_tinker::args_type_overload_functor( (int(*)(int)) (&test_overload),
+																				(int(*)(int, double))(&test_overload),
+																				(int(*)(int, int, double))(&test_overload) ) );
 	lua_tinker::class_add<ff_base>(L, "ff_base", true);
 	lua_tinker::class_add<ff>(L, "ff", true);
 	lua_tinker::class_inh<ff,ff_base>(L);
@@ -457,7 +469,13 @@ int main()
 	lua_tinker::class_def<ff_base>(L, "test_base_callfn", &ff_base::test_base_callfn);
 
 	//lua_tinker::class_con<ff>(L, lua_tinker::constructor<ff>::invoke);
-	lua_tinker::class_con<ff>(L, lua_tinker::constructor<ff, int, double, unsigned char>::invoke);
+	//lua_tinker::class_con<ff>(L, lua_tinker::constructor<ff, int, double, unsigned char>::invoke);
+	lua_tinker::class_con<ff>(L, lua_tinker::args_type_overload_constructor( lua_tinker::constructor<ff>(),
+																			 lua_tinker::constructor<ff, int>(),
+																			// lua_tinker::constructor<ff, double>(),
+																			 lua_tinker::constructor<ff, int, double, unsigned char>()) );
+
+
 
 	lua_tinker::class_def<ff>(L, "test_memfn", &ff::test_memfn);
 	lua_tinker::class_def<ff>(L, "test_const", &ff::test_const);
@@ -470,10 +488,9 @@ int main()
 	lua_tinker::class_mem<ff>(L, "m_val", &ff::m_val);
 
 	lua_tinker::class_def<ff>(L, "test_overload",
-									lua_tinker::args_type_overload_member_functor(
-										(int(ff::*)(int)const) (&ff::test_overload),
-										(int(ff::*)(int, double))(&ff::test_overload),
-										(int(ff::*)(int, int, double))(&ff::test_overload)));
+									lua_tinker::args_type_overload_member_functor(	(int(ff::*)(int)const) (&ff::test_overload),
+																					(int(ff::*)(int, double))(&ff::test_overload),
+																					(int(ff::*)(int, int, double))(&ff::test_overload)));
 
 
 	lua_tinker::register_lua_close_callback(L, lua_tinker::Lua_Close_CallBack_Func(on_lua_close) );
@@ -557,12 +574,12 @@ int main()
 			luaFF2:test_p_ffcr(luaFF1);
 		end
 		function lua_test17()
-			local luaFF = ff(1,2,3);
+			local luaFF = ff(1);			-- call overload constructor
 			luaFF:test_overload(luaFF:test_overload(1),luaFF:test_overload(1,0.0),1);
 			test_overload(1,test_overload(1,0.0), test_overload(1));
 		end
 		function lua_test18()
-			local luaFF1 = ff(1,2,3);
+			local luaFF1 = ff(1);			-- call overload constructor
 			local pFFref = test_v_ffr()
 			local pFFconstref = test_v_ffcr()
 			visot_ff_ref(luaFF1);
