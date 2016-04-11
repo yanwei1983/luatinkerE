@@ -146,6 +146,8 @@ public:
 		return 0;
 	}
 
+	int getVal()const { return m_val; }
+	void setVal(int v) { m_val = v; }
 
 	int m_val = 0;
 };
@@ -472,7 +474,7 @@ int main()
 	//lua_tinker::class_con<ff>(L, lua_tinker::constructor<ff, int, double, unsigned char>::invoke);
 	lua_tinker::class_con<ff>(L, lua_tinker::args_type_overload_constructor( lua_tinker::constructor<ff>(),
 																			 lua_tinker::constructor<ff, int>(),
-																			// lua_tinker::constructor<ff, double>(),
+																			 //lua_tinker::constructor<ff, double>(),
 																			 lua_tinker::constructor<ff, int, double, unsigned char>()) );
 
 
@@ -485,7 +487,8 @@ int main()
 	lua_tinker::class_def<ff>(L, "test_vint_p_int_ff", &ff::test_vint_p_int_ff);
 	lua_tinker::class_def<ff>(L, "test_p_ff", &ff::test_p_ff);
 	lua_tinker::class_def<ff>(L, "test_p_ffcr", &ff::test_p_ffcr);
-	lua_tinker::class_mem<ff>(L, "m_val", &ff::m_val);
+	//lua_tinker::class_mem<ff>(L, "m_val", &ff::m_val);
+	lua_tinker::class_property<ff>(L, "m_val", &ff::getVal, &ff::setVal);
 
 	lua_tinker::class_def<ff>(L, "test_overload",
 									lua_tinker::args_type_overload_member_functor(	(int(ff::*)(int)const) (&ff::test_overload),
