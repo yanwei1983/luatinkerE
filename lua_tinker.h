@@ -25,8 +25,8 @@
 #include<vector>
 
 #ifdef  _DEBUG
-#define LUATINKER_USE_TYPEID_OF_USERDATA
-#define LUATINKER_USERDATA_HOLD_CONST
+#define LUATINKER_USERDATA_CHECK_TYPEINFO
+#define LUATINKER_USERDATA_CHECK_CONST
 #endif //  _DEBUG
 
 #define _ALLOW_SHAREDPTR_INVOKE
@@ -74,7 +74,7 @@ namespace lua_tinker
 	int meta_set(lua_State *L);
 	void push_meta(lua_State *L, const char* name);
 
-#ifdef LUATINKER_USE_TYPEID_OF_USERDATA
+#ifdef LUATINKER_USERDATA_CHECK_TYPEINFO
 	// inherit map
 	typedef std::map<size_t, size_t> InheritMap;
 	extern InheritMap s_inherit_map;
@@ -205,7 +205,7 @@ namespace lua_tinker
 		template<typename T>
 		explicit UserDataWapper(T* p)
 			: m_p(p)
-#ifdef LUATINKER_USE_TYPEID_OF_USERDATA
+#ifdef LUATINKER_USERDATA_CHECK_TYPEINFO
 			, m_type_idx(get_type_idx<T>())
 #endif
 		{}
@@ -214,16 +214,16 @@ namespace lua_tinker
 		template<typename T>
 		explicit UserDataWapper(const T* p)
 			: m_p(const_cast<T*>(p))
-#ifdef LUATINKER_USERDATA_HOLD_CONST
+#ifdef LUATINKER_USERDATA_CHECK_CONST
 			,m_bConst(true)
 #endif
-#ifdef LUATINKER_USE_TYPEID_OF_USERDATA
+#ifdef LUATINKER_USERDATA_CHECK_TYPEINFO
 			, m_type_idx(get_type_idx<T>())
 #endif
 		{}
 
 
-#ifdef LUATINKER_USE_TYPEID_OF_USERDATA
+#ifdef LUATINKER_USERDATA_CHECK_TYPEINFO
 		template<typename T>
 		explicit UserDataWapper(T* p, size_t nTypeIdx)
 			: m_p(p)
@@ -234,11 +234,11 @@ namespace lua_tinker
 		virtual ~UserDataWapper() {}
 		virtual bool isSharedPtr() const { return false; }
 		void* m_p;
-#ifdef LUATINKER_USE_TYPEID_OF_USERDATA
+#ifdef LUATINKER_USERDATA_CHECK_TYPEINFO
 		size_t  m_type_idx;
 #endif
 
-#ifdef LUATINKER_USERDATA_HOLD_CONST
+#ifdef LUATINKER_USERDATA_CHECK_CONST
 		bool is_const() const {	return m_bConst;}
 		bool m_bConst = false;
 #endif
@@ -299,7 +299,7 @@ namespace lua_tinker
 	{
 		sharedptr2user(const std::shared_ptr<T>& rht)
 			:UserDataWapper(&m_holder
-#ifdef LUATINKER_USE_TYPEID_OF_USERDATA
+#ifdef LUATINKER_USERDATA_CHECK_TYPEINFO
 			, get_type_idx<std::shared_ptr<T>>()		
 #endif
 				)
@@ -449,7 +449,7 @@ namespace lua_tinker
 
 			UserDataWapper* pWapper = user2type<UserDataWapper*>(L, index);
 
-#ifdef LUATINKER_USE_TYPEID_OF_USERDATA
+#ifdef LUATINKER_USERDATA_CHECK_TYPEINFO
 			if (pWapper->m_type_idx != get_type_idx<base_type<_T>>())
 			{
 				//maybe derived to base
@@ -903,7 +903,7 @@ namespace lua_tinker
 		else
 #endif
 		{
-#ifdef LUATINKER_USERDATA_HOLD_CONST
+#ifdef LUATINKER_USERDATA_CHECK_CONST
 			if(pWapper->is_const() == true && bConstMemberFunc == false)
 			{
 				lua_pushfstring(L, "const class_ptr %s can't invoke non-const member func.", get_class_name<T>());
@@ -1381,7 +1381,7 @@ namespace lua_tinker
 		}
 		lua_pop(L, 1);
 
-#ifdef LUATINKER_USE_TYPEID_OF_USERDATA
+#ifdef LUATINKER_USERDATA_CHECK_TYPEINFO
 		//add inheritence map
 		s_inherit_map[get_type_idx<base_type<T>>()] = get_type_idx<base_type<P>>();
 #endif
@@ -1415,7 +1415,7 @@ namespace lua_tinker
 		lua_pushcclosure(L, &Functor_Warp::invoke, 1);
 	}
 
-#ifdef LUATINKER_USERDATA_HOLD_CONST
+#ifdef LUATINKER_USERDATA_CHECK_CONST
 	template<typename T, typename R, typename ...ARGS>
 	void _class_def(lua_State* L, R(T::*func)(ARGS...) const)
 	{

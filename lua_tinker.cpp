@@ -26,7 +26,7 @@ namespace lua_tinker
 	LUAFUNC_MAP s_luafunction_map;
 	CLOSE_CALLBACK_MAP s_close_callback_map;
 
-#ifdef LUATINKER_USE_TYPEID_OF_USERDATA
+#ifdef LUATINKER_USERDATA_CHECK_TYPEINFO
 	InheritMap s_inherit_map;
 #endif
 
@@ -164,7 +164,7 @@ void lua_tinker::dobuffer(lua_State *L, const char* buff, size_t len)
 }
 
 
-#ifdef LUATINKER_USE_TYPEID_OF_USERDATA
+#ifdef LUATINKER_USERDATA_CHECK_TYPEINFO
 
 bool lua_tinker::IsInherit(size_t idTypeDerived, size_t idTypeBase)
 {
