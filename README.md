@@ -31,8 +31,8 @@ complied with vc2015,gcc5.3,clang3.8
 15.定义宏 LUATINKER_USERDATA_CHECK_CONST 将会储存const信息(bool)到userdata中，当调用成员函数时会检查是否允许调用,同时read是会检查是否发生丢失常量限定符的问题  
 16.定义宏 LUATINKER_USERDATA_CHECK_TYPEINFO 将会储存typeidx信息(size_t)到userdata中，当read时将进行类型一致性检查  
 17.调试模式下自动打开LUATINKER_USERDATA_CHECK_CONST和LUATINKER_USERDATA_CHECK_TYPEINFO 进行额外的检查  
-18.头文件lua_tinker_overload_func.h 是简单的将c++参数列表转换为luatype后存储到int64作为函数签名，运行时进行非精确匹配
-
+18.头文件lua_tinker_overload_func.h 是简单的将c++参数列表转换为luatype后存储到int64作为函数签名，运行时进行非精确匹配  
+19.新增class_property函数可以为一个名字注册一对get/set函数
 
 1.use Variadic Template to modify old func "functor/memberfunctor/constructor/call "  
 2.use enable_if to hides a function overload  
@@ -51,5 +51,6 @@ complied with vc2015,gcc5.3,clang3.8
 15.define macro LUATINKER_USERDATA_HOLD_CONST will store const info(bool) in userdata,will check when call member function,will check lost const qualifier when read   
 16.define macro LUATINKER_USERDATA_CHECK_TYPEINFO will stroe typeidx info(size_t) in userdata,will do type consistency check when read  
 17.on debug mode will auto define LUATINKER_USERDATA_CHECK_CONST and LUATINKER_USERDATA_CHECK_TYPEINFO for extra check  
-18.header file "lua_tinker_overload_func.h" was simple convert c++ params list to luatype, then stored in int64 as a function signature, do non-exact matching when function name invoked
+18.header file "lua_tinker_overload_func.h" was simple convert c++ params list to luatype, then stored in int64 as a function signature, do non-exact matching when function name invoked  
+19.add function class_property for register get/set function for a member_name  
 
