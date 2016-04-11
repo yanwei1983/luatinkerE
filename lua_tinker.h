@@ -460,7 +460,13 @@ namespace lua_tinker
 				}
 			}
 #endif
-		
+#ifdef LUATINKER_USERDATA_CHECK_CONST
+			if (pWapper->is_const() == true && std::is_class<_T>::value == false)
+			{
+				lua_pushfstring(L, "can't convert argument %d from const class %s", index, get_class_name<T>());
+				lua_error(L);
+			}
+#endif
 			return void2type<T>(pWapper->m_p);
 
 		}
