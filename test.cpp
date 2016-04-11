@@ -95,6 +95,12 @@ public:
 
 		return 0;
 	}
+	int test_vint_p_int_c(int n) const
+	{
+		std::cout << "ff::test_vint_p_int_c(" << n << ")" << std::endl;
+
+		return 0;
+	}
 	int test_vint_p_int_ff(int n, ff* pff)
 	{
 		std::cout << "ff::test_vint_p_int_ff(" << n << "," << (ptrdiff_t)pff << ")" << std::endl;
@@ -110,7 +116,7 @@ public:
 		std::cout << "ff::test_p_ffcr(" << (ptrdiff_t)&rht << ")" << std::endl;
 	}
 
-	int test_overload(int)
+	int test_overload(int) const
 	{
 		std::cout << "ff::test_overload(int)" << std::endl;
 		return 0;
@@ -148,6 +154,12 @@ ff test_v_ffv()
 ff& test_v_ffr()
 {
 	std::cout << "test_v_ffr" << std::endl;
+	return g_ff;
+}
+
+const ff& test_v_ffcr()
+{
+	std::cout << "test_v_ffcr" << std::endl;
 	return g_ff;
 }
 
@@ -402,6 +414,7 @@ int main()
 	lua_tinker::def(L, "test_v_ff", &test_v_ff);
 	lua_tinker::def(L, "test_v_ffv", &test_v_ffv);
 	lua_tinker::def(L, "test_v_ffr", &test_v_ffr);
+	lua_tinker::def(L, "test_v_ffcr", &test_v_ffcr);
 
 
 	lua_tinker::def(L, "push_string", &push_string);
@@ -450,6 +463,7 @@ int main()
 	lua_tinker::class_def<ff>(L, "test_const", &ff::test_const);
 	lua_tinker::class_def<ff>(L, "test_p_int", &ff::test_p_int);
 	lua_tinker::class_def<ff>(L, "test_vint_p_int", &ff::test_vint_p_int);
+	lua_tinker::class_def<ff>(L, "test_vint_p_int_c", &ff::test_vint_p_int_c);
 	lua_tinker::class_def<ff>(L, "test_vint_p_int_ff", &ff::test_vint_p_int_ff);
 	lua_tinker::class_def<ff>(L, "test_p_ff", &ff::test_p_ff);
 	lua_tinker::class_def<ff>(L, "test_p_ffcr", &ff::test_p_ffcr);
@@ -457,14 +471,12 @@ int main()
 
 	lua_tinker::class_def<ff>(L, "test_overload",
 									lua_tinker::args_type_overload_member_functor(
-										(int(ff::*)(int)) (&ff::test_overload),
+										(int(ff::*)(int)const) (&ff::test_overload),
 										(int(ff::*)(int, double))(&ff::test_overload),
 										(int(ff::*)(int, int, double))(&ff::test_overload)));
 
 
 	lua_tinker::register_lua_close_callback(L, lua_tinker::Lua_Close_CallBack_Func(on_lua_close) );
-	
-	
 	
 	
 	
@@ -552,17 +564,25 @@ int main()
 		function lua_test18()
 			local luaFF1 = ff(1,2,3);
 			local pFFref = test_v_ffr()
+			local pFFconstref = test_v_ffcr()
 			visot_ff_ref(luaFF1);
 			visot_ff_const_ref(luaFF1);
 			visot_ff_ref(pFFref);
 			visot_ff_const_ref(pFFref);
-			pFFref:test_vint_p_int(luaFF1);
+			pFFref:test_vint_p_int(1);			--ref->member_func
+			pFFconstref:test_vint_p_int_c(2);	--const_ref->const_member_func
+			pFFref:test_vint_p_int_c(3);		--ref->const_member_func
+			pFFconstref:test_overload(1);		--const_ref->const_member_func
+			--pFFconstref:test_overload(1,1);		--const_ref->member_func    --error
+			--pFFconstref:test_vint_p_int(4);		--const_ref->member_func	--error 
+		end
+		function lua_test19()
 			local string = push_string();
 			read_lua_string(string);
 			local string_ref = push_string_ref();
 			read_lua_string_ref(string_ref);
 		end
-		function lua_test19()
+		function lua_test20()
 			local map_table = push_map();
 			print("print map_table")
 			for k,v in pairs(map_table) do
@@ -584,7 +604,7 @@ int main()
 				print(string.format("[%d]=%d",idx,v));
 			end
 		end
-		function lua_test20()
+		function lua_test21()
 			local function localtest(intval)
 				print("localtest():");
 				print(intval);
@@ -635,6 +655,7 @@ int main()
 	lua_tinker::call<void>(L, "lua_test18");
 	lua_tinker::call<void>(L, "lua_test19");
 	lua_tinker::call<void>(L, "lua_test20");
+	lua_tinker::call<void>(L, "lua_test21");
 	int b = lua_tinker::call<int>(L, "lua_test2", 1);
 	int c = 0;
 	double d = 0.0;

@@ -25,7 +25,8 @@
 #include<vector>
 
 #ifdef  _DEBUG
-#define USE_TYPEID_OF_USERDATA
+#define LUATINKER_USE_TYPEID_OF_USERDATA
+#define LUATINKER_USERDATA_HOLD_CONST
 #endif //  _DEBUG
 
 #define _ALLOW_SHAREDPTR_INVOKE
@@ -73,7 +74,7 @@ namespace lua_tinker
 	int meta_set(lua_State *L);
 	void push_meta(lua_State *L, const char* name);
 
-#ifdef USE_TYPEID_OF_USERDATA
+#ifdef LUATINKER_USE_TYPEID_OF_USERDATA
 	// inherit map
 	typedef std::map<size_t, size_t> InheritMap;
 	extern InheritMap s_inherit_map;
@@ -204,7 +205,7 @@ namespace lua_tinker
 		template<typename T>
 		explicit UserDataWapper(T* p)
 			: m_p(p)
-#ifdef USE_TYPEID_OF_USERDATA
+#ifdef LUATINKER_USE_TYPEID_OF_USERDATA
 			, m_type_idx(get_type_idx<T>())
 #endif
 		{}
@@ -214,13 +215,13 @@ namespace lua_tinker
 		explicit UserDataWapper(const T* p)
 			: m_p(const_cast<T*>(p))
 			,m_bConst(true)
-#ifdef USE_TYPEID_OF_USERDATA
+#ifdef LUATINKER_USE_TYPEID_OF_USERDATA
 			, m_type_idx(get_type_idx<T>())
 #endif
 		{}
 
 
-#ifdef USE_TYPEID_OF_USERDATA
+#ifdef LUATINKER_USE_TYPEID_OF_USERDATA
 		template<typename T>
 		explicit UserDataWapper(T* p, size_t nTypeIdx)
 			: m_p(p)
@@ -231,13 +232,14 @@ namespace lua_tinker
 		virtual ~UserDataWapper() {}
 		virtual bool isSharedPtr() const { return false; }
 		void* m_p;
-#ifdef USE_TYPEID_OF_USERDATA
+#ifdef LUATINKER_USE_TYPEID_OF_USERDATA
 		size_t  m_type_idx;
 #endif
-//#ifdef USERDATA_HOLD_CONST
-//		bool is_const() const {	return m_bConst;}
-//		bool m_bConst = false;
-//#endif
+
+#ifdef LUATINKER_USERDATA_HOLD_CONST
+		bool is_const() const {	return m_bConst;}
+		bool m_bConst = false;
+#endif
 	};
 
 	template <class... Args>
@@ -295,7 +297,7 @@ namespace lua_tinker
 	{
 		sharedptr2user(const std::shared_ptr<T>& rht)
 			:UserDataWapper(&m_holder
-#ifdef USE_TYPEID_OF_USERDATA
+#ifdef LUATINKER_USE_TYPEID_OF_USERDATA
 			, get_type_idx<std::shared_ptr<T>>()		
 #endif
 				)
@@ -445,7 +447,7 @@ namespace lua_tinker
 
 			UserDataWapper* pWapper = user2type<UserDataWapper*>(L, index);
 
-#ifdef USE_TYPEID_OF_USERDATA
+#ifdef LUATINKER_USE_TYPEID_OF_USERDATA
 			if (pWapper->m_type_idx != get_type_idx<base_type<_T>>())
 			{
 				//maybe derived to base
@@ -883,7 +885,7 @@ namespace lua_tinker
 		return false;
 	}
 
-	template <typename T>
+	template <typename T, bool bConstMemberFunc>
 	T* _read_classptr_from_index1(lua_State* L)
 	{
 		//index 1 must be userdata
@@ -899,6 +901,13 @@ namespace lua_tinker
 		else
 #endif
 		{
+#ifdef LUATINKER_USERDATA_HOLD_CONST
+			if(pWapper->is_const() == true && bConstMemberFunc == false)
+			{
+				lua_pushfstring(L, "const class_ptr %s can't invoke non-const member func.", get_class_name<T>());
+				lua_error(L);
+			}
+#endif
 			return void2type<T*>(pWapper->m_p);
 		}
 	}
@@ -910,7 +919,7 @@ namespace lua_tinker
 		virtual int apply(lua_State* L) = 0;
 	};
 
-	template <typename CT, typename RVal, typename ... Args>
+	template <bool bConst, typename CT, typename RVal, typename ... Args>
 	struct member_functor : public functor_base
 	{
 		using FuncType = RVal(CT::*)(Args...);
@@ -929,7 +938,7 @@ namespace lua_tinker
 			CHECK_CLASS_PTR(CT);
 			TRY_LUA_TINKER_INVOKE()
 			{
-				_invoke_function<RVal>(L, m_func, _read_classptr_from_index1<CT>(L));
+				_invoke_function<RVal>(L, m_func, _read_classptr_from_index1<CT, bConst>(L));
 				return 1;
 			}
 			CATCH_LUA_TINKER_INVOKE()
@@ -945,7 +954,7 @@ namespace lua_tinker
 			CHECK_CLASS_PTR(CT);
 			TRY_LUA_TINKER_INVOKE()
 			{
-				_invoke<RVal>(L, upvalue_<FuncType>(L), _read_classptr_from_index1<CT>(L));
+				_invoke<RVal>(L, upvalue_<FuncType>(L), _read_classptr_from_index1<CT, bConst>(L));
 				return 1;
 			}
 			CATCH_LUA_TINKER_INVOKE()
@@ -981,8 +990,8 @@ namespace lua_tinker
 			CHECK_CLASS_PTR(CT);
 			TRY_LUA_TINKER_INVOKE()
 			{
-				using FuncWarpType = member_functor<CT, RVal, Args...>;
-				_invoke_function<RVal>(L, upvalue_<FuncWarpType*>(L)->m_pfunc, _read_classptr_from_index1<CT>(L));
+				using FuncWarpType = member_functor<bConst, CT, RVal, Args...>;
+				_invoke_function<RVal>(L, upvalue_<FuncWarpType*>(L)->m_pfunc, _read_classptr_from_index1<CT, bConst>(L));
 				return 1;
 			}
 			CATCH_LUA_TINKER_INVOKE()
@@ -1011,9 +1020,15 @@ namespace lua_tinker
 	};
 
 	template<typename CT, typename RVal, typename ... Args>
-	member_functor<CT, RVal, Args...>* make_member_functor_ptr(RVal(CT::*func)(Args...))
+	decltype(auto) make_member_functor_ptr(RVal(CT::*func)(Args...))
 	{
-		using Functor_Warp = member_functor<CT, RVal, Args...>;
+		using Functor_Warp = member_functor<false, CT, RVal, Args...>;
+		return new Functor_Warp(func);
+	}
+	template<typename CT, typename RVal, typename ... Args>
+	decltype(auto) make_member_functor_ptr(RVal(CT::*func)(Args...)const)
+	{
+		using Functor_Warp = member_functor<true, CT, RVal, Args...>;
 		return new Functor_Warp(func);
 	}
 
@@ -1132,12 +1147,12 @@ namespace lua_tinker
 		void get(lua_State *L) 
 		{ 
 			CHECK_CLASS_PTR(T); 
-			push(L, _read_classptr_from_index1<T>(L)->*(_var));
+			push(L, _read_classptr_from_index1<T,true>(L)->*(_var));
 		}
 		void set(lua_State *L) 
 		{ 
 			CHECK_CLASS_PTR(T); 
-			_read_classptr_from_index1<T>(L)->*(_var) = read<V>(L, 3);
+			_read_classptr_from_index1<T,false>(L)->*(_var) = read<V>(L, 3);
 		}
 	};
 
@@ -1364,7 +1379,7 @@ namespace lua_tinker
 		}
 		lua_pop(L, 1);
 
-#ifdef USE_TYPEID_OF_USERDATA
+#ifdef LUATINKER_USE_TYPEID_OF_USERDATA
 		//add inheritence map
 		s_inherit_map[get_type_idx<base_type<T>>()] = get_type_idx<base_type<P>>();
 #endif
@@ -1391,12 +1406,24 @@ namespace lua_tinker
 	template<typename T, typename R, typename ...ARGS>
 	void _class_def(lua_State* L, R(T::*func)(ARGS...) )
 	{
-		using Functor_Warp = member_functor<T,R,ARGS...>;
+		using Functor_Warp = member_functor<false, T,R,ARGS...>;
 		using FunctionType = R(T::*)(ARGS...);
 		//register functor
 		new(lua_newuserdata(L, sizeof(FunctionType))) FunctionType(func);
 		lua_pushcclosure(L, &Functor_Warp::invoke, 1);
 	}
+
+#ifdef LUATINKER_USERDATA_HOLD_CONST
+	template<typename T, typename R, typename ...ARGS>
+	void _class_def(lua_State* L, R(T::*func)(ARGS...) const)
+	{
+		using Functor_Warp = member_functor<true, T, R, ARGS...>;
+		using FunctionType = R(T::*)(ARGS...) const;
+		//register functor
+		new(lua_newuserdata(L, sizeof(FunctionType))) FunctionType(func);
+		lua_pushcclosure(L, &Functor_Warp::invoke, 1);
+	}
+#else
 	template<typename T, typename R, typename ...ARGS>
 	void _class_def(lua_State* L, R(T::*func)(ARGS...) const)
 	{
@@ -1406,11 +1433,12 @@ namespace lua_tinker
 		new(lua_newuserdata(L, sizeof(FunctionType))) FunctionType(func);
 		lua_pushcclosure(L, &Functor_Warp::invoke, 1);
 	}
+#endif
 
 	template<typename T, typename R, typename ...ARGS>
 	void _class_def(lua_State* L, std::function<R(T*,ARGS...)> func)
 	{
-		using Functor_Warp = member_functor<T, R, ARGS...>;
+		using Functor_Warp = member_functor<false, T, R, ARGS...>;
 
 		new(lua_newuserdata(L, sizeof(Functor_Warp))) Functor_Warp(func);
 		//register metatable for gc

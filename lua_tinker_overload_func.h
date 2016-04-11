@@ -49,6 +49,11 @@ namespace lua_tinker
 			: m_sig(get_all_func_argv(func))
 		{
 		}
+		template<typename RVal, typename CT, typename ... Args>
+		function_signature(RVal(CT::*func)(Args...)const)
+			: m_sig(get_all_func_argv(func))
+		{
+		}
 
 		function_signature()
 		{}
