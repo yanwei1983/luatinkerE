@@ -574,7 +574,7 @@ int main()
 			pFFref:test_vint_p_int_c(3);		--ref->const_member_func
 			pFFconstref:test_overload(1);		--const_ref->const_member_func
 			--pFFconstref:test_overload(1,1);		--const_ref->member_func    --error
-			--pFFconstref:test_vint_p_int(4);		--const_ref->member_func	--error 
+			pFFconstref:test_vint_p_int(4);		--const_ref->member_func	--error 
 		end
 		function lua_test19()
 			local string = push_string();

@@ -214,7 +214,9 @@ namespace lua_tinker
 		template<typename T>
 		explicit UserDataWapper(const T* p)
 			: m_p(const_cast<T*>(p))
+#ifdef LUATINKER_USERDATA_HOLD_CONST
 			,m_bConst(true)
+#endif
 #ifdef LUATINKER_USE_TYPEID_OF_USERDATA
 			, m_type_idx(get_type_idx<T>())
 #endif
@@ -1427,7 +1429,7 @@ namespace lua_tinker
 	template<typename T, typename R, typename ...ARGS>
 	void _class_def(lua_State* L, R(T::*func)(ARGS...) const)
 	{
-		using Functor_Warp = member_functor<T, R, ARGS...>;
+		using Functor_Warp = member_functor<false, T, R, ARGS...>;
 		using FunctionType = R(T::*)(ARGS...) const;
 		//register functor
 		new(lua_newuserdata(L, sizeof(FunctionType))) FunctionType(func);
