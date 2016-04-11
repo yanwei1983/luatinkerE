@@ -27,7 +27,8 @@ class_add函数增加参数bInitShared来注册导出类对应的shared_ptr对�
 可以向read/push一个std::function对象来对应luafunction(使用LUA_REGISTRYINDEX和内嵌的lambda)，引用的std::function对象全部释放后自动从lua中unref, 如果lua关闭后再调用该对象将产生一个std::exception  
 通过定义 _ALLOW_SHAREDPTR_INVOKE 可以允许已注册的shared_ptr对象调用类成员函数，不允许shared_ptr对象到raw_ptr的自动转换  
 通过调用register_lua_close_callback注册回调函数，当lua关闭时回调  
-允许向lua导出常量对象，但是会丢失常量限定符，请注意  
+允许向lua导出常量对象，但是会丢失常量限定符，请注意 
+定义 LUATINKER_USERDATA_HOLD_CONST 将会储存const信息到userdata中，当调用成员函数时会检查是否允许调用    
 头文件lua_tinker_overload_func.h 是简单的将c++参数列表转换为luatype后存储到int64作为函数签名，运行时进行非精确匹配
 
 
@@ -44,6 +45,7 @@ can register a std::function obj through function_warp
 can read/push a function obj with luafunction(use LUA_REGISTRYINDEX and in-function lambda)  ,when all std::function obj was released,lua_function will unref from lua regtable, if invoke function when lua was closed will throw a std::exception  
 can def _ALLOW_SHAREDPTR_INVOKE to allow shared_ptr to invoke member_func  
 call register_lua_close_callback reg a callback func, when lua close it will be callback  
-allow to push a const obj/ref/pointer, but it will lost const qualifier, plz used carefully   
+allow to push a const obj/ref/pointer, but it will lost const qualifier, plz used carefully 
+define LUATINKER_USERDATA_HOLD_CONST will store const info in userdata,will check when call member function  
 header file "lua_tinker_overload_func.h" was simple convert c++ params list to luatype, then stored in int64 as a function signature, do non-exact matching when function name invoked
 
