@@ -118,20 +118,6 @@ namespace lua_tinker
 		void push_meta(lua_State *L, const char* name);
 	
 
-
-#ifdef LUATINKER_USERDATA_CHECK_TYPEINFO
-		// inherit map
-		typedef std::map<size_t, size_t> InheritMap;
-		extern InheritMap s_inherit_map;
-		bool IsInherit(size_t idTypeDerived, size_t idTypeBase);
-		template<typename T, typename P>
-		void addInheritMap()
-		{
-			s_inherit_map[get_type_idx<base_type<T>>()] = get_type_idx<base_type<P>>();
-		}
-
-#endif
-
 		template<typename T>
 		struct class_name
 		{
@@ -176,10 +162,23 @@ namespace lua_tinker
 		template<typename T>
 		constexpr const size_t get_type_idx()
 		{
-			return typeid(base_type<T>).hash_code();
+			//convert all T to T*'s typeid's hash_code
+			return typeid(T*).hash_code();
 		}
 
 
+#ifdef LUATINKER_USERDATA_CHECK_TYPEINFO
+		// inherit map
+		typedef std::map<size_t, size_t> InheritMap;
+		extern InheritMap s_inherit_map;
+		bool IsInherit(size_t idTypeDerived, size_t idTypeBase);
+		template<typename T, typename P>
+		void addInheritMap()
+		{
+			s_inherit_map[get_type_idx<base_type<T>>()] = get_type_idx<base_type<P>>();
+		}
+
+#endif
 
 		// type trait
 		template<typename T> struct class_name;
