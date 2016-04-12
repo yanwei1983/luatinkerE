@@ -489,6 +489,7 @@ int main()
 	lua_tinker::class_def<ff>(L, "test_p_ffcr", &ff::test_p_ffcr);
 	//lua_tinker::class_mem<ff>(L, "m_val", &ff::m_val);
 	lua_tinker::class_property<ff>(L, "m_val", &ff::getVal, &ff::setVal);
+	lua_tinker::class_property<ff>(L, "m_val_readonly", &ff::getVal, nullptr);
 
 	lua_tinker::class_def<ff>(L, "test_overload",
 									lua_tinker::args_type_overload_member_functor(	(int(ff::*)(int)const) (&ff::test_overload),
@@ -526,7 +527,8 @@ int main()
 			pFFShared.m_val = 77;
 			local raw_pff = pFFShared:_get_raw_ptr();
 			raw_pff.m_val = 88;
-			print(raw_pff.m_val);
+			print(raw_pff.m_val_readonly);
+			raw_pff.m_val_readonly = 99 --error property is readonly 
 		end
 		function lua_test12()
 			local pFF_nodef_Shared = make_ff_nodef_shared();

@@ -1555,8 +1555,8 @@ namespace lua_tinker
 	template<typename T, typename GET_FUNC, typename SET_FUNC>
 	struct member_property : var_base
 	{
-		GET_FUNC m_get_func;
-		SET_FUNC m_set_func;
+		GET_FUNC m_get_func = nullptr;
+		SET_FUNC m_set_func = nullptr;
 		member_property(GET_FUNC get_func, SET_FUNC set_func)
 			:m_get_func(get_func)
 			,m_set_func(set_func)
@@ -1565,13 +1565,40 @@ namespace lua_tinker
 
 		virtual void get(lua_State *L) override
 		{
+			_get<GET_FUNC>(L);
+		}
+
+		virtual void set(lua_State *L) override
+		{
+			_set<SET_FUNC>(L);
+		}
+
+		template<typename FUNC>
+		typename std::enable_if<!std::is_null_pointer<FUNC>::value, void>::type _get(lua_State *L)
+		{
 			CHECK_CLASS_PTR(T);
 			detail::push(L, (detail::_read_classptr_from_index1<T, true>(L)->*m_get_func)());
 		}
-		virtual void set(lua_State *L) override
+
+		template<typename FUNC>
+		typename std::enable_if<std::is_null_pointer<FUNC>::value, void>::type _get(lua_State *L)
+		{
+			lua_pushfstring(L, "property didn't have get_func");
+			lua_error(L);
+		}
+
+		template<typename FUNC>
+		typename std::enable_if<!std::is_null_pointer<FUNC>::value, void>::type _set(lua_State *L)
 		{
 			CHECK_CLASS_PTR(T);
 			(detail::_read_classptr_from_index1<T, false>(L)->*m_set_func)(detail::read<typename function_traits<SET_FUNC>::template argv<0>::type>(L, 3));
+		}
+
+		template<typename FUNC>
+		typename std::enable_if<std::is_null_pointer<FUNC>::value, void>::type _set(lua_State *L)
+		{
+			lua_pushfstring(L, "property didn't have set_func");
+			lua_error(L);
 		}
 	};
 
