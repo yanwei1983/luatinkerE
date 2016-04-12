@@ -225,16 +225,9 @@ namespace lua_tinker
 
 		//to val
 		template<typename T>
-		typename std::enable_if<!is_shared_ptr<T>::value && !std::is_pointer<T>::value && !std::is_reference<T>::value, base_type<T>>::type void2type(void* ptr)
+		typename std::enable_if<!std::is_pointer<T>::value && !std::is_reference<T>::value, base_type<T>>::type void2type(void* ptr)
 		{
 			return *(base_type<T>*)ptr;
-		}
-
-		//to shared_ptr, use weak_ptr to hold it
-		template<typename T>
-		typename std::enable_if<is_shared_ptr<T>::value, T>::type void2type(void* ptr)
-		{
-			return ((std::weak_ptr<get_shared_t<T>>*)ptr)->lock();
 		}
 
 		//userdata to T，T*，T&
@@ -430,14 +423,6 @@ namespace lua_tinker
 		{
 			new(lua_newuserdata(L, sizeof(val2user<T>))) val2user<T>(std::forward<T>(input));
 		}
-
-		// shared_ptr to lua 
-		template<typename T>
-		void sharedobject2lua(lua_State *L, std::shared_ptr<T> input)
-		{
-			if (input) new(lua_newuserdata(L, sizeof(sharedptr2user<T>))) sharedptr2user<T>(input); else lua_pushnil(L);
-		}
-
 
 
 		// get value from cclosure
@@ -818,6 +803,53 @@ namespace lua_tinker
 			}
 		};
 
+		template<typename T>
+		struct _stack_help< std::shared_ptr<T> >
+		{
+			static constexpr int cover_to_lua_type() { return LUA_TUSERDATA; }
+			static std::shared_ptr<T> _read(lua_State *L, int index)
+			{
+				if (!lua_isuserdata(L, index))
+				{
+					lua_pushfstring(L, "can't convert argument %d to class %s", index, get_class_name<T>());
+					lua_error(L);
+				}
+
+
+				UserDataWapper* pWapper = user2type<UserDataWapper*>(L, index);
+				if (pWapper->isSharedPtr() == false)
+				{
+					lua_pushfstring(L, "can't convert argument %d to class %s", index, get_class_name<T>());
+					lua_error(L);
+				}
+
+#ifdef LUATINKER_USERDATA_CHECK_TYPEINFO
+				if (pWapper->m_type_idx != get_type_idx<std::shared_ptr<T>>())
+				{
+					//maybe derived to base
+					if (IsInherit(pWapper->m_type_idx, get_type_idx<std::shared_ptr<T>>()) == false)
+					{
+						lua_pushfstring(L, "can't convert argument %d to class %s", index, get_class_name<T>());
+						lua_error(L);
+					}
+				}
+#endif
+				sharedptr2user<T>* pSharedWapper = static_cast<sharedptr2user<T>*>(pWapper);
+				return pSharedWapper->m_holder.lock();
+
+			}
+			//shared_ptr to lua
+			static void _push(lua_State *L, const std::shared_ptr<T>& val)
+			{
+				if (val)
+					new(lua_newuserdata(L, sizeof(sharedptr2user<T>))) sharedptr2user<T>(val);
+				else 
+					lua_pushnil(L);
+
+				push_meta(L, get_class_name<std::shared_ptr<T>>());
+				lua_setmetatable(L, -2);
+			}
+		};
 
 		//read_weap
 		template<typename T>
@@ -949,9 +981,8 @@ namespace lua_tinker
 			if (pWapper->isSharedPtr())
 			{
 				//try covert shared_ptr<T> to T*, don't need check type_idx because call invoke,must be obj:func(), use matatable __parent
-				typedef std::shared_ptr<T>  shared_obj;
-				shared_obj shared_ptr = void2type<shared_obj>(pWapper->m_p);
-				return void2type<T*>(shared_ptr.get());
+				sharedptr2user<T>* pSharedWapper = static_cast<sharedptr2user<T>*>(pWapper);
+				return pSharedWapper->m_holder.lock().get();
 			}
 			else
 #endif
@@ -1514,6 +1545,19 @@ namespace lua_tinker
 			//register functor
 			lua_pushstring(L, name);
 			detail::_push_calss_functor(L, std::forward<Func>(func) );
+			lua_rawset(L, -3);
+		}
+		lua_pop(L, 1);
+	}
+	template<typename T, typename Func>
+	void class_def_static(lua_State* L, const char* name, Func&& func)
+	{
+		detail::push_meta(L, detail::get_class_name<T>());
+		if (lua_istable(L, -1))
+		{
+			//register functor
+			lua_pushstring(L, name);
+			detail::_push_functor(L, std::forward<Func>(func));
 			lua_rawset(L, -3);
 		}
 		lua_pop(L, 1);

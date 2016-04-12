@@ -146,6 +146,11 @@ public:
 		return 0;
 	}
 
+	static int get_static_val(int v)
+	{
+		return s_val+v;
+	}
+
 	int getVal()const { return m_val; }
 	void setVal(int v) { m_val = v; }
 
@@ -489,6 +494,8 @@ int main()
 	lua_tinker::class_def<ff>(L, "test_vint_p_int_ff", &ff::test_vint_p_int_ff);
 	lua_tinker::class_def<ff>(L, "test_p_ff", &ff::test_p_ff);
 	lua_tinker::class_def<ff>(L, "test_p_ffcr", &ff::test_p_ffcr);
+	lua_tinker::class_def_static<ff>(L, "get_static_val", &ff::get_static_val);
+
 	//lua_tinker::class_mem<ff>(L, "m_val", &ff::m_val);
 	lua_tinker::class_property<ff>(L, "m_val", &ff::getVal, &ff::setVal);
 	lua_tinker::class_property<ff>(L, "m_val_readonly", &ff::getVal, nullptr);
@@ -569,6 +576,7 @@ int main()
 			pFF:test_vint_p_int_ff(123,nil);
 			pFF:test_vint_p_int_ff(123,0);
 			print(pFF.s_val);
+			return pFF.get_static_val(1);		--invoke pFF:get_static_val(1) will call get_stati_val(pFF,1);
 		end
 		function lua_test16()
 			local luaFF = ff(1,2,3);
@@ -677,7 +685,7 @@ int main()
 	lua_tinker::call<void>(L, "lua_test12");
 	lua_tinker::call<void>(L, "lua_test13");
 	lua_tinker::call<void>(L, "lua_test14");
-	lua_tinker::call<void>(L, "lua_test15");
+	int result = lua_tinker::call<int>(L, "lua_test15");
 	lua_tinker::call<void>(L, "lua_test16");
 	lua_tinker::call<void>(L, "lua_test17");
 	lua_tinker::call<void>(L, "lua_test18");
