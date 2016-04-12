@@ -7,6 +7,10 @@
 namespace lua_tinker
 {
 
+	//convert args to luatype store in longlong
+	//so void(int) = LUA_TNUMBER = 0x3, void(double) = LUA_TNUMBER = 0x3, they have the same signature,
+	//void(int,a*) = LUA_TNUMBER,LUA_TUSERDATA = 0x73 , void(long long,b*) = LUA_TNUMBER,LUA_TUSERDATA = 0x73 , they have the same signature,
+	//and use longlong to stroe,so we only support 16 args
 
 	namespace detail
 	{
@@ -132,11 +136,8 @@ namespace lua_tinker
 		template<typename F>
 		void emplace(F f)
 		{
-			bool bInsertd = false;
 			constexpr long long sig = detail::function_signature<F>::m_sig;
-			std::tie(std::ignore, bInsertd) = 
-				m_overload_funcmap.emplace(sig, std::shared_ptr<detail::functor_base>(detail::make_functor_ptr(f)));
-			assert(bInsertd == true);
+			m_overload_funcmap.emplace(sig, std::shared_ptr<detail::functor_base>(detail::make_functor_ptr(f)));
 		}
 		template<typename T,typename... Args>
 		void emplace(T f, Args...args)
@@ -156,11 +157,8 @@ namespace lua_tinker
 		template<typename F>
 		void emplace(F&& f)
 		{
-			bool bInsertd = false;
 			constexpr long long sig = detail::function_signature<F>::m_sig;
-			std::tie(std::ignore, bInsertd) = 
-				m_overload_funcmap.emplace(sig, std::shared_ptr<detail::functor_base>(detail::make_member_functor_ptr(f)) );
-			assert(bInsertd == true);
+			m_overload_funcmap.emplace(sig, std::shared_ptr<detail::functor_base>(detail::make_member_functor_ptr(f)) );
 		}
 		template<typename T, typename... Args>
 		void emplace(T f, Args...args)
@@ -195,11 +193,8 @@ namespace lua_tinker
 		{
 			static void apply(overload_funcmap_t& map)
 			{
-				bool bInsertd = false;
 				constexpr const long long sig = detail::function_signature<void(Args...)>::m_sig;
-				std::tie(std::ignore, bInsertd) = 
-					map.emplace(sig, std::shared_ptr<detail::functor_base>(new constructor<T, Args...>()));
-				assert(bInsertd == true);
+				map.emplace(sig, std::shared_ptr<detail::functor_base>(new constructor<T, Args...>()));
 			}
 		};
 			
