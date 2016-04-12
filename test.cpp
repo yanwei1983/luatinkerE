@@ -150,7 +150,9 @@ public:
 	void setVal(int v) { m_val = v; }
 
 	int m_val = 0;
+	static int s_val;
 };
+int ff::s_val;
 
 ff g_ff;
 ff* test_v_ff()
@@ -490,6 +492,7 @@ int main()
 	//lua_tinker::class_mem<ff>(L, "m_val", &ff::m_val);
 	lua_tinker::class_property<ff>(L, "m_val", &ff::getVal, &ff::setVal);
 	lua_tinker::class_property<ff>(L, "m_val_readonly", &ff::getVal, nullptr);
+	lua_tinker::class_static_mem<ff>(L, "s_val", &ff::s_val);
 
 	lua_tinker::class_def<ff>(L, "test_overload",
 									lua_tinker::args_type_overload_member_functor(	(int(ff::*)(int)const) (&ff::test_overload),
@@ -527,6 +530,7 @@ int main()
 			pFFShared.m_val = 77;
 			local raw_pff = pFFShared:_get_raw_ptr();
 			raw_pff.m_val = 88;
+			raw_pff.s_val = 88;
 			print(raw_pff.m_val_readonly);
 			raw_pff.m_val_readonly = 99 --error property is readonly 
 		end
@@ -564,6 +568,7 @@ int main()
 			pFF:test_vint_p_int_ff(123,pFF);
 			pFF:test_vint_p_int_ff(123,nil);
 			pFF:test_vint_p_int_ff(123,0);
+			print(pFF.s_val);
 		end
 		function lua_test16()
 			local luaFF = ff(1,2,3);

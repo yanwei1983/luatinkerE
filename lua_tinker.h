@@ -107,6 +107,11 @@ namespace lua_tinker
 	template<typename T, typename BASE, typename VAR>
 	void class_mem(lua_State* L, const char* name, VAR BASE::*val);
 
+	// Tinker Class Static Variables
+	template<typename T, typename VAR>
+	void class_static_mem(lua_State* L, const char* name, VAR *val);
+
+	// Tinker Class Property
 	template<typename T, typename GET_FUNC, typename SET_FUNC>
 	void class_property(lua_State* L, const char* name, GET_FUNC&& get_func, SET_FUNC&& set_func);
 
@@ -1552,6 +1557,37 @@ namespace lua_tinker
 		}
 		lua_pop(L, 1);
 	}
+
+
+	template<typename V>
+	struct static_mem_var : var_base
+	{
+		V *_var;
+		static_mem_var(V *val) : _var(val) {}
+		virtual void get(lua_State *L) override
+		{
+			detail::push(L, *(_var));
+		}
+		virtual void set(lua_State *L) override
+		{
+			*(_var) = detail::read<V>(L, 3);
+		}
+	};
+
+	// Tinker Class Variables
+	template<typename T, typename VAR>
+	void class_static_mem(lua_State* L, const char* name, VAR *val)
+	{
+		detail::push_meta(L, detail::get_class_name<T>());
+		if (lua_istable(L, -1))
+		{
+			lua_pushstring(L, name);
+			new(lua_newuserdata(L, sizeof(static_mem_var<VAR>))) static_mem_var<VAR>(val);
+			lua_rawset(L, -3);
+		}
+		lua_pop(L, 1);
+	}
+
 	template<typename T, typename GET_FUNC, typename SET_FUNC>
 	struct member_property : var_base
 	{
