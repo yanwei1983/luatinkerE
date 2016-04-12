@@ -11,7 +11,7 @@ namespace lua_tinker
 	namespace detail
 	{
 		template<typename Func, std::size_t index>
-		constexpr static int get_func_argv()
+		constexpr int get_func_argv()
 		{
 			return _stack_help<typename function_traits<Func>::template argv<index>::type>::cover_to_lua_type();
 		}
@@ -19,30 +19,24 @@ namespace lua_tinker
 		template<typename Func, std::size_t args_num>
 		struct count_all_func_argv
 		{
-			constexpr static const long long result = ((get_func_argv<Func, (args_num - 1)>() << ((args_num - 1) * 4)) + count_all_func_argv<Func, (args_num - 1)>::result);
+			static constexpr const long long result = ((get_func_argv<Func, (args_num - 1)>() << ((args_num - 1) * 4)) + count_all_func_argv<Func, (args_num - 1)>::result);
 		};
 		template<typename Func>
 		struct count_all_func_argv<Func, 1>
 		{
-			constexpr static const long long result = get_func_argv<Func, 0>();
+			static constexpr const long long result = get_func_argv<Func, 0>();
 		};
 
 		template<typename Func>
 		struct count_all_func_argv<Func, 0>
 		{
-			constexpr static const long long result = 0;
+			static constexpr const long long result = 0;
 		};
-
-		template<typename Func>
-		constexpr static long long get_all_func_argv()
-		{
-			return count_all_func_argv<Func, function_traits<Func>::argc>::result;
-		}
 
 		template<typename T>
 		struct function_signature
 		{
-			static constexpr const long long m_sig = get_all_func_argv<T>();
+			static constexpr const long long m_sig = count_all_func_argv<T, function_traits<T>::argc>::result;
 		};
 		
 
@@ -139,7 +133,9 @@ namespace lua_tinker
 		void emplace(F f)
 		{
 			bool bInsertd = false;
-			std::tie(std::ignore, bInsertd) = m_overload_funcmap.emplace(detail::function_signature<F>::m_sig, std::shared_ptr<detail::functor_base>(detail::make_functor_ptr(f)));
+			constexpr long long sig = detail::function_signature<F>::m_sig;
+			std::tie(std::ignore, bInsertd) = 
+				m_overload_funcmap.emplace(sig, std::shared_ptr<detail::functor_base>(detail::make_functor_ptr(f)));
 			assert(bInsertd == true);
 		}
 		template<typename T,typename... Args>
@@ -161,7 +157,9 @@ namespace lua_tinker
 		void emplace(F&& f)
 		{
 			bool bInsertd = false;
-			std::tie(std::ignore, bInsertd) = m_overload_funcmap.emplace(detail::function_signature<F>::m_sig, std::shared_ptr<detail::functor_base>(detail::make_member_functor_ptr(f)) );
+			constexpr long long sig = detail::function_signature<F>::m_sig;
+			std::tie(std::ignore, bInsertd) = 
+				m_overload_funcmap.emplace(sig, std::shared_ptr<detail::functor_base>(detail::make_member_functor_ptr(f)) );
 			assert(bInsertd == true);
 		}
 		template<typename T, typename... Args>
@@ -198,7 +196,9 @@ namespace lua_tinker
 			static void apply(overload_funcmap_t& map)
 			{
 				bool bInsertd = false;
-				std::tie(std::ignore, bInsertd) = map.emplace(detail::function_signature<void(Args...)>::m_sig, std::shared_ptr<detail::functor_base>(new constructor<T, Args...>()));
+				constexpr const long long sig = detail::function_signature<void(Args...)>::m_sig;
+				std::tie(std::ignore, bInsertd) = 
+					map.emplace(sig, std::shared_ptr<detail::functor_base>(new constructor<T, Args...>()));
 				assert(bInsertd == true);
 			}
 		};

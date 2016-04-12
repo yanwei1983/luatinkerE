@@ -1572,7 +1572,7 @@ namespace lua_tinker
 		virtual void set(lua_State *L) override
 		{
 			CHECK_CLASS_PTR(T);
-			(detail::_read_classptr_from_index1<T, false>(L)->*m_set_func)(detail::read<typename function_traits<SET_FUNC>::argv<0>::type>(L, 3));
+			(detail::_read_classptr_from_index1<T, false>(L)->*m_set_func)(detail::read<typename function_traits<SET_FUNC>::template argv<0>::type>(L, 3));
 		}
 	};
 
