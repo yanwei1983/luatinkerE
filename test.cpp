@@ -557,32 +557,50 @@ int main()
 		lua_tinker::dostring(L, luabuf.c_str());
 		return  lua_tinker::call<bool>(L, "lua_test_shared_1");
 	};
+#ifdef LUATINKER_USERDATA_CHECK_TYPEINFO
 	test_func_set["test_lua_shared_2"]  = [L]()->bool
 	{
 		std::string luabuf =
 			R"(function lua_test_shared_2()
 					local pFFShared =  make_ff();
-					return visot_ff(pFFShared);		--error sharedptr->raw_ptr				
+					visot_ff(pFFShared);		--error sharedptr->raw_ptr				
 				end
 			)";
 
 		lua_tinker::dostring(L, luabuf.c_str());
 		printf("error: error sharedptr->raw_ptr \n");
-		return  false == lua_tinker::call<bool>(L, "lua_test_shared_2");
+		try
+		{
+			lua_tinker::call_throw<void>(L, "lua_test_shared_2");
+			return false;
+		}
+		catch (lua_tinker::lua_call_err&)
+		{
+			return true;
+		}
 	};
 	test_func_set["test_lua_shared_3"]  = [L]()->bool
 	{
 		std::string luabuf =
 			R"(function lua_test_shared_3()
 					local pFFShared =  make_ff();
-					return visot_ff_weak(pFFShared);	--error shared_ptr to weak_ptr
+					visot_ff_weak(pFFShared);	--error shared_ptr to weak_ptr
 				end
 			)";
 
 		lua_tinker::dostring(L, luabuf.c_str());
 		printf("error: error shared_ptr to weak_ptr \n");
-		return false == lua_tinker::call<bool>(L, "lua_test_shared_3");
+		try
+		{
+			lua_tinker::call_throw<void>(L, "lua_test_shared_3");
+			return false;
+		}
+		catch (lua_tinker::lua_call_err&)
+		{
+			return true;
+		}
 	};
+#endif
 
 	test_func_set["test_lua_shared_4"]  = [L]()->bool
 	{
@@ -624,19 +642,29 @@ int main()
 		return  lua_tinker::call<bool>(L, "lua_test_weak_1");
 	};
 
+#ifdef LUATINKER_USERDATA_CHECK_TYPEINFO
+
 	test_func_set["test_lua_weak_2"]  = [L]()->bool
 	{
 		std::string luabuf =
 			R"(function test_lua_weak_2()
 					local pFFWeak = make_ff_weak();
-					return visot_ff(pFFWeak);		--error weak_ptr to shared_ptr
+					visot_ff(pFFWeak);		--error weak_ptr to shared_ptr
 				end
 			)";
 		lua_tinker::dostring(L, luabuf.c_str());
 		printf("error: error weak_ptr to shared_ptr \n");
-		return false == lua_tinker::call<bool>(L, "test_lua_weak_2");
+		try
+		{
+			lua_tinker::call_throw<void>(L, "test_lua_weak_2");
+			return false;
+		}
+		catch (lua_tinker::lua_call_err&)
+		{
+			return true;
+		}
 	};
-
+#endif
 
 	test_func_set["test_lua_shared_invoke_1"]  = [L]()->bool
 	{
@@ -704,12 +732,19 @@ int main()
 			R"(function test_lua_member_readonly_2()
 					local pFF1 = ff(1);
 					pFF1.m_prop_readonly = 88; --error readonly
-					return false;
 				end
 			)";
 		lua_tinker::dostring(L, luabuf.c_str());
 		printf("error: visit porp readonly \n");
-		return  false == lua_tinker::call<bool>(L, "test_lua_member_readonly_2");
+		try
+		{
+			lua_tinker::call_throw<void>(L, "test_lua_member_readonly_2");
+			return false;
+		}
+		catch (lua_tinker::lua_call_err&)
+		{
+			return true;
+		}
 	};
 	test_func_set["test_lua_hold_shared_ptr"]  = [L]()->bool
 	{
@@ -758,26 +793,44 @@ int main()
 		std::string luabuf =
 			R"(function test_lua_nodef_shared_3()
 					local pFF_nodef = make_ff_nodef();
-					return visot_ff_nodef_shared(pFF_nodef);	--shared_ptr to raw_ptr
+					visot_ff_nodef_shared(pFF_nodef);	--shared_ptr to raw_ptr
 				end
 			)";
 		lua_tinker::dostring(L, luabuf.c_str());
 		printf("error: shared_ptr to raw_ptr \n");
-		return false == lua_tinker::call<bool>(L, "test_lua_nodef_shared_3");
+		try
+		{
+			lua_tinker::call_throw<void>(L, "test_lua_nodef_shared_3");
+			return false;
+		}
+		catch (lua_tinker::lua_call_err&)
+		{
+			return true;
+		}
 	};
+#ifdef LUATINKER_USERDATA_CHECK_TYPEINFO
 
 	test_func_set["test_lua_nodef_shared_4"] = [L]()->bool
 	{
 		std::string luabuf =
 			R"(function test_lua_nodef_shared_4()
 					local pFF_nodef_Shared = make_ff_nodef_shared();
-					return visot_ff_nodef(pFF_nodef_Shared);	--shared_ptr to raw_ptr
+					visot_ff_nodef(pFF_nodef_Shared);	--shared_ptr to raw_ptr
 				end
 			)";
 		lua_tinker::dostring(L, luabuf.c_str());
 		printf("error: shared_ptr to raw_ptr \n");
-		return false == lua_tinker::call<bool>(L, "test_lua_nodef_shared_4");
+		try
+		{
+			lua_tinker::call_throw<void>(L, "test_lua_nodef_shared_4");
+			return false;
+		}
+		catch (lua_tinker::lua_call_err&)
+		{
+			return true;
+		}
 	};
+#endif
 
 	test_func_set["test_lua_cfunc_1"]  = [L]()->bool
 	{
@@ -943,18 +996,28 @@ int main()
 		lua_tinker::dostring(L, luabuf.c_str());
 		return  lua_tinker::call<bool>(L, "test_lua_member_func_3");
 	};
+#ifdef LUATINKER_USERDATA_CHECK_CONST
 	test_func_set["test_lua_member_func_4"]  = [L]()->bool
 	{
 		std::string luabuf =
 			R"(function test_lua_member_func_4()
 					local pFF = get_gff_cref();
-					return pFF:test_memfn();	--error const_ptr -> member_func
+					pFF:test_memfn();	--error const_ptr -> member_func
 				end
 			)";
 		lua_tinker::dostring(L, luabuf.c_str());
 		printf("error:const_ptr -> member_func \n");
-		return false == lua_tinker::call<bool>(L, "test_lua_member_func_4");
+		try
+		{
+			lua_tinker::call_throw<void>(L, "test_lua_member_func_4");
+			return false;
+		}
+		catch (lua_tinker::lua_call_err&)
+		{
+			return true;
+		}
 	};
+#endif
 	test_func_set["test_lua_member_func_5"]  = [L]()->bool
 	{
 		std::string luabuf =

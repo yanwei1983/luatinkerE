@@ -1413,8 +1413,37 @@ namespace lua_tinker
 		{
 			detail::push_args(L, std::forward<Args&&>(arg)...);
 
-			if (lua_pcall(L, sizeof...(Args), detail::pop<RVal>::nresult, errfunc) != 0)
+			if (lua_pcall(L, sizeof...(Args), detail::pop<RVal>::nresult, errfunc) != LUA_OK)
 			{
+				return RVal();
+			}
+		}
+		else
+		{
+			print_error(L, "lua_tinker::call() attempt to call global `%s' (not a function)", name);
+		}
+
+		lua_remove(L, errfunc);
+		return detail::pop<RVal>::apply(L);
+	}
+
+	class lua_call_err : public std::exception
+	{};
+	template<typename RVal, typename ...Args>
+	RVal call_throw(lua_State* L, const char* name, Args&&... arg)
+	{
+
+		lua_pushcclosure(L, on_error, 0);
+		int errfunc = lua_gettop(L);
+
+		lua_getglobal(L, name);
+		if (lua_isfunction(L, -1))
+		{
+			detail::push_args(L, std::forward<Args&&>(arg)...);
+
+			if (lua_pcall(L, sizeof...(Args), detail::pop<RVal>::nresult, errfunc) != LUA_OK)
+			{
+				throw lua_call_err();
 			}
 		}
 		else
