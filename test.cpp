@@ -542,7 +542,8 @@ int main()
 				end
 			)";
 		lua_tinker::dostring(L, luabuf.c_str());
-		return (unsigned long long(0x8000000000000001) + (0x8000000000000000 + 1)) == lua_tinker::call<unsigned long long>(L, "lua_test_int64_3");
+		static constexpr const unsigned long long result = (unsigned long long)(0x8000000000000001) + ((unsigned long long)(0x8000000000000000) + 1);
+		return result == lua_tinker::call<unsigned long long>(L, "lua_test_int64_3");
 	};
 	
 	test_func_set["test_lua_shared_1"]  = [L]()->bool
