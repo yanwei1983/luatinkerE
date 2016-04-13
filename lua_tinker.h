@@ -104,6 +104,8 @@ namespace lua_tinker
 	// Tinker Class Functions
 	template<typename T, typename Func>
 	void class_def(lua_State* L, const char* name, Func&& func);
+	template<typename T, typename Func>
+	void class_def_static(lua_State* L, const char* name, Func&& func)
 
 	// Tinker Class Variables
 	template<typename T, typename BASE, typename VAR>
