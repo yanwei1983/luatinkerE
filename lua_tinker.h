@@ -88,7 +88,7 @@ namespace lua_tinker
 	void decl(lua_State* L, const char* name, T object);
 	// call lua func
 	template<typename RVal, typename ...Args>
-	RVal call(lua_State* L, const char* name, Args... arg);
+	RVal call(lua_State* L, const char* name, Args&&... arg);
 
 
 	// class init
@@ -197,13 +197,13 @@ namespace lua_tinker
 		template<typename T>
 		void push(lua_State *L, T ret);	//here need a T/T*/T& not a T&&
 
-
 		template<typename R, typename ...ARGS>
 		void _push_functor(lua_State* L, R(func)(ARGS...));
 		template<typename R, typename ...ARGS>
-		void _push_functor(lua_State* L, std::function<R(ARGS...)> func);
-		template<typename overload_functor>
-		void _push_functor(lua_State* L, overload_functor&& functor);
+		void _push_functor(lua_State* L, const std::function<R(ARGS...)>& func);
+		template<typename R, typename ...ARGS>
+		void _push_functor(lua_State* L, std::function<R(ARGS...)>&& func);
+
 
 
 
@@ -275,6 +275,8 @@ namespace lua_tinker
 
 			virtual ~UserDataWapper() {}
 			virtual bool isSharedPtr() const { return false; }
+			virtual bool isSharedPtr_HoldFromLua() const { return false; }
+
 			void* m_p;
 #ifdef LUATINKER_USERDATA_CHECK_TYPEINFO
 			size_t  m_type_idx;
@@ -337,6 +339,25 @@ namespace lua_tinker
 		};
 
 		template<typename T>
+		struct weakptr2user : UserDataWapper
+		{
+			weakptr2user(const std::shared_ptr<T>& rht)
+				:UserDataWapper(&m_holder
+#ifdef LUATINKER_USERDATA_CHECK_TYPEINFO
+					, get_type_idx<std::shared_ptr<T>>()
+#endif
+					)
+				, m_holder(rht)
+			{}
+
+			virtual bool isSharedPtr() const override { return true; }
+			//use weak_ptr to hold it
+			~weakptr2user() { m_holder.reset(); }
+
+			std::weak_ptr<T> m_holder;
+		};
+
+		template<typename T>
 		struct sharedptr2user : UserDataWapper
 		{
 			sharedptr2user(const std::shared_ptr<T>& rht)
@@ -347,11 +368,20 @@ namespace lua_tinker
 					)
 				, m_holder(rht)
 			{}
+			sharedptr2user(std::shared_ptr<T>&& rht)
+				:UserDataWapper(&m_holder
+#ifdef LUATINKER_USERDATA_CHECK_TYPEINFO
+					, get_type_idx<std::shared_ptr<T>>()
+#endif
+					)
+				, m_holder(std::forward<std::shared_ptr<T>>(rht))
+			{}
 			virtual bool isSharedPtr() const override { return true; }
+			virtual bool isSharedPtr_HoldFromLua() const override { return true; }
 			//use weak_ptr to hold it
 			~sharedptr2user() { m_holder.reset(); }
 
-			std::weak_ptr<T> m_holder;
+			std::shared_ptr<T> m_holder;
 		};
 
 		// pop a value from lua stack
@@ -399,9 +429,9 @@ namespace lua_tinker
 		// push value_list to lua stack //here need a T/T*/T& not a T&&
 		static void push_args(lua_State *L) {}
 		template<typename T, typename ...Args>
-		void push_args(lua_State *L, T ret, Args...args) { push<T>(L, std::forward<T>(ret)); push_args<Args...>(L, std::forward<Args>(args)...); }
+		void push_args(lua_State *L, T&& ret, Args&&...args) { push(L, std::forward<T>(ret)); push_args<Args...>(L, std::forward<Args>(args)...); }
 		template<typename T, typename ...Args>
-		void push_args(lua_State *L, T ret) { push<T>(L, std::forward<T>(ret)); }
+		void push_args(lua_State *L, T&& ret) { push(L, std::forward<T>(ret)); }
 
 
 		// to lua
@@ -508,21 +538,13 @@ namespace lua_tinker
 
 			//obj to lua
 			template<typename _T>
-			static typename std::enable_if<!is_shared_ptr<_T>::value, void>::type _push(lua_State *L, _T&& val)
+			static void _push(lua_State *L, _T&& val)
 			{
 				object2lua(L, std::forward<_T>(val));
 				push_meta(L, get_class_name<_T>());
 				lua_setmetatable(L, -2);
 			}
 
-			//shared_ptr to lua
-			template<typename _T>
-			static typename std::enable_if<is_shared_ptr<_T>::value, void>::type _push(lua_State *L, _T&& val)
-			{
-				sharedobject2lua(L, std::forward<_T>(val));
-				push_meta(L, get_class_name<_T>());
-				lua_setmetatable(L, -2);
-			}
 		};
 
 		template<>
@@ -781,7 +803,7 @@ namespace lua_tinker
 
 					lua_rawgeti(L, LUA_REGISTRYINDEX, callback_ref->m_regidx);
 
-					push_args(L, arg...);
+					push_args(L, std::forward<Args>(arg)...);
 
 					if (lua_pcall(L, sizeof...(Args), pop<RVal>::nresult, errfunc) != 0)
 					{
@@ -797,9 +819,9 @@ namespace lua_tinker
 
 			}
 
-			static void  _push(lua_State *L, const std::function<RVal(Args...)>& func)
+			static void  _push(lua_State *L, std::function<RVal(Args...)>&& func)
 			{
-				_push_functor(L, func);
+				_push_functor(L, std::forward<std::function<RVal(Args...)>>(func));
 			}
 		};
 
@@ -834,16 +856,34 @@ namespace lua_tinker
 					}
 				}
 #endif
-				sharedptr2user<T>* pSharedWapper = static_cast<sharedptr2user<T>*>(pWapper);
-				return pSharedWapper->m_holder.lock();
+				if (pWapper->isSharedPtr_HoldFromLua())
+				{
+					sharedptr2user<T>* pSharedWapper = static_cast<sharedptr2user<T>*>(pWapper);
+					return pSharedWapper->m_holder;
+				}
+				else
+				{
+					weakptr2user<T>* pSharedWapper = static_cast<weakptr2user<T>*>(pWapper);
+					return pSharedWapper->m_holder.lock();
+				}
 
 			}
 			//shared_ptr to lua
-			static void _push(lua_State *L, const std::shared_ptr<T>& val)
+			static void _push(lua_State *L, std::shared_ptr<T>&& val)
 			{
 				if (val)
-					new(lua_newuserdata(L, sizeof(sharedptr2user<T>))) sharedptr2user<T>(val);
-				else 
+				{
+					if (val.use_count() == 1)	//last count,if we didn't hold it, it will lost
+					{
+						new(lua_newuserdata(L, sizeof(sharedptr2user<T>))) sharedptr2user<T>(std::forward<std::shared_ptr<T>>(val));
+					}
+					else
+					{
+						new(lua_newuserdata(L, sizeof(weakptr2user<T>))) weakptr2user<T>(val);
+					}
+
+				}
+				else
 					lua_pushnil(L);
 
 				push_meta(L, get_class_name<std::shared_ptr<T>>());
@@ -878,6 +918,11 @@ namespace lua_tinker
 		//push warp
 		template<typename T>
 		void push(lua_State *L, T ret)	//here need a T/T*/T& not a T&&
+		{
+			_stack_help<T>::_push(L, std::forward<T>(ret));
+		}
+		template<typename T>
+		void push_rv(lua_State *L, T&& ret)	//here need a T/T*/T& not a T&&
 		{
 			_stack_help<T>::_push(L, std::forward<T>(ret));
 		}
@@ -981,8 +1026,17 @@ namespace lua_tinker
 			if (pWapper->isSharedPtr())
 			{
 				//try covert shared_ptr<T> to T*, don't need check type_idx because call invoke,must be obj:func(), use matatable __parent
-				sharedptr2user<T>* pSharedWapper = static_cast<sharedptr2user<T>*>(pWapper);
-				return pSharedWapper->m_holder.lock().get();
+				if (pWapper->isSharedPtr_HoldFromLua())
+				{
+					sharedptr2user<T>* pSharedWapper = static_cast<sharedptr2user<T>*>(pWapper);
+					return pSharedWapper->m_holder.get();
+				}
+				else
+				{
+					weakptr2user<T>* pSharedWapper = static_cast<weakptr2user<T>*>(pWapper);
+					return pSharedWapper->m_holder.lock().get();
+				}
+				
 			}
 			else
 #endif
@@ -1012,7 +1066,10 @@ namespace lua_tinker
 			typedef std::function< RVal(CT*, Args...) > FunctionType;
 			FunctionType m_func;
 
-			member_functor(FunctionType func)
+			member_functor(const FunctionType& func)
+				:m_func(func)
+			{}
+			member_functor(FunctionType&& func)
 				:m_func(func)
 			{}
 
@@ -1055,7 +1112,7 @@ namespace lua_tinker
 			static auto _invoke(lua_State *L, FuncType&& func, CT* pClassPtr)
 				->typename std::enable_if<!std::is_void<T>::value, void>::type
 			{
-				push<RVal>(L, direct_invoke_member_func<2, RVal, FuncType, CT, Args...>(std::forward<FuncType>(func), L, pClassPtr));
+				push_rv<RVal>(L, direct_invoke_member_func<2, RVal, FuncType, CT, Args...>(std::forward<FuncType>(func), L, pClassPtr));
 			}
 
 			template<typename T>
@@ -1093,7 +1150,7 @@ namespace lua_tinker
 			static auto _invoke_function(lua_State *L, F&& func, CT* pClassPtr)
 				->typename std::enable_if<!std::is_void<T>::value, void>::type
 			{
-				push<RVal>(L, direct_invoke_member_func<2, RVal, FunctionType, CT, Args...>(std::forward<FunctionType>(func), L, pClassPtr));
+				push_rv<RVal>(L, direct_invoke_member_func<2, RVal, FunctionType, CT, Args...>(std::forward<FunctionType>(func), L, pClassPtr));
 			}
 
 			template<typename T, typename F>
@@ -1117,7 +1174,10 @@ namespace lua_tinker
 
 			FunctionType m_func;
 
-			functor(FunctionType func)
+			functor(const FunctionType& func)
+				:m_func(func)
+			{}
+			functor(FunctionType&& func)
 				:m_func(func)
 			{}
 
@@ -1157,7 +1217,7 @@ namespace lua_tinker
 			template<typename T>
 			static typename std::enable_if<!std::is_void<T>::value, void>::type _invoke(lua_State *L)
 			{
-				push<RVal>(L, direct_invoke_func<1, RVal, FuncType, Args...>(std::forward<FuncType>(upvalue_<FuncType>(L)), L));
+				push_rv<RVal>(L, direct_invoke_func<1, RVal, FuncType, Args...>(std::forward<FuncType>(upvalue_<FuncType>(L)), L));
 			}
 
 			template<typename T>
@@ -1187,7 +1247,7 @@ namespace lua_tinker
 			template<typename T, typename F>
 			static typename std::enable_if<!std::is_void<T>::value, void>::type _invoke_function(lua_State *L, F&& func)
 			{
-				push<RVal>(L, direct_invoke_func<1, RVal, FunctionType, Args...>(std::forward<FunctionType>(func), L));
+				push_rv<RVal>(L, direct_invoke_func<1, RVal, FunctionType, Args...>(std::forward<FunctionType>(func), L));
 			}
 
 			template<typename T, typename F>
@@ -1215,7 +1275,7 @@ namespace lua_tinker
 		}
 
 		template<typename R, typename ...ARGS>
-		void _push_functor(lua_State* L, std::function<R(ARGS...)> func)
+		void _push_functor(lua_State* L, const std::function<R(ARGS...)>& func)
 		{
 			using Functor_Warp = functor<R, ARGS...>;
 			new(lua_newuserdata(L, sizeof(Functor_Warp))) Functor_Warp(func);
@@ -1230,21 +1290,23 @@ namespace lua_tinker
 			lua_pushcclosure(L, &Functor_Warp::invoke_function, 1);
 		}
 
-		template<typename overload_functor>
-		void _push_functor(lua_State* L, overload_functor&& functor)
+		template<typename R, typename ...ARGS>
+		void _push_functor(lua_State* L, std::function<R(ARGS...)>&& func)
 		{
-			new(lua_newuserdata(L, sizeof(overload_functor))) overload_functor(std::move(functor));
+			using Functor_Warp = functor<R, ARGS...>;
+			new(lua_newuserdata(L, sizeof(Functor_Warp))) Functor_Warp(func);
 			//register functor
 			{
 				lua_newtable(L);
 				lua_pushstring(L, "__gc");
-				lua_pushcclosure(L, &destroyer<overload_functor>, 0);
+				lua_pushcclosure(L, &destroyer<Functor_Warp>, 0);
 				lua_rawset(L, -3);
 				lua_setmetatable(L, -2);
 			}
-
-			lua_pushcclosure(L, &overload_functor::invoke_function, 1);
+			lua_pushcclosure(L, &Functor_Warp::invoke_function, 1);
 		}
+
+
 	}
 
 	// constructor
@@ -1337,7 +1399,7 @@ namespace lua_tinker
 
 	// call lua func
 	template<typename RVal, typename ...Args>
-	RVal call(lua_State* L, const char* name, Args... arg)
+	RVal call(lua_State* L, const char* name, Args&&... arg)
 	{
 
 		lua_pushcclosure(L, on_error, 0);
@@ -1346,7 +1408,7 @@ namespace lua_tinker
 		lua_getglobal(L, name);
 		if (lua_isfunction(L, -1))
 		{
-			detail::push_args(L, arg...);
+			detail::push_args(L, std::forward<Args&&>(arg)...);
 
 			if (lua_pcall(L, sizeof...(Args), detail::pop<RVal>::nresult, errfunc) != 0)
 			{
@@ -1385,7 +1447,25 @@ namespace lua_tinker
 
 
 		template<typename T, typename R, typename ...ARGS>
-		void _push_calss_functor(lua_State* L, std::function<R(T*, ARGS...)> func)
+		void _push_calss_functor(lua_State* L, const std::function<R(T*, ARGS...)>& func)
+		{
+			using Functor_Warp = member_functor<false, T, R, ARGS...>;
+
+			new(lua_newuserdata(L, sizeof(Functor_Warp))) Functor_Warp(func);
+			//register metatable for gc
+			{
+				lua_newtable(L);
+				lua_pushstring(L, "__gc");
+				lua_pushcclosure(L, &destroyer<Functor_Warp>, 0);
+				lua_rawset(L, -3);
+
+				lua_setmetatable(L, -2);
+			}
+
+			lua_pushcclosure(L, &Functor_Warp::invoke_function, 1);
+		}
+		template<typename T, typename R, typename ...ARGS>
+		void _push_calss_functor(lua_State* L, std::function<R(T*, ARGS...)>&& func)
 		{
 			using Functor_Warp = member_functor<false, T, R, ARGS...>;
 
@@ -1403,27 +1483,13 @@ namespace lua_tinker
 			lua_pushcclosure(L, &Functor_Warp::invoke_function, 1);
 		}
 
-		template<typename overload_functor>
-		void _push_calss_functor(lua_State* L, overload_functor&& functor)
-		{
-			new(lua_newuserdata(L, sizeof(overload_functor))) overload_functor(std::forward<overload_functor>(functor));
-			//register metatable for gc
-			{
-				lua_newtable(L);
-				lua_pushstring(L, "__gc");
-				lua_pushcclosure(L, &destroyer<overload_functor>, 0);
-				lua_rawset(L, -3);
-
-				lua_setmetatable(L, -2);
-			}
-			lua_pushcclosure(L, &overload_functor::invoke_function, 1);
-		}
+		
 
 		template<typename T>
 		int _get_raw_ptr(lua_State *L)
 		{
 			std::shared_ptr<T> ptrT = read< std::shared_ptr<T> >(L, 1);
-			push<T*>(L, ptrT.get());
+			push_rv<T*>(L, ptrT.get());
 			return 1;
 		}
 	};
@@ -1486,9 +1552,6 @@ namespace lua_tinker
 				lua_pushcclosure(L, &detail::_get_raw_ptr<T>, 0);
 				lua_rawset(L, -3);
 			}
-
-
-
 
 			lua_setglobal(L, strSharedName.c_str());
 

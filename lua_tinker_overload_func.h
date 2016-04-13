@@ -202,7 +202,42 @@ namespace lua_tinker
 
 	};
 
+	namespace detail
+	{
+		template<typename overload_functor>
+		auto _push_functor(lua_State* L, overload_functor&& functor)->
+			typename std::enable_if<std::is_base_of<args_type_overload_functor_base, overload_functor>::value, void>::type
+		{
+			new(lua_newuserdata(L, sizeof(overload_functor))) overload_functor(std::forward<overload_functor>(functor));
+			//register functor
+			{
+				lua_newtable(L);
+				lua_pushstring(L, "__gc");
+				lua_pushcclosure(L, &destroyer<overload_functor>, 0);
+				lua_rawset(L, -3);
+				lua_setmetatable(L, -2);
+			}
 
+			lua_pushcclosure(L, &overload_functor::invoke_function, 1);
+		}
+
+		template<typename overload_functor>
+		auto _push_calss_functor(lua_State* L, overload_functor&& functor)->
+			typename std::enable_if<std::is_base_of<args_type_overload_functor_base, overload_functor>::value, void>::type
+		{
+			new(lua_newuserdata(L, sizeof(overload_functor))) overload_functor(std::forward<overload_functor>(functor));
+			//register metatable for gc
+			{
+				lua_newtable(L);
+				lua_pushstring(L, "__gc");
+				lua_pushcclosure(L, &destroyer<overload_functor>, 0);
+				lua_rawset(L, -3);
+
+				lua_setmetatable(L, -2);
+			}
+			lua_pushcclosure(L, &overload_functor::invoke_function, 1);
+		}
+	}
 
 
 

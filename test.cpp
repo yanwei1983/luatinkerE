@@ -240,6 +240,11 @@ std::shared_ptr<ff> make_ff()
 	return g_ff_shared;
 }
 
+std::shared_ptr<ff> make_ff_to_lua()
+{
+	return std::shared_ptr<ff>(new ff);
+}
+
 std::weak_ptr<ff> make_ff_weak()
 {
 	return std::weak_ptr<ff>(g_ff_shared);
@@ -448,6 +453,7 @@ int main()
 	lua_tinker::def(L, "push_hashmap", &push_hashmap);
 
 	lua_tinker::def(L, "make_ff", &make_ff);
+	lua_tinker::def(L, "make_ff_to_lua", &make_ff_to_lua);
 	lua_tinker::def(L, "visot_ff", &visot_ff);
 	lua_tinker::def(L, "visot_ff_ref", &visot_ff_ref);
 	lua_tinker::def(L, "visot_ff_const_ref", &visot_ff_const_ref);
@@ -539,6 +545,7 @@ int main()
 			raw_pff.m_val = 88;
 			raw_pff.s_val = 88;
 			print(raw_pff.m_val_readonly);
+			local pFFShared_luaholdit = make_ff_to_lua();
 			raw_pff.m_val_readonly = 99 --error property is readonly 
 		end
 		function lua_test12()
@@ -661,7 +668,9 @@ int main()
 			test_p_int(n)
 			return n+1;
 		end
-
+		function lua_test_shared_ptr(ptr)
+			return ptr;
+		end
 		g_ChargePrizeList = 
 		{
 			[1] = {charge = 1000, itemtype=1,},
@@ -700,6 +709,10 @@ int main()
 	std::string g;
 	std::tie(c, d, e, f, g) = lua_tinker::call< std::tuple<int, double, char, float, std::string> >(L, "lua_test3");
 	printf("%d\n", b);
+
+	std::shared_ptr<ff> testshared(new ff(0));
+	std::shared_ptr<ff> ffshared = lua_tinker::call< std::shared_ptr<ff> >(L, "lua_test_shared_ptr", testshared);
+	ffshared = lua_tinker::call< std::shared_ptr<ff> >(L, "lua_test_shared_ptr", std::shared_ptr<ff>(new ff(0)));
 
 	std::vector<std::map<std::string, int> > test_vec = lua_tinker::get< decltype(test_vec) >(L, "g_ChargePrizeList");
 	std::map<int, std::map<std::string, int> > test_map = lua_tinker::get< decltype(test_map) >(L, "g_ChargePrizeList");
