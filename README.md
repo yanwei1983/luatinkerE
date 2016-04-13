@@ -35,11 +35,11 @@ complied with vc2015,gcc5.3,clang3.8
 * args_type_overload_functor/member_functor/constructor是简单的将c++参数列表转换为luatype后存储到int64作为函数签名，运行时进行非精确匹配  
 * 新增class_def_static函数可以注册类静态函数,使用class.foo()来调用，不要使用class:foo() 
 * 新增class_property函数可以为一个名字注册一对get/set函数  
-* 增class_static_mem函数可以注册类静态变量  
+* 新增class_static_mem函数可以注册类静态变量  
 
+***
 
-
-* use Variadic Template to modify old func "functor/memberfunctor/constructor/call "  
+* use Variadic Template to modify old func "functor/memberfunctor/constructor/call "    
 * use enable_if to hides a function overload  
 * use stack_help class to handle read/push function  
 * remove int64 like function just use luaInteger in lua5.3  
