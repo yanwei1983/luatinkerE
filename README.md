@@ -57,7 +57,7 @@ complied with vc2015,gcc5.3,clang3.8
 * define macro LUATINKER_USERDATA_HOLD_CONST will store const info(bool) in userdata,will check when call member function,will check lost const qualifier when read   
 * define macro LUATINKER_USERDATA_CHECK_TYPEINFO will stroe typeidx info(size_t) in userdata,will do type consistency check when read  
 * on debug mode will auto define LUATINKER_USERDATA_CHECK_CONST and LUATINKER_USERDATA_CHECK_TYPEINFO for extra check  
-* header file "lua_tinker_overload_func.h" was simple convert c++ params list to luatype, then stored in int64 as a function signature, do non-exact matching when function name invoked  
+* args_type_overload_functor/member_functor/constructor was simple convert c++ params list to luatype, then stored in int64 as a function signature, do non-exact matching when function name invoked  
 * add function class_def_static for register class static member function,use class.foo() to invoke, plz don't use class:foo()  
 * add function class_property for register get/set function for a member_name  
 * add function class_static_mem for register class static ver  
