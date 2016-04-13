@@ -7,6 +7,7 @@
 #include<type_traits>
 #include<iostream>
 #include<utility>
+#include<assert.h>
 #include "lua_tinker.h"
 
 int g_c_int = 0;
