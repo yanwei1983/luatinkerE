@@ -8,7 +8,6 @@
 #include<iostream>
 #include<utility>
 #include "lua_tinker.h"
-#include "lua_tinker_overload_func.h"
 
 int g_c_int = 0;
 double g_c_double = 0.0;
