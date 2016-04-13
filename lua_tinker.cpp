@@ -357,16 +357,6 @@ void lua_tinker::detail::_stack_help<std::string>::_push(lua_State *L, const std
 }
 
 
-std::string lua_tinker::detail::_stack_help<const std::string&>::_read(lua_State *L, int index)
-{
-	return std::string((const char*)lua_tostring(L, index));
-}
-
-void lua_tinker::detail::_stack_help<const std::string&>::_push(lua_State *L, const std::string& ret)
-{
-	lua_pushlstring(L, ret.data(), ret.size());
-}
-
 /*---------------------------------------------------------------------------*/
 /* pop                                                                       */
 /*---------------------------------------------------------------------------*/

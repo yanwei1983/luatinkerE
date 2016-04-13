@@ -613,13 +613,8 @@ namespace lua_tinker
 			static void _push(lua_State *L, const std::string& ret);
 		};
 		template<>
-		struct _stack_help<const std::string&>
+		struct _stack_help<const std::string&> : public _stack_help<std::string>
 		{
-			static constexpr int cover_to_lua_type() { return LUA_TSTRING; }
-			static std::string _read(lua_State *L, int index);
-			static void _push(lua_State *L, const std::string& ret);
-
-
 		};
 
 
@@ -824,6 +819,10 @@ namespace lua_tinker
 				_push_functor(L, std::forward<std::function<RVal(Args...)>>(func));
 			}
 		};
+		template<typename RVal, typename ...Args>
+		struct _stack_help<const std::function<RVal(Args...)>& > : public _stack_help<std::function<RVal(Args...)>>
+		{
+		};
 
 		template<typename T>
 		struct _stack_help< std::shared_ptr<T> >
@@ -889,6 +888,10 @@ namespace lua_tinker
 				push_meta(L, get_class_name<std::shared_ptr<T>>());
 				lua_setmetatable(L, -2);
 			}
+		};
+		template<typename T>
+		struct _stack_help<const std::shared_ptr<T>& > : public _stack_help<std::shared_ptr<T>>
+		{
 		};
 
 		//read_weap
