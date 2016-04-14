@@ -14,6 +14,7 @@ complied with vc2015,gcc5.3,clang3.8
 
 ##what modifyed
 
+* 将内部实现移动到detail名字空间
 * 使用变参模板重写 functor/memberfunctor/constructor/call 函数来支持多参数  
 * 使用enable_if机制实现 函数条件重载  
 * 通过stack_help类实现read/push函数  
@@ -21,7 +22,7 @@ complied with vc2015,gcc5.3,clang3.8
 * 加入stl容器类向lua导入/导出一个table的功能  
 * 可以从lua中返回多个返回值用tuple包裹  
 * 使用weak_ptr来存储导出到lua的shared_ptr对象来避免lua控制c++对象生命周期  
-* 当push到lua的shared_ptr只有1个引用时，使用lua来储存shared_ptr对象，由lua控制该对象生命周期
+* 当push到lua的shared_ptr只有1个引用时(一个右值引用)，使用lua来储存shared_ptr对象，由lua控制该对象生命周期
 * class_add函数增加参数bInitShared来注册导出类对应的shared_ptr对象  
 * 未注册shared_ptr对象统一使用默认metatable来GC  
 * 可以向lua注册一个std::function对象（通过functor/memberfunctor warp类）  
@@ -35,18 +36,19 @@ complied with vc2015,gcc5.3,clang3.8
 * args_type_overload_functor/member_functor/constructor是简单的将c++参数列表转换为luatype后存储到int64作为函数签名，运行时进行非精确匹配  
 * 新增class_def_static函数可以注册类静态函数,使用class.foo()来调用，不要使用class:foo() 
 * 新增class_property函数可以为一个名字注册一对get/set函数  
-* 增class_static_mem函数可以注册类静态变量  
+* 新增class_static_mem函数可以注册类静态变量  
 
+***
 
-
-* use Variadic Template to modify old func "functor/memberfunctor/constructor/call "  
+* move code implementation to namespace detail
+* use Variadic Template to modify old func "functor/memberfunctor/constructor/call "    
 * use enable_if to hides a function overload  
 * use stack_help class to handle read/push function  
 * remove int64 like function just use luaInteger in lua5.3  
 * stl container can push a table to lua/ read a table from lua  
 * can pop tuple from lua to warp multi-return value  
 * use weak_ptr to hold a shared_obj in lua, to avoid lua control c++ object's lifetime  
-* when push a shared_ptr who only has 1 refcount ,will use lua to hold shared obj, let lua to control c++ object's lifetime  
+* when push a shared_ptr who only has 1 refcount(a r-reference) ,will use lua to hold shared obj, let lua to control c++ object's lifetime  
 * class_add function adds argument bInitShared to register a class objects's shared_ptr  
 * unregistered shared_ptr objects using the default same metatable to gc  
 * can register a std::function obj through function_warp  
