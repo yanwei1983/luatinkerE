@@ -14,6 +14,7 @@ complied with vc2015,gcc5.3,clang3.8
 
 ##what modifyed
 
+* 将内部实现移动到detail名字空间
 * 使用变参模板重写 functor/memberfunctor/constructor/call 函数来支持多参数  
 * 使用enable_if机制实现 函数条件重载  
 * 通过stack_help类实现read/push函数  
@@ -39,6 +40,7 @@ complied with vc2015,gcc5.3,clang3.8
 
 ***
 
+* move code implementation to namespace detail
 * use Variadic Template to modify old func "functor/memberfunctor/constructor/call "    
 * use enable_if to hides a function overload  
 * use stack_help class to handle read/push function  
