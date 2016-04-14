@@ -789,12 +789,14 @@ int main()
 		lua_tinker::dostring(L, luabuf.c_str());
 		return  lua_tinker::call<bool>(L, "test_lua_nodef_shared_2");
 	};
+#ifdef LUATINKER_USERDATA_CHECK_TYPEINFO
+
 	test_func_set["test_lua_nodef_shared_3"]  = [L]()->bool
 	{
 		std::string luabuf =
 			R"(function test_lua_nodef_shared_3()
 					local pFF_nodef = make_ff_nodef();
-					visot_ff_nodef_shared(pFF_nodef);	--shared_ptr to raw_ptr
+					visot_ff_nodef_shared(pFF_nodef);	--raw_ptr to shared_ptr
 				end
 			)";
 		lua_tinker::dostring(L, luabuf.c_str());
@@ -809,7 +811,6 @@ int main()
 			return true;
 		}
 	};
-#ifdef LUATINKER_USERDATA_CHECK_TYPEINFO
 
 	test_func_set["test_lua_nodef_shared_4"] = [L]()->bool
 	{
@@ -1223,7 +1224,7 @@ int main()
 		std::string luabuf =
 			R"(function test_lua_funobj_1()
 					local upval = 0;
-					local function localtest(intval)
+					local localtest = function(intval)
 						upval = upval+ intval;
 						return upval;
 					end
@@ -1240,7 +1241,7 @@ int main()
 		std::string luabuf =
 			R"(function test_lua_funobj_2()
 					local upval = 0;
-					local function localtest(intval)
+					local localtest = function(intval)
 						upval = upval+ intval;
 						return upval;
 					end
@@ -1257,7 +1258,7 @@ int main()
 		std::string luabuf =
 			R"(function test_lua_funobj_3()
 					local upval = 0;
-					local function localtest(intval)
+					local localtest = function (intval)
 						upval = upval+ intval;
 						return upval;
 					end
@@ -1274,7 +1275,7 @@ int main()
 	{
 		std::string luabuf =
 			R"(function test_lua_funobj_4()
-					local function localtest(intval)
+					local localtest = function (intval)
 						return intval +1;
 					end
 					store_lua_function(localtest);
@@ -1311,6 +1312,62 @@ int main()
 		lua_tinker::dostring(L, luabuf.c_str());
 
 		return lua_tinker::call<bool>(L, "test_lua_funobj_6");
+	};
+
+	test_func_set["test_lua_funobj_7"] = [L]()->bool
+	{
+		std::string luabuf =
+			R"(function test_lua_funobj_7()
+					local localtest = function (intval)
+						return intval +1;
+					end
+					return localtest;
+				end
+			)";
+		lua_tinker::dostring(L, luabuf.c_str());
+
+		std::function<int(int)> func = lua_tinker::call<decltype(func)>(L, "test_lua_funobj_7");
+		return 7 == func(6);
+	};
+
+	test_func_set["test_lua_luafunction_ref_1"] = [L]()->bool
+	{
+		std::string luabuf =
+			R"(function test_lua_luafunction_ref_1()
+					local upval = 0;
+					local localtest = function (intval)
+						upval = upval + intval;
+						return upval;
+					end
+					return localtest;
+				end
+			)";
+		lua_tinker::dostring(L, luabuf.c_str());
+
+		lua_tinker::lua_function_ref<int> lua_func = lua_tinker::call<decltype(lua_func)>(L, "test_lua_luafunction_ref_1");
+		lua_func(7);
+		return 14 == lua_func(7);
+	};
+	test_func_set["test_lua_luafunction_ref_2"] = [L]()->bool
+	{
+		std::string luabuf =
+			R"(function test_lua_luafunction_ref_2_1()
+					local upval = 0;
+					local localtest = function (intval)
+						upval = upval + intval;
+						return upval;
+					end
+					return localtest;
+				end
+				function test_lua_luafunction_ref_2_2(func)
+					func(7);
+					return func(7);
+				end
+			)";
+		lua_tinker::dostring(L, luabuf.c_str());
+
+		lua_tinker::lua_function_ref<int> lua_func = lua_tinker::call<decltype(lua_func)>(L, "test_lua_luafunction_ref_2_1");
+		return 14 == lua_tinker::call<int>(L, "test_lua_luafunction_ref_2_2", lua_func);
 	};
 
 	test_func_set["test_lua_gettable_1"]  = [L]()->bool

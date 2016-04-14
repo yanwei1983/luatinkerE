@@ -78,6 +78,10 @@ namespace lua_tinker
 	struct table;
 	struct args_type_overload_functor_base;
 
+	template<typename RVal = void>
+	struct lua_function_ref;
+
+
 	// global function
 	template<typename Func>
 	void def(lua_State* L, const char* name, Func&& func);
@@ -752,73 +756,25 @@ namespace lua_tinker
 			{
 				if (lua_isfunction(L, index) == false)
 				{
-					print_error(L, "can't convert argument %d to function", index);
+					lua_pushfstring(L, "can't convert argument %d to function", index);
+					lua_error(L);
 				}
-
+				
 				int lua_callback = luaL_ref(L, LUA_REGISTRYINDEX);
-				struct lua_function_ref
-				{
-					lua_State* m_L;
-					int m_regidx;
-					lua_function_ref(lua_State* L, int regidx)
-						:m_L(L)
-						, m_regidx(regidx)
-					{}
-					~lua_function_ref()
-					{
-						//if find it, than unref, else maybe lua is closed
-						auto itMap = s_luafunction_map.find(m_L);
-						if (itMap == s_luafunction_map.end())
-							return;
-						auto& refSet = itMap->second;
-						auto itFunc = refSet.find(m_regidx);
-						if (itFunc == refSet.end())
-							return;
+				lua_pushnil(L);//we push a nil for pop
 
-						luaL_unref(m_L, LUA_REGISTRYINDEX, m_regidx);
-						refSet.erase(itFunc);
-					}
-				};
-
-				std::shared_ptr<lua_function_ref> callback_ref(new lua_function_ref(L, lua_callback));
-				auto func = [L, callback_ref](Args... arg)
-				{
-					auto itMap = s_luafunction_map.find(L);
-					if (itMap == s_luafunction_map.end())
-					{
-						throw std::exception(); //"lua is closed before function call"
-					}
-
-					auto& refSet = itMap->second;
-					auto itFunc = refSet.find(callback_ref->m_regidx);
-					if (itFunc == refSet.end())
-					{
-						lua_pushfstring(L, "function lost, maybe lua is colsed");
-						lua_error(L);
-					}
-
-					lua_pushcclosure(L, on_error, 0);
-					int errfunc = lua_gettop(L);
-
-					lua_rawgeti(L, LUA_REGISTRYINDEX, callback_ref->m_regidx);
-
-					push_args(L, std::forward<Args>(arg)...);
-
-					if (lua_pcall(L, sizeof...(Args), pop<RVal>::nresult, errfunc) != 0)
-					{
-					}
-
-					lua_remove(L, errfunc);
-					return pop<RVal>::apply(L);
-
-				};
+				lua_function_ref<RVal> callback_ref(L, lua_callback);
 				s_luafunction_map[L].insert(lua_callback);
 
-				return std::function<RVal(Args...)>(func);
+				return std::function<RVal(Args...)>(callback_ref);
 
 			}
 
 			static void  _push(lua_State *L, std::function<RVal(Args...)>&& func)
+			{
+				_push_functor(L, std::forward<std::function<RVal(Args...)>>(func));
+			}
+			static void  _push(lua_State *L, const std::function<RVal(Args...)>& func)
 			{
 				_push_functor(L, std::forward<std::function<RVal(Args...)>>(func));
 			}
@@ -828,10 +784,51 @@ namespace lua_tinker
 		{
 		};
 
+
+		template<typename RVal>
+		struct _stack_help< lua_function_ref<RVal> >
+		{
+			static constexpr int cover_to_lua_type() { return LUA_TFUNCTION; }
+			//func must be release before lua close.....user_conctrl
+			static lua_function_ref<RVal> _read(lua_State *L, int index)
+			{
+				if (lua_isfunction(L, index) == false)
+				{
+					lua_pushfstring(L, "can't convert argument %d to function", index);
+					lua_error(L);
+				}
+
+				int lua_callback = luaL_ref(L, LUA_REGISTRYINDEX);
+				lua_pushnil(L);//we push a nil for pop
+
+				lua_function_ref<RVal> callback_ref(L, lua_callback);
+				s_luafunction_map[L].insert(lua_callback);
+
+				return callback_ref;
+			}
+
+			static void  _push(lua_State *L, lua_function_ref<RVal>&& func)
+			{
+				if (func.m_L != L)
+				{
+					lua_pushfstring(L, "lua_function was not create by the same lua_State");
+					lua_error(L);
+				}
+
+				lua_rawgeti(func.m_L, LUA_REGISTRYINDEX, func.m_regidx);
+
+			}
+		};
+		template<typename RVal>
+		struct _stack_help<const lua_function_ref<RVal>& > : public _stack_help<lua_function_ref<RVal>>
+		{
+		};
+
 		template<typename T>
 		struct _stack_help< std::shared_ptr<T> >
 		{
 			static constexpr int cover_to_lua_type() { return LUA_TUSERDATA; }
+
 			static std::shared_ptr<T> _read(lua_State *L, int index)
 			{
 				if (!lua_isuserdata(L, index))
@@ -1900,6 +1897,63 @@ namespace lua_tinker
 		}
 
 		table_obj*      m_obj;
+	};
+
+	namespace detail
+	{
+		struct lua_function_ref_base
+		{
+			lua_State* m_L = nullptr;
+			int m_regidx = 0;
+			int* m_pRef = nullptr;
+
+			void inc_ref();
+			void dec_ref();
+
+			bool validate() const;
+			void destory();
+
+			lua_function_ref_base() {}
+			lua_function_ref_base(lua_State* L, int regidx);
+			virtual ~lua_function_ref_base();
+			lua_function_ref_base(const lua_function_ref_base& rht);
+			lua_function_ref_base(lua_function_ref_base&& rht);
+			
+		};
+	}
+	
+
+	template<typename RVal>
+	struct lua_function_ref : public detail::lua_function_ref_base
+	{
+		using lua_function_ref_base::lua_function_ref_base;
+
+		template<typename ...Args>
+		RVal operator()(Args&& ... args) const
+		{
+			if(validate() == false)
+			{
+				throw std::runtime_error("invoke lua_function after lua closed");
+			}
+			lua_pushcclosure(m_L, on_error, 0);
+			int errfunc = lua_gettop(m_L);
+
+			lua_rawgeti(m_L, LUA_REGISTRYINDEX, m_regidx);
+			if (lua_isfunction(m_L, -1) != 0)
+			{
+				detail::push_args(m_L, std::forward<Args>(args)...);
+				if (lua_pcall(m_L, sizeof...(Args), detail::pop<RVal>::nresult, errfunc) != 0)
+				{
+				}
+			}
+			else
+			{
+				print_error(m_L, "lua_tinker::lua_function_ref attempt to call (not a function)");
+			}
+
+			lua_remove(m_L, errfunc);
+			return detail::pop<RVal>::apply(m_L);
+		}
 	};
 
 } // namespace lua_tinker

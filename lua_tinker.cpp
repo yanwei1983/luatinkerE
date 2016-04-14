@@ -616,3 +616,81 @@ lua_tinker::table::~table()
 }
 
 /*---------------------------------------------------------------------------*/
+
+
+lua_tinker::detail::lua_function_ref_base::lua_function_ref_base(lua_State* L, int regidx)
+:m_L(L)
+,m_regidx(regidx)
+,m_pRef(new int(0))
+{
+	inc_ref();
+}
+
+lua_tinker::detail::lua_function_ref_base::lua_function_ref_base(const lua_tinker::detail::lua_function_ref_base& rht)
+:m_L(rht.m_L)
+,m_regidx(rht.m_regidx)
+,m_pRef(rht.m_pRef)
+{
+	inc_ref();
+}
+
+lua_tinker::detail::lua_function_ref_base::lua_function_ref_base(lua_tinker::detail::lua_function_ref_base&& rht)
+:m_L(rht.m_L)
+,m_regidx(rht.m_regidx)
+,m_pRef(rht.m_pRef)
+{
+	rht.m_pRef = nullptr;
+}
+
+
+lua_tinker::detail::lua_function_ref_base::~lua_function_ref_base()
+{
+	//if find it, than unref, else maybe lua is closed
+	dec_ref();
+}
+
+void lua_tinker::detail::lua_function_ref_base::destory()
+{
+	auto itMap = s_luafunction_map.find(m_L);
+	if (itMap == s_luafunction_map.end())
+		return;
+	auto& refSet = itMap->second;
+	auto itFunc = refSet.find(m_regidx);
+	if (itFunc == refSet.end())
+		return;
+
+	luaL_unref(m_L, LUA_REGISTRYINDEX, m_regidx);
+	refSet.erase(itFunc);
+
+	delete m_pRef;
+}
+
+void lua_tinker::detail::lua_function_ref_base::inc_ref()
+{
+	if(m_pRef)
+		++(*m_pRef);
+}
+
+void lua_tinker::detail::lua_function_ref_base::dec_ref()
+{
+	if (m_pRef)
+	{
+		if (--(*m_pRef) == 0)
+			destory();
+	}
+}
+
+bool lua_tinker::detail::lua_function_ref_base::validate() const
+{
+
+	auto itMap = s_luafunction_map.find(m_L);
+	if (itMap == s_luafunction_map.end())
+		return false;
+	auto& refSet = itMap->second;
+	auto itFunc = refSet.find(m_regidx);
+	if (itFunc == refSet.end())
+		return false;
+
+	return true;
+	
+}
