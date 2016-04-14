@@ -465,6 +465,33 @@ void lua_tinker::detail::push_meta(lua_State *L, const char* name)
 	lua_getglobal(L, name);
 }
 
+void lua_tinker::detail::push_args(lua_State *L)
+{}
+
+bool lua_tinker::detail::CheckSameMetaTable(lua_State* L, int nIndex, const char* tname)
+{
+	bool bResult = true;
+	void *p = lua_touserdata(L, nIndex);
+	if (p != NULL)
+	{  /* value is a userdata? */
+		if (lua_getmetatable(L, nIndex))
+		{  /* does it have a metatable? */
+			push_meta(L, tname);  /* get correct metatable */
+			if (!lua_rawequal(L, -1, -2))  /* not the same? */
+				bResult = false;  /* value is a userdata with wrong metatable */
+			lua_pop(L, 2);  /* remove both metatables */
+			return bResult;
+		}
+	}
+	return false;
+}
+
+void lua_tinker::detail::_set_signature(long long& sig, size_t idx, unsigned char c)
+{
+	if (idx > sizeof(sig) * 2)
+		return;
+	sig = (sig & ~(0xF << (idx * 4))) | ((c & 0xF) << (idx * 4));
+}
 /*---------------------------------------------------------------------------*/
 /* table object on stack                                                     */
 /*---------------------------------------------------------------------------*/

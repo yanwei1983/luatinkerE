@@ -105,7 +105,7 @@ namespace lua_tinker
 	template<typename T, typename Func>
 	void class_def(lua_State* L, const char* name, Func&& func);
 	template<typename T, typename Func>
-	void class_def_static(lua_State* L, const char* name, Func&& func)
+	void class_def_static(lua_State* L, const char* name, Func&& func);
 
 	// Tinker Class Variables
 	template<typename T, typename BASE, typename VAR>
@@ -147,13 +147,13 @@ namespace lua_tinker
 		using base_type = typename std::remove_cv<typename std::remove_reference<typename std::remove_pointer<T>::type>::type>::type;
 
 		template<typename T>
-		static constexpr typename std::enable_if<!is_shared_ptr<T>::value, const char*>::type get_class_name()
+		constexpr typename std::enable_if<!is_shared_ptr<T>::value, const char*>::type get_class_name()
 		{
 			return class_name< base_type<T> >::name();
 		}
 
 		template<typename T>
-		static typename std::enable_if<is_shared_ptr<T>::value, const char*>::type get_class_name()
+		typename std::enable_if<is_shared_ptr<T>::value, const char*>::type get_class_name()
 		{
 			const std::string& strSharedName = class_name<T>::name_str();
 			if (strSharedName.empty())
@@ -431,7 +431,7 @@ namespace lua_tinker
 
 
 		// push value_list to lua stack //here need a T/T*/T& not a T&&
-		static void push_args(lua_State *L) {}
+		void push_args(lua_State *L);
 		template<typename T, typename ...Args>
 		void push_args(lua_State *L, T&& ret, Args&&...args) { push(L, std::forward<T>(ret)); push_args<Args...>(L, std::forward<Args>(args)...); }
 		template<typename T, typename ...Args>
@@ -1006,23 +1006,8 @@ namespace lua_tinker
 		//	return _get_args<nIdxParams, T...>(L, std::make_index_sequence<num_args>());
 		//}
 
-		static bool CheckSameMetaTable(lua_State* L, int nIndex, const char* tname)
-		{
-			bool bResult = true;
-			void *p = lua_touserdata(L, nIndex);
-			if (p != NULL)
-			{  /* value is a userdata? */
-				if (lua_getmetatable(L, nIndex))
-				{  /* does it have a metatable? */
-					push_meta(L, tname);  /* get correct metatable */
-					if (!lua_rawequal(L, -1, -2))  /* not the same? */
-						bResult = false;  /* value is a userdata with wrong metatable */
-					lua_pop(L, 2);  /* remove both metatables */
-					return bResult;
-				}
-			}
-			return false;
-		}
+		bool CheckSameMetaTable(lua_State* L, int nIndex, const char* tname);
+
 
 		template <typename T, bool bConstMemberFunc>
 		T* _read_classptr_from_index1(lua_State* L)
@@ -1964,14 +1949,7 @@ namespace lua_tinker
 
 
 
-		static void _set_signature(long long& sig, size_t idx, unsigned char c)
-		{
-			if (idx > sizeof(sig) * 2)
-				return;
-			sig = (sig & ~(0xF << (idx * 4))) | ((c & 0xF) << (idx * 4));
-		}
-
-
+		void _set_signature(long long& sig, size_t idx, unsigned char c);
 
 		template <typename RVal, typename ... Args>
 		decltype(auto) make_functor_ptr(RVal(func)(Args...))
