@@ -384,6 +384,7 @@ int use_stored_lua_function()
 
 void on_lua_close(lua_State* L)
 {
+	g_func_lua = nullptr;
 	std::cout << "on_lua_close" << std::endl;
 }
 
@@ -1428,7 +1429,7 @@ int main()
 	
 
 	//func must be release before lua close.....user_conctrl
-	g_func_lua = nullptr;
+	//g_func_lua = nullptr;
 
 	//lua_gc(L, LUA_GCSTEP, 1);
 	lua_gc(L, LUA_GCCOLLECT, 0);
@@ -1442,6 +1443,7 @@ int main()
 	assert(ff::s_ref == 2); //g_ff,g_ff_shared
 	lua_close(L);
 
+	assert(g_func_lua == nullptr);
 	//g_func_lua(1); //access lua_State after lua_close will crash
 	return 0;
 }
