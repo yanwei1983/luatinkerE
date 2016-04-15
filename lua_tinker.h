@@ -54,9 +54,6 @@ namespace lua_tinker
 	
 	// close callback func
 	typedef std::function<void(lua_State*)> Lua_Close_CallBack_Func;
-	typedef std::vector<Lua_Close_CallBack_Func> CLOSE_CALLBACK_VEC;
-	typedef std::map<lua_State*, CLOSE_CALLBACK_VEC> CLOSE_CALLBACK_MAP;
-	extern CLOSE_CALLBACK_MAP s_close_callback_map;
 	void	register_lua_close_callback(lua_State* L, Lua_Close_CallBack_Func&& callback_func);
 
 	// string-buffer excution
@@ -741,11 +738,6 @@ namespace lua_tinker
 			}
 		};
 
-
-		typedef std::set<int> REGIDX_VEC;
-		typedef std::map<lua_State*, REGIDX_VEC> LUAFUNC_MAP;
-		extern LUAFUNC_MAP s_luafunction_map;
-
 		template<typename RVal, typename ...Args>
 		struct _stack_help< std::function<RVal(Args...)> >
 		{
@@ -764,7 +756,6 @@ namespace lua_tinker
 				lua_pushnil(L);//we push a nil for pop
 
 				lua_function_ref<RVal> callback_ref(L, lua_callback);
-				s_luafunction_map[L].insert(lua_callback);
 
 				return std::function<RVal(Args...)>(callback_ref);
 
@@ -802,7 +793,6 @@ namespace lua_tinker
 				lua_pushnil(L);//we push a nil for pop
 
 				lua_function_ref<RVal> callback_ref(L, lua_callback);
-				s_luafunction_map[L].insert(lua_callback);
 
 				return callback_ref;
 			}
@@ -1931,10 +1921,6 @@ namespace lua_tinker
 		template<typename ...Args>
 		RVal operator()(Args&& ... args) const
 		{
-			if(validate() == false)
-			{
-				throw std::runtime_error("invoke lua_function after lua closed");
-			}
 			lua_pushcclosure(m_L, on_error, 0);
 			int errfunc = lua_gettop(m_L);
 

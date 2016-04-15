@@ -1442,7 +1442,7 @@ int main()
 	assert(ff::s_ref == 2); //g_ff,g_ff_shared
 	lua_close(L);
 
-	//g_func_lua(1); //will throw a exception
+	//g_func_lua(1); //access lua_State after lua_close will crash
 	return 0;
 }
 

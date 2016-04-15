@@ -22,11 +22,9 @@
 namespace lua_tinker
 {
 	const char* S_SHARED_PTR_NAME = "__shared_ptr";
-	CLOSE_CALLBACK_MAP s_close_callback_map;
 
 	namespace detail
 	{
-		LUAFUNC_MAP s_luafunction_map;
 
 #ifdef LUATINKER_USERDATA_CHECK_TYPEINFO
 		InheritMap s_inherit_map;
@@ -34,57 +32,59 @@ namespace lua_tinker
 	}
 }
 
-void	lua_tinker::register_lua_close_callback(lua_State* L, Lua_Close_CallBack_Func&& callback_func)
-{
-	s_close_callback_map[L].emplace_back(callback_func);
-}
+
 
 /*---------------------------------------------------------------------------*/
 /* init                                                                      */
 /*---------------------------------------------------------------------------*/
 
-static void _clear_luafunctionref_onluaclose(lua_State* L)
-{
-	auto itMap = lua_tinker::detail::s_luafunction_map.find(L);
-	if (itMap == lua_tinker::detail::s_luafunction_map.end())
-		return;
-	lua_tinker::detail::s_luafunction_map.erase(itMap);
-}
-
-struct lua_close_callback
+struct lua_hold_ext_value
 {
 	lua_State * m_L;
-	lua_close_callback(lua_State *L)
+	typedef std::vector<lua_tinker::Lua_Close_CallBack_Func> CLOSE_CALLBACK_VEC;
+	CLOSE_CALLBACK_VEC m_vecCloseCallBack;
+
+	lua_hold_ext_value(lua_State *L)
 		:m_L(L)
 	{
 
 	}
-	~lua_close_callback()
+	~lua_hold_ext_value()
 	{
-		_clear_luafunctionref_onluaclose(m_L);
-		for (const auto& v : lua_tinker::s_close_callback_map)
+		for (const auto& func : m_vecCloseCallBack)
 		{
-			for(const auto& func : v.second)
-			{
-				func(m_L);
-			}
+			func(m_L);
 		}
 	}
 };
+static const char* s_lua_close_callback_objname = "___lua_close_callback";
+
+void lua_tinker::register_lua_close_callback(lua_State* L, Lua_Close_CallBack_Func&& callback_func)
+{
+	lua_getglobal(L, s_lua_close_callback_objname);
+	if (!lua_isuserdata(L, -1))
+	{
+		print_error(L, "can't find close_callback_obj");
+	}
+
+
+	lua_hold_ext_value* p_lua_ext_val = detail::user2type<lua_hold_ext_value*>(L, -1);
+	p_lua_ext_val->m_vecCloseCallBack.emplace_back(callback_func);
+}
 
 static void init_close_callback(lua_State *L)
 {
 
-	new(lua_newuserdata(L, sizeof(lua_close_callback))) lua_close_callback(L);
+	new(lua_newuserdata(L, sizeof(lua_hold_ext_value))) lua_hold_ext_value(L);
 	//register functor
 	{
 		lua_newtable(L);
 		lua_pushstring(L, "__gc");
-		lua_pushcclosure(L, &lua_tinker::detail::destroyer<lua_close_callback>, 0);
+		lua_pushcclosure(L, &lua_tinker::detail::destroyer<lua_hold_ext_value>, 0);
 		lua_rawset(L, -3);
 		lua_setmetatable(L, -2);
 	}
-	lua_setglobal(L, "___lua_close_callback"); //pop
+	lua_setglobal(L, s_lua_close_callback_objname); //pop
 }
 
 /*---------------------------------------------------------------------------*/
@@ -651,17 +651,7 @@ lua_tinker::detail::lua_function_ref_base::~lua_function_ref_base()
 
 void lua_tinker::detail::lua_function_ref_base::destory()
 {
-	auto itMap = s_luafunction_map.find(m_L);
-	if (itMap == s_luafunction_map.end())
-		return;
-	auto& refSet = itMap->second;
-	auto itFunc = refSet.find(m_regidx);
-	if (itFunc == refSet.end())
-		return;
-
 	luaL_unref(m_L, LUA_REGISTRYINDEX, m_regidx);
-	refSet.erase(itFunc);
-
 	delete m_pRef;
 }
 
@@ -678,19 +668,4 @@ void lua_tinker::detail::lua_function_ref_base::dec_ref()
 		if (--(*m_pRef) == 0)
 			destory();
 	}
-}
-
-bool lua_tinker::detail::lua_function_ref_base::validate() const
-{
-
-	auto itMap = s_luafunction_map.find(m_L);
-	if (itMap == s_luafunction_map.end())
-		return false;
-	auto& refSet = itMap->second;
-	auto itFunc = refSet.find(m_regidx);
-	if (itFunc == refSet.end())
-		return false;
-
-	return true;
-	
 }
