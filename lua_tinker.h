@@ -97,7 +97,9 @@ namespace lua_tinker
 	// class init
 	template<typename T>
 	void class_add(lua_State* L, const char* name, bool bInitShared = false);
-
+	// Tinker Class Constructor
+	template<typename T, typename F>
+	void class_con(lua_State* L, F&& func);
 	// Tinker Class Inheritence
 	template<typename T, typename P>
 	void class_inh(lua_State* L);
