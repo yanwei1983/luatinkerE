@@ -80,8 +80,8 @@ namespace lua_tinker
 
 
 	// global function
-	template<typename Func, typename ... Args>
-	void def(lua_State* L, const char* name, Func&& func, Args&& ... args);
+	template<typename Func, typename ... DefaultArgs>
+	void def(lua_State* L, const char* name, Func&& func, DefaultArgs&& ... default_args);
 	// global variable
 	template<typename T>
 	void set(lua_State* L, const char* name, T object);
@@ -98,17 +98,17 @@ namespace lua_tinker
 	template<typename T>
 	void class_add(lua_State* L, const char* name, bool bInitShared = false);
 	// Tinker Class Constructor
-	template<typename T, typename F, typename ... Args>
-	void class_con(lua_State* L, F&& func, Args&& ... args);
+	template<typename T, typename F, typename ... DefaultArgs>
+	void class_con(lua_State* L, F&& func, DefaultArgs&& ... default_args);
 	// Tinker Class Inheritence
 	template<typename T, typename P>
 	void class_inh(lua_State* L);
 
 	// Tinker Class Functions
-	template<typename T, typename Func, typename ... Args>
-	void class_def(lua_State* L, const char* name, Func&& func, Args&& ... args);
-	template<typename T, typename Func, typename ... Args>
-	void class_def_static(lua_State* L, const char* name, Func&& func, Args&& ... args);
+	template<typename T, typename Func, typename ... DefaultArgs>
+	void class_def(lua_State* L, const char* name, Func&& func, DefaultArgs&& ... default_args);
+	template<typename T, typename Func, typename ... DefaultArgs>
+	void class_def_static(lua_State* L, const char* name, Func&& func, DefaultArgs&& ... default_args);
 
 	// Tinker Class Variables
 	template<typename T, typename BASE, typename VAR>
@@ -1430,10 +1430,10 @@ namespace lua_tinker
 
 
 
-	template<typename Func, typename ... Args>
-	void def(lua_State* L, const char* name, Func&& func, Args&& ... args)
+	template<typename Func, typename ... DefaultArgs>
+	void def(lua_State* L, const char* name, Func&& func, DefaultArgs&& ... default_args)
 	{
-		detail::_push_functor(L, std::forward<Func>(func), std::forward<Args>(args)...);
+		detail::_push_functor(L, std::forward<Func>(func), std::forward<DefaultArgs>(default_args)...);
 		lua_setglobal(L, name);
 	}
 
@@ -1757,15 +1757,15 @@ namespace lua_tinker
 	}
 
 	// Tinker Class Constructor
-	template<typename T, typename F, typename ... Args>
-	void class_con(lua_State* L, F&& func, Args&& ... args)
+	template<typename T, typename F, typename ... DefaultArgs>
+	void class_con(lua_State* L, F&& func, DefaultArgs&& ... default_args)
 	{
 		detail::push_meta(L, detail::get_class_name<T>());
 		if (lua_istable(L, -1))
 		{
 			lua_newtable(L);
 			lua_pushstring(L, "__call");
-			detail::_push_functor(L, std::forward<F>(func), std::forward<Args>(args)...);
+			detail::_push_functor(L, std::forward<F>(func), std::forward<DefaultArgs>(default_args)...);
 			lua_rawset(L, -3);
 			lua_setmetatable(L, -2);
 		}
@@ -1773,28 +1773,28 @@ namespace lua_tinker
 	}
 
 	// Tinker Class Functions
-	template<typename T, typename Func, typename ... Args>
-	void class_def(lua_State* L, const char* name, Func&& func, Args&& ... args)
+	template<typename T, typename Func, typename ... DefaultArgs>
+	void class_def(lua_State* L, const char* name, Func&& func, DefaultArgs&& ... default_args)
 	{
 		detail::push_meta(L, detail::get_class_name<T>());
 		if (lua_istable(L, -1))
 		{
 			//register functor
 			lua_pushstring(L, name);
-			detail::_push_class_functor(L, std::forward<Func>(func),std::forward<Args>(args)...);
+			detail::_push_class_functor(L, std::forward<Func>(func),std::forward<DefaultArgs>(default_args)...);
 			lua_rawset(L, -3);
 		}
 		lua_pop(L, 1);
 	}
-	template<typename T, typename Func, typename ... Args>
-	void class_def_static(lua_State* L, const char* name, Func&& func, Args&& ... args)
+	template<typename T, typename Func, typename ... DefaultArgs>
+	void class_def_static(lua_State* L, const char* name, Func&& func, DefaultArgs&& ... default_args)
 	{
 		detail::push_meta(L, detail::get_class_name<T>());
 		if (lua_istable(L, -1))
 		{
 			//register functor
 			lua_pushstring(L, name);
-			detail::_push_functor(L, std::forward<Func>(func), std::forward<Args>(args)...);
+			detail::_push_functor(L, std::forward<Func>(func), std::forward<DefaultArgs>(default_args)...);
 			lua_rawset(L, -3);
 		}
 		lua_pop(L, 1);
