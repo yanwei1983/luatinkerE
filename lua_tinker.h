@@ -80,8 +80,8 @@ namespace lua_tinker
 
 
 	// global function
-	template<typename Func>
-	void def(lua_State* L, const char* name, Func&& func);
+	template<typename Func, typename ... Args>
+	void def(lua_State* L, const char* name, Func&& func, Args&& ... args);
 	// global variable
 	template<typename T>
 	void set(lua_State* L, const char* name, T object);
@@ -98,17 +98,17 @@ namespace lua_tinker
 	template<typename T>
 	void class_add(lua_State* L, const char* name, bool bInitShared = false);
 	// Tinker Class Constructor
-	template<typename T, typename F>
-	void class_con(lua_State* L, F&& func);
+	template<typename T, typename F, typename ... Args>
+	void class_con(lua_State* L, F&& func, Args&& ... args);
 	// Tinker Class Inheritence
 	template<typename T, typename P>
 	void class_inh(lua_State* L);
 
 	// Tinker Class Functions
-	template<typename T, typename Func>
-	void class_def(lua_State* L, const char* name, Func&& func);
-	template<typename T, typename Func>
-	void class_def_static(lua_State* L, const char* name, Func&& func);
+	template<typename T, typename Func, typename ... Args>
+	void class_def(lua_State* L, const char* name, Func&& func, Args&& ... args);
+	template<typename T, typename Func, typename ... Args>
+	void class_def_static(lua_State* L, const char* name, Func&& func, Args&& ... args);
 
 	// Tinker Class Variables
 	template<typename T, typename BASE, typename VAR>
@@ -1033,6 +1033,20 @@ namespace lua_tinker
 			}
 		}
 
+		inline void push_upval_to_stack(lua_State* L,int nArgsCount, int nArgsNeed)
+		{
+			if (nArgsCount < nArgsNeed)
+			{
+				//need use upval
+				int nNeedUpval = nArgsNeed - nArgsCount;
+				int nUpvalCount = read<int>(L, lua_upvalueindex(2));
+				for (int i = nUpvalCount - nNeedUpval; i < nUpvalCount; i++)
+				{
+					lua_pushvalue(L, lua_upvalueindex(3 + i));
+				}
+			}
+		}
+
 		//functor
 		struct functor_base
 		{
@@ -1078,6 +1092,7 @@ namespace lua_tinker
 				CHECK_CLASS_PTR(CT);
 				TRY_LUA_TINKER_INVOKE()
 				{
+					push_upval_to_stack(L, lua_gettop(L) - 1, sizeof...(Args));
 					_invoke<RVal>(L, upvalue_<FuncType>(L), _read_classptr_from_index1<CT, bConst>(L));
 					return 1;
 				}
@@ -1100,10 +1115,7 @@ namespace lua_tinker
 			static auto _invoke(lua_State *L, FuncType&& func, CT* pClassPtr)
 				->typename std::enable_if<std::is_void<T>::value, void>::type
 			{
-
 				direct_invoke_member_func<2, RVal, FuncType, CT, Args...>(std::forward<FuncType>(func), L, pClassPtr);
-
-
 			}
 
 
@@ -1115,6 +1127,7 @@ namespace lua_tinker
 				TRY_LUA_TINKER_INVOKE()
 				{
 					using FuncWarpType = member_functor<bConst, CT, RVal, Args...>;
+					push_upval_to_stack(L, lua_gettop(L)-1, sizeof...(Args));
 					_invoke_function<RVal>(L, upvalue_<FuncWarpType*>(L)->m_pfunc, _read_classptr_from_index1<CT, bConst>(L));
 					return 1;
 				}
@@ -1184,6 +1197,7 @@ namespace lua_tinker
 			{
 				TRY_LUA_TINKER_INVOKE()
 				{
+					push_upval_to_stack(L, lua_gettop(L), sizeof...(Args));
 					_invoke<RVal>(L);
 					return 1;
 				}
@@ -1214,6 +1228,7 @@ namespace lua_tinker
 				{
 					using FuncWarpType = functor<RVal, Args...>;
 					FuncWarpType* pFuncWarp = upvalue_<FuncWarpType*>(L);
+					push_upval_to_stack(L, lua_gettop(L), sizeof...(Args));
 					_invoke_function<RVal>(L, pFuncWarp->m_func);
 					return 1;
 				}
@@ -1254,6 +1269,16 @@ namespace lua_tinker
 			lua_pushlightuserdata(L, (void*)func);
 			lua_pushcclosure(L, &Functor_Warp::invoke, 1);
 		}
+		template<typename R, typename ...ARGS, typename ... DEFAULT_ARGS>
+		void _push_functor(lua_State* L, R(func)(ARGS...), DEFAULT_ARGS&& ... default_args)
+		{
+			using Functor_Warp = functor<R, ARGS...>;
+			lua_pushlightuserdata(L, (void*)func);
+			const size_t size_args = sizeof...(default_args);
+			push<int>(L, size_args);
+			push_args(L, std::forward<DEFAULT_ARGS>(default_args)...);
+			lua_pushcclosure(L, &Functor_Warp::invoke, 2 + size_args);
+		}
 
 		template<typename R, typename ...ARGS>
 		void _push_functor(lua_State* L, const std::function<R(ARGS...)>& func)
@@ -1270,6 +1295,25 @@ namespace lua_tinker
 			}
 			lua_pushcclosure(L, &Functor_Warp::invoke_function, 1);
 		}
+		template<typename R, typename ...ARGS, typename ... DEFAULT_ARGS>
+		void _push_functor(lua_State* L, const std::function<R(ARGS...)>& func, DEFAULT_ARGS&& ... default_args)
+		{
+			using Functor_Warp = functor<R, ARGS...>;
+			new(lua_newuserdata(L, sizeof(Functor_Warp))) Functor_Warp(func);
+			//register functor
+			{
+				lua_newtable(L);
+				lua_pushstring(L, "__gc");
+				lua_pushcclosure(L, &destroyer<Functor_Warp>, 0);
+				lua_rawset(L, -3);
+				lua_setmetatable(L, -2);
+			}
+			const size_t size_args = sizeof...(default_args);
+			push<int>(L, size_args);
+			push_args(L, std::forward<DEFAULT_ARGS>(default_args)...);
+
+			lua_pushcclosure(L, &Functor_Warp::invoke_function, 2 + size_args);
+		}
 
 		template<typename R, typename ...ARGS>
 		void _push_functor(lua_State* L, std::function<R(ARGS...)>&& func)
@@ -1285,6 +1329,25 @@ namespace lua_tinker
 				lua_setmetatable(L, -2);
 			}
 			lua_pushcclosure(L, &Functor_Warp::invoke_function, 1);
+		}
+		template<typename R, typename ...ARGS, typename ... DEFAULT_ARGS>
+		void _push_functor(lua_State* L, std::function<R(ARGS...)>&& func, DEFAULT_ARGS&& ... default_args)
+		{
+			using Functor_Warp = functor<R, ARGS...>;
+			new(lua_newuserdata(L, sizeof(Functor_Warp))) Functor_Warp(func);
+			//register functor
+			{
+				lua_newtable(L);
+				lua_pushstring(L, "__gc");
+				lua_pushcclosure(L, &destroyer<Functor_Warp>, 0);
+				lua_rawset(L, -3);
+				lua_setmetatable(L, -2);
+			}
+			const size_t size_args = sizeof...(default_args);
+			push<int>(L, size_args);
+			push_args(L, std::forward<DEFAULT_ARGS>(default_args)...);
+
+			lua_pushcclosure(L, &Functor_Warp::invoke_function, 2 + size_args);
 		}
 
 		template<typename overload_functor>
@@ -1303,6 +1366,7 @@ namespace lua_tinker
 
 			lua_pushcclosure(L, &overload_functor::invoke_function, 1);
 		}
+
 
 	}
 
@@ -1366,10 +1430,10 @@ namespace lua_tinker
 
 
 
-	template<typename Func>
-	void def(lua_State* L, const char* name, Func&& func)
+	template<typename Func, typename ... Args>
+	void def(lua_State* L, const char* name, Func&& func, Args&& ... args)
 	{
-		detail::_push_functor(L, std::forward<Func>(func));
+		detail::_push_functor(L, std::forward<Func>(func), std::forward<Args>(args)...);
 		lua_setglobal(L, name);
 	}
 
@@ -1460,6 +1524,18 @@ namespace lua_tinker
 			new(lua_newuserdata(L, sizeof(FunctionType))) FunctionType(func);
 			lua_pushcclosure(L, &Functor_Warp::invoke, 1);
 		}
+		template<typename T, typename R, typename ...ARGS, typename ... DEFAULT_ARGS>
+		void _push_class_functor(lua_State* L, R(T::*func)(ARGS...), DEFAULT_ARGS&& ... default_args)
+		{
+			using Functor_Warp = member_functor<false, T, R, ARGS...>;
+			using FunctionType = R(T::*)(ARGS...);
+			//register functor
+			new(lua_newuserdata(L, sizeof(FunctionType))) FunctionType(func);
+			const size_t size_args = sizeof...(default_args);
+			push<int>(L, size_args);
+			push_args(L, std::forward<DEFAULT_ARGS>(default_args)...);
+			lua_pushcclosure(L, &Functor_Warp::invoke, 2 + size_args);
+		}
 
 		template<typename T, typename R, typename ...ARGS>
 		void _push_class_functor(lua_State* L, R(T::*func)(ARGS...) const)
@@ -1469,6 +1545,18 @@ namespace lua_tinker
 			//register functor
 			new(lua_newuserdata(L, sizeof(FunctionType))) FunctionType(func);
 			lua_pushcclosure(L, &Functor_Warp::invoke, 1);
+		}
+		template<typename T, typename R, typename ...ARGS, typename ... DEFAULT_ARGS>
+		void _push_class_functor(lua_State* L, R(T::*func)(ARGS...)const, DEFAULT_ARGS&& ... default_args)
+		{
+			using Functor_Warp = member_functor<true, T, R, ARGS...>;
+			using FunctionType = R(T::*)(ARGS...)const;
+			//register functor
+			new(lua_newuserdata(L, sizeof(FunctionType))) FunctionType(func);
+			const size_t size_args = sizeof...(default_args);
+			push<int>(L, size_args);
+			push_args(L, std::forward<DEFAULT_ARGS>(default_args)...);
+			lua_pushcclosure(L, &Functor_Warp::invoke, 2 + size_args);
 		}
 
 
@@ -1490,6 +1578,28 @@ namespace lua_tinker
 
 			lua_pushcclosure(L, &Functor_Warp::invoke_function, 1);
 		}
+		template<typename T, typename R, typename ...ARGS, typename ... DEFAULT_ARGS>
+		void _push_class_functor(lua_State* L, const std::function<R(T*, ARGS...)>& func, DEFAULT_ARGS&& ... default_args)
+		{
+			using Functor_Warp = member_functor<false, T, R, ARGS...>;
+
+			new(lua_newuserdata(L, sizeof(Functor_Warp))) Functor_Warp(func);
+			//register metatable for gc
+			{
+				lua_newtable(L);
+				lua_pushstring(L, "__gc");
+				lua_pushcclosure(L, &destroyer<Functor_Warp>, 0);
+				lua_rawset(L, -3);
+
+				lua_setmetatable(L, -2);
+			}
+
+			const size_t size_args = sizeof...(default_args);
+			push<int>(L, size_args);
+			push_args(L, std::forward<DEFAULT_ARGS>(default_args)...);
+			lua_pushcclosure(L, &Functor_Warp::invoke_function, 2 + size_args);
+		}
+
 		template<typename T, typename R, typename ...ARGS>
 		void _push_class_functor(lua_State* L, std::function<R(T*, ARGS...)>&& func)
 		{
@@ -1508,6 +1618,27 @@ namespace lua_tinker
 
 			lua_pushcclosure(L, &Functor_Warp::invoke_function, 1);
 		}
+		template<typename T, typename R, typename ...ARGS, typename ... DEFAULT_ARGS>
+		void _push_class_functor(lua_State* L, std::function<R(T*, ARGS...)>&& func, DEFAULT_ARGS&& ... default_args)
+		{
+			using Functor_Warp = member_functor<false, T, R, ARGS...>;
+
+			new(lua_newuserdata(L, sizeof(Functor_Warp))) Functor_Warp(func);
+			//register metatable for gc
+			{
+				lua_newtable(L);
+				lua_pushstring(L, "__gc");
+				lua_pushcclosure(L, &destroyer<Functor_Warp>, 0);
+				lua_rawset(L, -3);
+
+				lua_setmetatable(L, -2);
+			}
+
+			const size_t size_args = sizeof...(default_args);
+			push<int>(L, size_args);
+			push_args(L, std::forward<DEFAULT_ARGS>(default_args)...);
+			lua_pushcclosure(L, &Functor_Warp::invoke_function, 2 + size_args);
+		}
 
 		template<typename overload_functor>
 		auto _push_class_functor(lua_State* L, overload_functor&& functor)->
@@ -1525,6 +1656,7 @@ namespace lua_tinker
 			}
 			lua_pushcclosure(L, &overload_functor::invoke_function, 1);
 		}
+
 		
 
 		template<typename T>
@@ -1625,15 +1757,15 @@ namespace lua_tinker
 	}
 
 	// Tinker Class Constructor
-	template<typename T, typename F>
-	void class_con(lua_State* L, F&& func)
+	template<typename T, typename F, typename ... Args>
+	void class_con(lua_State* L, F&& func, Args&& ... args)
 	{
 		detail::push_meta(L, detail::get_class_name<T>());
 		if (lua_istable(L, -1))
 		{
 			lua_newtable(L);
 			lua_pushstring(L, "__call");
-			detail::_push_functor(L, std::forward<F>(func));
+			detail::_push_functor(L, std::forward<F>(func), std::forward<Args>(args)...);
 			lua_rawset(L, -3);
 			lua_setmetatable(L, -2);
 		}
@@ -1641,28 +1773,28 @@ namespace lua_tinker
 	}
 
 	// Tinker Class Functions
-	template<typename T, typename Func>
-	void class_def(lua_State* L, const char* name, Func&& func)
+	template<typename T, typename Func, typename ... Args>
+	void class_def(lua_State* L, const char* name, Func&& func, Args&& ... args)
 	{
 		detail::push_meta(L, detail::get_class_name<T>());
 		if (lua_istable(L, -1))
 		{
 			//register functor
 			lua_pushstring(L, name);
-			detail::_push_class_functor(L, std::forward<Func>(func) );
+			detail::_push_class_functor(L, std::forward<Func>(func),std::forward<Args>(args)...);
 			lua_rawset(L, -3);
 		}
 		lua_pop(L, 1);
 	}
-	template<typename T, typename Func>
-	void class_def_static(lua_State* L, const char* name, Func&& func)
+	template<typename T, typename Func, typename ... Args>
+	void class_def_static(lua_State* L, const char* name, Func&& func, Args&& ... args)
 	{
 		detail::push_meta(L, detail::get_class_name<T>());
 		if (lua_istable(L, -1))
 		{
 			//register functor
 			lua_pushstring(L, name);
-			detail::_push_functor(L, std::forward<Func>(func));
+			detail::_push_functor(L, std::forward<Func>(func), std::forward<Args>(args)...);
 			lua_rawset(L, -3);
 		}
 		lua_pop(L, 1);

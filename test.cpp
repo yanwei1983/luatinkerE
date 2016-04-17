@@ -148,6 +148,12 @@ public:
 		return n1+n2+ (int)d;
 	}
 
+	int test_default_params(int a, int b, int c)
+	{
+		return a + b - c;
+	}
+
+
 	static int get_static_val(int v)
 	{
 		return s_val+v;
@@ -388,6 +394,11 @@ void on_lua_close(lua_State* L)
 	std::cout << "on_lua_close" << std::endl;
 }
 
+int test_default_params(int a, int b, int c)
+{
+	return a + b - c;
+}
+
 int main()
 {
 	lua_State* L = luaL_newstate();
@@ -452,6 +463,7 @@ int main()
 	lua_tinker::def(L, "get_c_function", &get_c_function);
 	lua_tinker::def(L, "store_lua_function", &store_lua_function);
 	lua_tinker::def(L, "use_stored_lua_function", &use_stored_lua_function);
+	lua_tinker::def(L, "test_default_params", &test_default_params, 5, 8);
 
 
 	lua_tinker::def(L, "test_overload", lua_tinker::args_type_overload_functor( (int(*)(int)) (&test_overload),
@@ -479,7 +491,8 @@ int main()
 	lua_tinker::class_def<ff>(L, "add_ffcref", &ff::add_ffcref);
 	lua_tinker::class_def<ff>(L, "getVal", &ff::getVal);
 	lua_tinker::class_def<ff>(L, "setVal", &ff::setVal);
-	
+	lua_tinker::class_def<ff>(L, "test_default_params", &ff::test_default_params, 5, 8);
+
 	lua_tinker::class_def_static<ff>(L, "get_static_val", &ff::get_static_val);
 
 	lua_tinker::class_mem<ff>(L, "m_val", &ff::m_val);
@@ -546,7 +559,52 @@ int main()
 		static constexpr const unsigned long long result = (unsigned long long)(0x8000000000000001) + ((unsigned long long)(0x8000000000000000) + 1);
 		return result == lua_tinker::call<unsigned long long>(L, "lua_test_int64_3");
 	};
-	
+	test_func_set["lua_test_default_params1"] = [L]()->bool
+	{
+		std::string luabuf =
+			R"(function lua_test_default_params1()
+					return test_default_params(7);
+				end
+			)";
+
+		lua_tinker::dostring(L, luabuf.c_str());
+		return  (7+5-8) == lua_tinker::call<int>(L, "lua_test_default_params1");
+	};
+	test_func_set["lua_test_default_params2"] = [L]()->bool
+	{
+		std::string luabuf =
+			R"(function lua_test_default_params2()
+					return test_default_params(7,3);
+				end
+			)";
+
+		lua_tinker::dostring(L, luabuf.c_str());
+		return  (7 + 3 - 8) == lua_tinker::call<int>(L, "lua_test_default_params2");
+	};
+	test_func_set["lua_test_default_params3"] = [L]()->bool
+	{
+		std::string luabuf =
+			R"(function lua_test_default_params3()
+					local pFF = ff();
+					return pFF:test_default_params(7);
+				end
+			)";
+
+		lua_tinker::dostring(L, luabuf.c_str());
+		return  (7 + 5 - 8) == lua_tinker::call<int>(L, "lua_test_default_params3");
+	};
+	test_func_set["lua_test_default_params4"] = [L]()->bool
+	{
+		std::string luabuf =
+			R"(function lua_test_default_params4()
+					local pFF = ff();
+					return pFF:test_default_params(7,3);
+				end
+			)";
+
+		lua_tinker::dostring(L, luabuf.c_str());
+		return  (7 + 3 - 8) == lua_tinker::call<int>(L, "lua_test_default_params4");
+	};
 	test_func_set["test_lua_shared_1"]  = [L]()->bool
 	{
 		std::string luabuf =
