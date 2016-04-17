@@ -326,6 +326,10 @@ namespace lua_tinker
 				: val2user(L, std::make_index_sequence<sizeof...(Args)>(), tag)
 			{}
 
+			val2user(lua_State* L, class_tag<void> tag)
+				: val2user()
+			{}
+
 
 			~val2user() { delete ((T*)m_p); }
 
@@ -1047,6 +1051,18 @@ namespace lua_tinker
 			}
 		}
 
+		inline void push_upval_to_stack(lua_State* L,int nArgsCount, int nArgsNeed, int nUpvalCount, int UpvalStart)
+		{
+			if (nArgsCount < nArgsNeed)
+			{
+				//need use upval
+				int nNeedUpval = nArgsNeed - nArgsCount;
+				for (int i = nUpvalCount - nNeedUpval; i < nUpvalCount; i++)
+				{
+					lua_pushvalue(L, lua_upvalueindex(2 + UpvalStart + i));
+				}
+			}
+		}
 		//functor
 		struct functor_base
 		{
@@ -1061,21 +1077,33 @@ namespace lua_tinker
 			typedef std::function< RVal(CT*, Args...) > FunctionType;
 			FunctionType m_func;
 
-			member_functor(const FunctionType& func)
+			int m_nDefaultParamCount = 0;
+			int m_nDefaultParamsStart = 0;
+			member_functor(const FunctionType& func, int nDefaultParamCount = 0, int nDefaultParamStart = 0)
 				:m_func(func)
+				, m_nDefaultParamCount(nDefaultParamCount)
+				, m_nDefaultParamsStart(nDefaultParamStart)
 			{}
-			member_functor(FunctionType&& func)
+			member_functor(FunctionType&& func, int nDefaultParamCount = 0, int nDefaultParamStart = 0)
 				:m_func(func)
+				, m_nDefaultParamCount(nDefaultParamCount)
+				, m_nDefaultParamsStart(nDefaultParamStart)
 			{}
 
 			~member_functor()
 			{}
+
+			int getDefaultArgsNum()
+			{
+				return m_nDefaultParamCount;
+			}
 
 			virtual int apply(lua_State* L) override
 			{
 				CHECK_CLASS_PTR(CT);
 				TRY_LUA_TINKER_INVOKE()
 				{
+					push_upval_to_stack(L, lua_gettop(L) - 1, sizeof...(Args), m_nDefaultParamCount, m_nDefaultParamsStart);
 					_invoke_function<RVal>(L, m_func, _read_classptr_from_index1<CT, bConst>(L));
 					return 1;
 				}
@@ -1168,20 +1196,32 @@ namespace lua_tinker
 
 			FunctionType m_func;
 
-			functor(const FunctionType& func)
+			int m_nDefaultParamCount = 0;
+			int m_nDefaultParamsStart = 0;
+			functor(const FunctionType& func, int nDefaultParamCount = 0, int nDefaultParamStart = 0)
 				:m_func(func)
+				, m_nDefaultParamCount(nDefaultParamCount)
+				, m_nDefaultParamsStart(nDefaultParamStart)
 			{}
-			functor(FunctionType&& func)
+			functor(FunctionType&& func, int nDefaultParamCount = 0, int nDefaultParamStart = 0)
 				:m_func(func)
+				, m_nDefaultParamCount(nDefaultParamCount)
+				, m_nDefaultParamsStart(nDefaultParamStart)
 			{}
 
 			~functor()
 			{}
 
+			int getDefaultArgsNum()
+			{
+				return m_nDefaultParamCount;
+			}
+			
 			virtual int apply(lua_State* L) override
 			{
 				TRY_LUA_TINKER_INVOKE()
 				{
+					push_upval_to_stack(L, lua_gettop(L), sizeof...(Args), m_nDefaultParamCount, m_nDefaultParamsStart);
 					_invoke_function<RVal>(L, m_func);
 					return 1;
 				}
@@ -1350,6 +1390,26 @@ namespace lua_tinker
 			lua_pushcclosure(L, &Functor_Warp::invoke_function, 2 + size_args);
 		}
 
+		template<typename overload_functor, typename ... DEFAULT_ARGS>
+		auto _push_functor(lua_State* L, overload_functor&& functor, DEFAULT_ARGS&& ... default_args)->
+			typename std::enable_if<std::is_base_of<args_type_overload_functor_base, overload_functor>::value, void>::type
+		{
+			new(lua_newuserdata(L, sizeof(overload_functor))) overload_functor(std::forward<overload_functor>(functor));
+			//register functor
+			{
+				lua_newtable(L);
+				lua_pushstring(L, "__gc");
+				lua_pushcclosure(L, &destroyer<overload_functor>, 0);
+				lua_rawset(L, -3);
+				lua_setmetatable(L, -2);
+			}
+			const size_t size_args = sizeof...(default_args);
+			push<int>(L, size_args);
+			push_args(L, std::forward<DEFAULT_ARGS>(default_args)...);
+
+			lua_pushcclosure(L, &overload_functor::invoke_function, 2 + size_args);
+		}
+
 		template<typename overload_functor>
 		auto _push_functor(lua_State* L, overload_functor&& functor)->
 			typename std::enable_if<std::is_base_of<args_type_overload_functor_base, overload_functor>::value, void>::type
@@ -1374,10 +1434,23 @@ namespace lua_tinker
 	template<typename T, typename ...Args>
 	struct constructor : public detail::functor_base
 	{
+		int m_nDefaultParamCount = 0;
+		int m_nDefaultParamsStart = 0;
+		constructor(int nDefaultParamCount = 0, int nDefaultParamStart = 0)
+			: m_nDefaultParamCount(nDefaultParamCount)
+			, m_nDefaultParamsStart(nDefaultParamStart)
+		{}
+
+		int getDefaultArgsNum()
+		{
+			return m_nDefaultParamCount;
+		}
+
 		virtual int apply(lua_State* L) override
 		{
 			TRY_LUA_TINKER_INVOKE()
 			{
+				detail::push_upval_to_stack(L, lua_gettop(L), sizeof...(Args), m_nDefaultParamCount, m_nDefaultParamsStart);
 				invoke(L);
 				return 1;
 			}
@@ -1392,35 +1465,6 @@ namespace lua_tinker
 		static int invoke(lua_State *L)
 		{
 			new(lua_newuserdata(L, sizeof(detail::val2user<T>))) detail::val2user<T>(L, detail::class_tag<Args...>());
-			detail::push_meta(L, detail::get_class_name<T>());
-			lua_setmetatable(L, -2);
-
-			return 1;
-		}
-	};
-
-
-	template<typename T>
-	struct constructor<T> : public detail::functor_base
-	{
-		virtual int apply(lua_State* L) override
-		{
-			TRY_LUA_TINKER_INVOKE()
-			{
-				invoke(L);
-				return 1;
-			}
-			CATCH_LUA_TINKER_INVOKE()
-			{
-				lua_pushfstring(L, "lua fail to invoke functor");
-				lua_error(L);
-			}
-			return 0;
-		}
-
-		static int invoke(lua_State *L)
-		{
-			new(lua_newuserdata(L, sizeof(detail::val2user<T>))) detail::val2user<T>();
 			detail::push_meta(L, detail::get_class_name<T>());
 			lua_setmetatable(L, -2);
 
@@ -1640,6 +1684,8 @@ namespace lua_tinker
 			lua_pushcclosure(L, &Functor_Warp::invoke_function, 2 + size_args);
 		}
 
+
+
 		template<typename overload_functor>
 		auto _push_class_functor(lua_State* L, overload_functor&& functor)->
 			typename std::enable_if<std::is_base_of<args_type_overload_functor_base, overload_functor>::value, void>::type
@@ -1656,7 +1702,25 @@ namespace lua_tinker
 			}
 			lua_pushcclosure(L, &overload_functor::invoke_function, 1);
 		}
+		template<typename overload_functor, typename ... DEFAULT_ARGS>
+		auto _push_class_functor(lua_State* L, overload_functor&& functor, DEFAULT_ARGS&& ... default_args)->
+			typename std::enable_if<std::is_base_of<args_type_overload_functor_base, overload_functor>::value, void>::type
+		{
+			new(lua_newuserdata(L, sizeof(overload_functor))) overload_functor(std::forward<overload_functor>(functor));
+			//register metatable for gc
+			{
+				lua_newtable(L);
+				lua_pushstring(L, "__gc");
+				lua_pushcclosure(L, &destroyer<overload_functor>, 0);
+				lua_rawset(L, -3);
 
+				lua_setmetatable(L, -2);
+			}
+			const size_t size_args = sizeof...(default_args);
+			push<int>(L, size_args);
+			push_args(L, std::forward<DEFAULT_ARGS>(default_args)...);
+			lua_pushcclosure(L, &overload_functor::invoke_function, 2 + size_args);
+		}
 		
 
 		template<typename T>
@@ -2101,36 +2165,38 @@ namespace lua_tinker
 		template<typename Func, std::size_t args_num>
 		struct count_all_func_argv
 		{
-			static constexpr const long long result = ((get_func_argv<Func, (args_num - 1)>() << ((args_num - 1) * 4)) + count_all_func_argv<Func, (args_num - 1)>::result);
+			static constexpr const unsigned long long result = ((get_func_argv<Func, (args_num - 1)>() << ((args_num - 1) * 4)) + count_all_func_argv<Func, (args_num - 1)>::result);
 		};
 		template<typename Func>
 		struct count_all_func_argv<Func, 1>
 		{
-			static constexpr const long long result = get_func_argv<Func, 0>();
+			static constexpr const unsigned long long result = get_func_argv<Func, 0>();
 		};
 
 		template<typename Func>
 		struct count_all_func_argv<Func, 0>
 		{
-			static constexpr const long long result = 0;
+			static constexpr unsigned const long long result = 0;
 		};
 
 		template<typename T>
 		struct function_signature
 		{
-			static constexpr const long long m_sig = count_all_func_argv<T, function_traits<T>::argc>::result;
+			static constexpr const unsigned long long m_sig = count_all_func_argv<T, function_traits<T>::argc>::result;
 		};
 
 
 
-		void _set_signature(long long& sig, size_t idx, unsigned char c);
+		void _set_signature(unsigned long long& sig, size_t idx, unsigned char c);
 
 	};
 
 	struct args_type_overload_functor_base
 	{
-		typedef std::map<long long, std::shared_ptr<detail::functor_base> > overload_funcmap_t;
-		overload_funcmap_t m_overload_funcmap;
+		typedef std::shared_ptr<detail::functor_base> functor_base_ptr;
+		typedef std::map<unsigned long long, functor_base_ptr > overload_funcmap_t;
+		typedef std::map<size_t, overload_funcmap_t > overload_funcmap_by_argsnum_t;
+		overload_funcmap_by_argsnum_t m_overload_funcmap;
 		int m_nParamsOffset = 0;
 
 		args_type_overload_functor_base()
@@ -2148,18 +2214,50 @@ namespace lua_tinker
 			rht.m_overload_funcmap.clear();
 		}
 
+		void insert(size_t args_num, size_t default_args_num, unsigned long long sig, functor_base_ptr&& ptr)
+		{
+			for (size_t i = 0; i <= default_args_num && i <= args_num; i++)
+			{
+				auto& refMap = m_overload_funcmap[args_num - i];
+				static const unsigned long long mask[] =
+				{
+					0,
+					0xF,
+					0xFF,
+					0xFFF,
+					0xFFFF,
+					0xFFFFF,
+					0xFFFFFF,
+					0xFFFFFFF,
+					0xFFFFFFFF,
+					0xFFFFFFFFF,
+					0xFFFFFFFFFF,
+					0xFFFFFFFFFFF,
+					0xFFFFFFFFFFFF,
+					0xFFFFFFFFFFFFF,
+					0xFFFFFFFFFFFFFF,
+					0xFFFFFFFFFFFFFFF,
+					0xFFFFFFFFFFFFFFFF,
+				};
+				long long new_sig = sig & mask[args_num - i];
+				refMap[new_sig] = ptr;
+			}
+		}
 
 		int apply(lua_State* L)
 		{
-			long long sig = 0;
+			unsigned long long sig = 0;
 			int nParamsCount = lua_gettop(L) - m_nParamsOffset;
 			for (int i = 0; i < nParamsCount; i++)
 			{
 				detail::_set_signature(sig, i, lua_type(L, i + m_nParamsOffset + 1));
 			}
-			auto itFind = m_overload_funcmap.find(sig);
-			if (itFind != m_overload_funcmap.end())
+			auto& refMap = m_overload_funcmap[nParamsCount];
+			auto itFind = refMap.find(sig);
+			if (itFind != refMap.end())
+			{
 				return itFind->second->apply(L);
+			}
 			else
 			{
 				//signature mismatch
@@ -2197,7 +2295,7 @@ namespace lua_tinker
 		void push_to_map_help(detail::functor<RVal, Args...>* ptr)
 		{
 			constexpr long long sig = detail::function_signature<RVal(Args...)>::m_sig;
-			m_overload_funcmap.emplace(sig, std::shared_ptr<detail::functor_base>(ptr));
+			insert(sizeof...(Args), ptr->getDefaultArgsNum(), sig, functor_base_ptr(ptr));
 		}
 	};
 	struct args_type_overload_member_functor : public args_type_overload_functor_base
@@ -2222,7 +2320,7 @@ namespace lua_tinker
 		void push_to_map_help(detail::member_functor<bConst, CT, RVal, Args...>* ptr)
 		{
 			constexpr long long sig = detail::function_signature<RVal(CT::*)(Args...)>::m_sig;
-			m_overload_funcmap.emplace(sig, std::shared_ptr<detail::functor_base>(ptr));
+			insert(sizeof...(Args), ptr->getDefaultArgsNum(), sig, functor_base_ptr(ptr));
 		}
 	};
 
@@ -2250,26 +2348,26 @@ namespace lua_tinker
 		void push_to_map_help(constructor<T, Args...>* ptr)
 		{
 			constexpr const long long sig = detail::function_signature<void(Args...)>::m_sig;
-			m_overload_funcmap.emplace(sig, std::shared_ptr<detail::functor_base>(ptr));
+			insert(sizeof...(Args), ptr->getDefaultArgsNum(), sig, functor_base_ptr(ptr));
 		}
 
 	};
 
-	template <typename RVal, typename ... Args>
-	decltype(auto) make_functor_ptr(RVal(func)(Args...))
+	template <typename RVal, typename ... Args, typename ... ExtArgs>
+	decltype(auto) make_functor_ptr(RVal(func)(Args...), ExtArgs...exArgs)
 	{
-		return new detail::functor<RVal, Args...>(func);
+		return new detail::functor<RVal, Args...>(func, exArgs...);
 	}
 
-	template<typename CT, typename RVal, typename ... Args>
-	decltype(auto) make_member_functor_ptr(RVal(CT::*func)(Args...))
+	template<typename CT, typename RVal, typename ... Args, typename ... ExtArgs>
+	decltype(auto) make_member_functor_ptr(RVal(CT::*func)(Args...), ExtArgs...exArgs)
 	{
-		return new detail::member_functor<false, CT, RVal, Args...>(func);
+		return new detail::member_functor<false, CT, RVal, Args...>(func, exArgs...);
 	}
-	template<typename CT, typename RVal, typename ... Args>
-	decltype(auto) make_member_functor_ptr(RVal(CT::*func)(Args...)const)
+	template<typename CT, typename RVal, typename ... Args, typename ... ExtArgs>
+	decltype(auto) make_member_functor_ptr(RVal(CT::*func)(Args...)const, ExtArgs...exArgs)
 	{
-		return new detail::member_functor<true, CT, RVal, Args...>(func);
+		return new detail::member_functor<true, CT, RVal, Args...>(func, exArgs...);
 	}
 
 

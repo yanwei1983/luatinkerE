@@ -357,6 +357,18 @@ int test_overload(int n1,int n2, double d)
 	return n1+n2+ (int)d;
 }
 
+
+
+int test_overload_default(int n, bool b)
+{
+	return n ;
+}
+
+int test_overload_default(int n1, int n2, bool b)
+{
+	return n1 + n2 ;
+}
+
 int test_lua_function(std::function<int(int)> func)
 {
 	return func(1);
@@ -465,11 +477,24 @@ int main()
 	lua_tinker::def(L, "use_stored_lua_function", &use_stored_lua_function);
 	lua_tinker::def(L, "test_default_params", &test_default_params, 5, 8);
 
-	lua_tinker::args_type_overload_functor overload_functor;
-	overload_functor.push_to_map_help(lua_tinker::make_functor_ptr((int(*)(int)) (&test_overload)));
-	overload_functor.push_to_map_help(lua_tinker::make_functor_ptr((int(*)(int, double))(&test_overload)));
-	overload_functor.push_to_map_help(lua_tinker::make_functor_ptr((int(*)(int, int, double))(&test_overload)));
-	lua_tinker::def(L, "test_overload",  std::move(overload_functor) );
+	{
+		lua_tinker::args_type_overload_functor overload_functor;
+		overload_functor.push_to_map_help(lua_tinker::make_functor_ptr((int(*)(int)) (&test_overload)));
+		overload_functor.push_to_map_help(lua_tinker::make_functor_ptr((int(*)(int, double))(&test_overload)));
+		overload_functor.push_to_map_help(lua_tinker::make_functor_ptr((int(*)(int, int, double))(&test_overload)));
+
+		lua_tinker::def(L, "test_overload", std::move(overload_functor));
+	}
+
+
+	{
+		lua_tinker::args_type_overload_functor overload_functor;
+		overload_functor.push_to_map_help(lua_tinker::make_functor_ptr((int(*)(int, bool))(&test_overload_default)));
+		overload_functor.push_to_map_help(lua_tinker::make_functor_ptr((int(*)(int, int, bool))(&test_overload_default), 1, 1));
+
+		lua_tinker::def(L, "test_overload_default", std::move(overload_functor),true);
+	}
+
 	lua_tinker::class_add<ff_base>(L, "ff_base", true);
 	lua_tinker::class_add<ff>(L, "ff", true);
 	lua_tinker::class_inh<ff,ff_base>(L);
@@ -975,8 +1000,6 @@ int main()
 				end
 			)";
 		lua_tinker::dostring(L, luabuf.c_str());
-		g_c_int = 0;
-		g_c_double = 0.0;
 		return  lua_tinker::call<bool>(L, "test_lua_coverloadfunc_1");
 	};
 	test_func_set["test_lua_coverloadfunc_2"]  = [L]()->bool
@@ -987,8 +1010,6 @@ int main()
 				end
 			)";
 		lua_tinker::dostring(L, luabuf.c_str());
-		g_c_int = 0;
-		g_c_double = 0.0;
 		return  lua_tinker::call<bool>(L, "test_lua_coverloadfunc_2");
 	};
 	test_func_set["test_lua_coverloadfunc_3"]  = [L]()->bool
@@ -999,9 +1020,37 @@ int main()
 				end
 			)";
 		lua_tinker::dostring(L, luabuf.c_str());
-		g_c_int = 0;
-		g_c_double = 0.0;
 		return  lua_tinker::call<bool>(L, "test_lua_coverloadfunc_3");
+	};
+	test_func_set["test_lua_coverloadfunc_4"] = [L]()->bool
+	{
+		std::string luabuf =
+			R"(function test_lua_coverloadfunc_4()
+					return test_overload_default(1,2) == 3;
+				end
+			)";
+		lua_tinker::dostring(L, luabuf.c_str());
+		return  lua_tinker::call<bool>(L, "test_lua_coverloadfunc_4");
+	};
+	test_func_set["test_lua_coverloadfunc_5"] = [L]()->bool
+	{
+		std::string luabuf =
+			R"(function test_lua_coverloadfunc_5()
+					return test_overload_default(1,true) == 1;
+				end
+			)";
+		lua_tinker::dostring(L, luabuf.c_str());
+		return  lua_tinker::call<bool>(L, "test_lua_coverloadfunc_5");
+	};
+	test_func_set["test_lua_coverloadfunc_6"] = [L]()->bool
+	{
+		std::string luabuf =
+			R"(function test_lua_coverloadfunc_6()
+					return test_overload_default(1,2,false) == 3;
+				end
+			)";
+		lua_tinker::dostring(L, luabuf.c_str());
+		return  lua_tinker::call<bool>(L, "test_lua_coverloadfunc_6");
 	};
 
 	test_func_set["test_lua_stdfunction_1"]  = [L]()->bool

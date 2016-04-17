@@ -486,7 +486,7 @@ bool lua_tinker::detail::CheckSameMetaTable(lua_State* L, int nIndex, const char
 	return false;
 }
 
-void lua_tinker::detail::_set_signature(long long& sig, size_t idx, unsigned char c)
+void lua_tinker::detail::_set_signature(unsigned long long& sig, size_t idx, unsigned char c)
 {
 	if (idx > sizeof(sig) * 2)
 		return;
