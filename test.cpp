@@ -465,10 +465,11 @@ int main()
 	lua_tinker::def(L, "use_stored_lua_function", &use_stored_lua_function);
 	lua_tinker::def(L, "test_default_params", &test_default_params, 5, 8);
 
-
-	lua_tinker::def(L, "test_overload", lua_tinker::args_type_overload_functor( (int(*)(int)) (&test_overload),
-																				(int(*)(int, double))(&test_overload),
-																				(int(*)(int, int, double))(&test_overload) ) );
+	lua_tinker::args_type_overload_functor overload_functor;
+	overload_functor.push_to_map_help(lua_tinker::make_functor_ptr((int(*)(int)) (&test_overload)));
+	overload_functor.push_to_map_help(lua_tinker::make_functor_ptr((int(*)(int, double))(&test_overload)));
+	overload_functor.push_to_map_help(lua_tinker::make_functor_ptr((int(*)(int, int, double))(&test_overload)));
+	lua_tinker::def(L, "test_overload",  std::move(overload_functor) );
 	lua_tinker::class_add<ff_base>(L, "ff_base", true);
 	lua_tinker::class_add<ff>(L, "ff", true);
 	lua_tinker::class_inh<ff,ff_base>(L);
@@ -477,10 +478,10 @@ int main()
 
 	//lua_tinker::class_con<ff>(L, lua_tinker::constructor<ff>::invoke);
 	//lua_tinker::class_con<ff>(L, lua_tinker::constructor<ff, int, double, unsigned char>::invoke);
-	lua_tinker::class_con<ff>(L, lua_tinker::args_type_overload_constructor( lua_tinker::constructor<ff>(),
-																			 lua_tinker::constructor<ff, int>(),
-																			 //lua_tinker::constructor<ff, double>(),
-																			 lua_tinker::constructor<ff, double, unsigned char, int>()) );
+	lua_tinker::class_con<ff>(L, lua_tinker::args_type_overload_constructor(new lua_tinker::constructor<ff>(),
+																			new lua_tinker::constructor<ff, int>(),
+																			 //new lua_tinker::constructor<ff, double>(),
+																			new lua_tinker::constructor<ff, double, unsigned char, int>()) );
 
 
 
@@ -501,9 +502,9 @@ int main()
 	lua_tinker::class_static_mem<ff>(L, "s_val", &ff::s_val);
 
 	lua_tinker::class_def<ff>(L, "test_overload",
-									lua_tinker::args_type_overload_member_functor(	(int(ff::*)(int)const) (&ff::test_overload),
-																					(int(ff::*)(int, double))(&ff::test_overload),
-																					(int(ff::*)(int, int, double))(&ff::test_overload)));
+		lua_tinker::args_type_overload_member_functor(	lua_tinker::make_member_functor_ptr((int(ff::*)(int)const) (&ff::test_overload)),
+														lua_tinker::make_member_functor_ptr((int(ff::*)(int, double))(&ff::test_overload)),
+														lua_tinker::make_member_functor_ptr((int(ff::*)(int, int, double))(&ff::test_overload))));
 
 
 	lua_tinker::register_lua_close_callback(L, lua_tinker::Lua_Close_CallBack_Func(on_lua_close) );

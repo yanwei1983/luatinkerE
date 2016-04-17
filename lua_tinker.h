@@ -2125,25 +2125,6 @@ namespace lua_tinker
 
 		void _set_signature(long long& sig, size_t idx, unsigned char c);
 
-		template <typename RVal, typename ... Args>
-		decltype(auto) make_functor_ptr(RVal(func)(Args...))
-		{
-			using Functor_Warp = functor<RVal, Args...>;
-			return new Functor_Warp(func);
-		}
-
-		template<typename CT, typename RVal, typename ... Args>
-		decltype(auto) make_member_functor_ptr(RVal(CT::*func)(Args...))
-		{
-			using Functor_Warp = member_functor<false, CT, RVal, Args...>;
-			return new Functor_Warp(func);
-		}
-		template<typename CT, typename RVal, typename ... Args>
-		decltype(auto) make_member_functor_ptr(RVal(CT::*func)(Args...)const)
-		{
-			using Functor_Warp = member_functor<true, CT, RVal, Args...>;
-			return new Functor_Warp(func);
-		}
 	};
 
 	struct args_type_overload_functor_base
@@ -2198,43 +2179,50 @@ namespace lua_tinker
 
 	struct args_type_overload_functor : public args_type_overload_functor_base
 	{
+		using args_type_overload_functor_base::args_type_overload_functor_base;
 		template<typename ...Args>
-		args_type_overload_functor(Args&&... args)
+		args_type_overload_functor(Args&& ... args)
 		{
-			emplace(std::forward<Args&&>(args)...);
+			push_to_map_help(std::forward<Args>(args)...);
+		}
+		void push_to_map_help() {}
+		template<typename T, typename ...Args>
+		void push_to_map_help(T&& t, Args&&...args)
+		{
+			push_to_map_help(std::forward<T>(t));
+			push_to_map_help(std::forward<Args>(args)...);
 		}
 
-		template<typename F>
-		void emplace(F f)
+		template <typename RVal, typename ... Args>
+		void push_to_map_help(detail::functor<RVal, Args...>* ptr)
 		{
-			constexpr long long sig = detail::function_signature<F>::m_sig;
-			m_overload_funcmap.emplace(sig, std::shared_ptr<detail::functor_base>(detail::make_functor_ptr(f)));
-		}
-		template<typename T, typename... Args>
-		void emplace(T f, Args...args)
-		{
-			emplace(f); emplace(args...);
+			constexpr long long sig = detail::function_signature<RVal(Args...)>::m_sig;
+			m_overload_funcmap.emplace(sig, std::shared_ptr<detail::functor_base>(ptr));
 		}
 	};
 	struct args_type_overload_member_functor : public args_type_overload_functor_base
 	{
+		using args_type_overload_functor_base::args_type_overload_functor_base;
+
 		template<typename ...Args>
-		args_type_overload_member_functor(Args&&... args)
+		args_type_overload_member_functor(Args&&...args)
 		{
-			emplace(std::forward<Args&&>(args)...);
+			push_to_map_help(std::forward<Args>(args)...);
 			m_nParamsOffset = 1;
 		}
-
-		template<typename F>
-		void emplace(F&& f)
+		void push_to_map_help() {}
+		template<typename T, typename ...Args>
+		void push_to_map_help(T&& t, Args&&...args)
 		{
-			constexpr long long sig = detail::function_signature<F>::m_sig;
-			m_overload_funcmap.emplace(sig, std::shared_ptr<detail::functor_base>(detail::make_member_functor_ptr(f)));
+			push_to_map_help(std::forward<T>(t));
+			push_to_map_help(std::forward<Args>(args)...);
 		}
-		template<typename T, typename... Args>
-		void emplace(T f, Args...args)
+
+		template<bool bConst, typename CT, typename RVal, typename ... Args>
+		void push_to_map_help(detail::member_functor<bConst, CT, RVal, Args...>* ptr)
 		{
-			emplace(f); emplace(args...);
+			constexpr long long sig = detail::function_signature<RVal(CT::*)(Args...)>::m_sig;
+			m_overload_funcmap.emplace(sig, std::shared_ptr<detail::functor_base>(ptr));
 		}
 	};
 
@@ -2242,36 +2230,48 @@ namespace lua_tinker
 
 	struct args_type_overload_constructor : public args_type_overload_functor_base
 	{
+		using args_type_overload_functor_base::args_type_overload_functor_base;
+
 		template<typename ...Args>
-		args_type_overload_constructor(Args&&...)
+		args_type_overload_constructor(Args&&...args)
 		{
-			emplace<Args...>::apply(m_overload_funcmap);
+			push_to_map_help(std::forward<Args>(args)...);
 			m_nParamsOffset = 1;
+		}
+		void push_to_map_help() {}
+		template<typename T,typename ...Args>
+		void push_to_map_help(T&& t, Args&&...args)
+		{
+			push_to_map_help(std::forward<T>(t));
+			push_to_map_help(std::forward<Args>(args)...);
 		}
 
 		template<typename T, typename... Args>
-		struct emplace
+		void push_to_map_help(constructor<T, Args...>* ptr)
 		{
-			static void apply(overload_funcmap_t& map)
-			{
-				emplace<T>::apply(map);
-				emplace<Args...>::apply(map);
-			}
-		};
-
-		template<typename T, typename ...Args>
-		struct emplace< constructor<T, Args...> >
-		{
-			static void apply(overload_funcmap_t& map)
-			{
-				constexpr const long long sig = detail::function_signature<void(Args...)>::m_sig;
-				map.emplace(sig, std::shared_ptr<detail::functor_base>(new constructor<T, Args...>()));
-			}
-		};
-
-
+			constexpr const long long sig = detail::function_signature<void(Args...)>::m_sig;
+			m_overload_funcmap.emplace(sig, std::shared_ptr<detail::functor_base>(ptr));
+		}
 
 	};
+
+	template <typename RVal, typename ... Args>
+	decltype(auto) make_functor_ptr(RVal(func)(Args...))
+	{
+		return new detail::functor<RVal, Args...>(func);
+	}
+
+	template<typename CT, typename RVal, typename ... Args>
+	decltype(auto) make_member_functor_ptr(RVal(CT::*func)(Args...))
+	{
+		return new detail::member_functor<false, CT, RVal, Args...>(func);
+	}
+	template<typename CT, typename RVal, typename ... Args>
+	decltype(auto) make_member_functor_ptr(RVal(CT::*func)(Args...)const)
+	{
+		return new detail::member_functor<true, CT, RVal, Args...>(func);
+	}
+
 
 };
 
