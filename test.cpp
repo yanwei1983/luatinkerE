@@ -10,25 +10,300 @@
 #include<assert.h>
 #include "lua_tinker.h"
 #include "test.h"
-namespace test_
+
+int g_c_int = 0;
+double g_c_double = 0.0;
+void gint_add1()
 {
-	namespace lua_
+	g_c_int++;
+}
+void gint_addint(int n)
+{
+	g_c_int += n;
+}
+void gint_addintptr(int* p)
+{
+	g_c_int += *p;
+}
+void gint_addintref(const int& ref)
+{
+	g_c_int += ref;
+}
+void gint_add_intref(int& ref, int n)
+{
+	ref += n;
+}
+
+void g_addint_double(int n1,double n2)
+{
+	g_c_int += n1;
+	g_c_double += n2;
+}
+
+int get_gint()
+{
+	return g_c_int;
+}
+int& get_gintref()
+{
+	return g_c_int;
+}
+int* get_gintptr()
+{
+	return &g_c_int;
+}
+double get_gdouble()
+{
+	return g_c_double;
+}
+
+
+int ff::s_val;
+int ff::s_ref;
+
+ff g_ff;
+ff* get_gff_ptr()
+{
+	return &g_ff;
+}
+
+const ff& get_gff_cref()
+{
+	return g_ff;
+}
+
+std::unordered_map<int, int> g_testhashmap = { { 1,1 },{ 3,2 },{ 5,3 },{ 7,4 } };
+const std::unordered_map<int, int>& push_hashmap()
+{
+	return g_testhashmap;
+}
+
+std::map<int, int> g_testmap = { {1,1},{3,2},{5,3},{7,4} };
+const std::map<int, int>& push_map()
+{
+	return g_testmap;
+}
+
+std::set<int> g_testset = { 1,2,3,4,5 };
+const std::set<int> & push_set()
+{
+	return g_testset;
+}
+
+
+std::vector<int> g_testvec = { 1,2,3,4,5 };
+const std::vector<int>& push_vector()
+{
+	return g_testvec;
+}
+
+std::string g_teststring = "test";
+std::string push_string()
+{
+	return g_teststring;
+}
+
+std::string connect_string(std::string str1,const std::string& str2, const std::string& str3)
+{
+	return str1 + str2 + str3;
+}
+
+const std::string& push_string_ref()
+{
+	return g_teststring;
+}
+
+
+std::shared_ptr<ff> g_ff_shared;
+std::shared_ptr<ff> make_ff()
+{
+	if (!g_ff_shared)
 	{
-		int ff::s_val;
-		int ff::s_ref;
-		int g_c_int = 0;
-		double g_c_double = 0.0;
-		ff g_ff;
-		std::unordered_map<int, int> g_testhashmap = { { 1,1 },{ 3,2 },{ 5,3 },{ 7,4 } };
-		std::map<int, int> g_testmap = { { 1,1 },{ 3,2 },{ 5,3 },{ 7,4 } };
-		std::set<int> g_testset = { 1,2,3,4,5 };
-		std::vector<int> g_testvec = { 1,2,3,4,5 };
-		std::string g_teststring = "test";
-		std::shared_ptr<ff> g_ff_shared;
-		ff_nodef g_ff_nodef;
-		std::shared_ptr<ff_nodef> g_ff_nodef_shared;
-		std::function<int(int)> g_func_lua;
+		g_ff_shared = std::shared_ptr<ff>(new ff);
 	}
+	return g_ff_shared;
+}
+
+std::shared_ptr<ff> make_ff_to_lua()
+{
+	return std::shared_ptr<ff>(new ff);
+}
+
+std::weak_ptr<ff> make_ff_weak()
+{
+	return std::weak_ptr<ff>(g_ff_shared);
+}
+
+bool visot_ff(ff* pFF)
+{
+	if (pFF)
+	{
+		return true;
+	}
+	return false;
+}
+
+void visot_ff_ref(ff& refFF)
+{
+	std::cout << "visot_ff(" << refFF.m_val << ")" << std::endl;
+}
+void visot_ff_const_ref(const ff& refFF)
+{
+	std::cout << "visot_ff(" << refFF.m_val << ")" << std::endl;
+}
+
+bool visot_ff_shared(std::shared_ptr<ff> pFF)
+{
+	if (pFF)
+	{
+		return true;
+	}
+	return false;
+}
+
+bool visot_ff_weak(std::weak_ptr<ff> pWeakFF)
+{
+	if (pWeakFF.expired() == false)
+	{
+		std::shared_ptr<ff> pFF = pWeakFF.lock();
+		if (pFF)
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+ff_nodef g_ff_nodef;
+ff_nodef* make_ff_nodef()
+{
+	return &g_ff_nodef;
+}
+
+bool visot_ff_nodef(ff_nodef* pFF)
+{
+	if (pFF)
+	{
+		return true;
+	}
+	return false;
+}
+
+std::shared_ptr<ff_nodef> g_ff_nodef_shared;
+std::shared_ptr<ff_nodef> make_ff_nodef_shared()
+{
+	if (!g_ff_nodef_shared)
+	{
+		g_ff_nodef_shared = std::shared_ptr<ff_nodef>(new ff_nodef);
+	}
+	return g_ff_nodef_shared;
+}
+
+bool visot_ff_nodef_shared(std::shared_ptr<ff_nodef> pFF)
+{
+	if (pFF)
+	{
+		return true;
+	}
+	return false;
+}
+
+unsigned long long addUL(unsigned long long a, unsigned long long b)
+{
+	return a + b;
+}
+
+long long Number2Interger(double v)
+{
+	return (long long)(v);
+}
+
+
+ int test_overload_err(int n)
+{
+	return n;
+}
+
+
+ int test_overload_err(double d)
+{
+	return int(d);
+}
+
+int test_overload(int n)
+{
+	return n;
+}
+
+int test_overload(double d)
+{
+	return int(d);
+}
+
+
+int test_overload(int n,double d)
+{
+	return n+ (int)d;
+}
+
+int test_overload(int n1,int n2, double d)
+{
+	return n1+n2+ (int)d;
+}
+
+
+
+int test_overload_default(int n, bool b)
+{
+	return n ;
+}
+
+int test_overload_default(int n1, int n2, bool b)
+{
+	return n1 + n2 ;
+}
+
+
+int test_overload_default(int n1, int n2, int n3, double d1/*=1.0*/, double d2 /*= 2.0*/, double d3 /*= 3.0*/, double d4 /*= 4.0*/, const std::string& refString /*= std::string("test")*/)
+{
+	return n1 + n2;
+}
+
+int test_lua_function(std::function<int(int)> func)
+{
+	return func(1);
+}
+int test_lua_function_ref(const std::function<int(int)>& func)
+{
+	return func(1);
+}
+
+std::function<int(int)> get_c_function()
+{
+	auto func = [](int v)->int
+	{
+		return v + 1;
+	};
+	return std::function<int(int)>(func);
+}
+
+
+//func must be release before lua close.....user_conctrl
+std::function<int(int)> g_func_lua;
+void store_lua_function(std::function<int(int)> func)
+{
+	g_func_lua = func;
+}
+
+int use_stored_lua_function()
+{
+	return g_func_lua(1);
+}
+
+
+int test_default_params(int a, int b, int c)
+{
+	return a + b - c;
 }
 
 
@@ -42,20 +317,19 @@ void export_to_lua_manual(lua_State* L)
 		lua_tinker::def(L, "std_function_int_bind88", func_c);
 	}
 
-	lua_tinker::class_property<test_::lua_::ff>(L, "m_prop", &test_::lua_::ff::getVal, &test_::lua_::ff::setVal);
-	lua_tinker::class_property<test_::lua_::ff>(L, "m_prop_readonly", &test_::lua_::ff::getVal, nullptr);
+	lua_tinker::class_property<ff>(L, "m_prop", &ff::getVal, &ff::setVal);
+	lua_tinker::class_property<ff>(L, "m_prop_readonly", &ff::getVal, nullptr);
 }
 
 
 void on_lua_close(lua_State* L)
 {
-	test_::lua_::g_func_lua = nullptr;
+	g_func_lua = nullptr;
 	std::cout << "on_lua_close" << std::endl;
 }
 
 int main()
 {
-	using namespace test_::lua_;
 	lua_State* L = luaL_newstate();
 	luaL_openlibs(L);
 	lua_tinker::init(L);
@@ -588,6 +862,16 @@ int main()
 			)";
 		lua_tinker::dostring(L, luabuf.c_str());
 		return  lua_tinker::call<bool>(L, "test_lua_coverloadfunc_6");
+	};
+	test_func_set["test_lua_coverloadfunc_7"] = [L]()->bool
+	{
+		std::string luabuf =
+			R"(function test_lua_coverloadfunc_7()
+					return test_overload_default(1,2,3) == 3;
+				end
+			)";
+		lua_tinker::dostring(L, luabuf.c_str());
+		return  lua_tinker::call<bool>(L, "test_lua_coverloadfunc_7");
 	};
 
 	test_func_set["test_lua_coverloadfunc_err_1"] = [L]()->bool
