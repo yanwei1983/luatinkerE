@@ -58,6 +58,7 @@ lua_tinker::set(L,"g_c_int",g_c_int);
 lua_tinker::class_add<ff_base>(L, "ff_base",true);
 lua_tinker::class_def<ff_base>(L, "test_base_callfn",&ff_base::test_base_callfn);
 lua_tinker::class_add<ff>(L, "ff",true);
+lua_tinker::class_inh<ff,ff_base>(L);
 lua_tinker::class_def<ff>(L, "add",&ff::add);
 lua_tinker::class_def<ff>(L, "add_ffcref",&ff::add_ffcref);
 lua_tinker::class_def<ff>(L, "add_ffptr",&ff::add_ffptr);
@@ -72,11 +73,9 @@ lua_tinker::class_def<ff>(L, "test_overload", lua_tinker::args_type_overload_mem
 	lua_tinker::make_member_functor_ptr((int(ff::*)(int, double))(&ff::test_overload)), 
 	lua_tinker::make_member_functor_ptr((int(ff::*)(int, int, double))(&ff::test_overload))));
 lua_tinker::class_con<ff>(L,lua_tinker::args_type_overload_constructor(
-	new lua_tinker::constructor<ff>(), 
-	new lua_tinker::constructor<ff, int>(), 
-	new lua_tinker::constructor<ff, double, unsigned char, int>()));
+	new lua_tinker::constructor<ff, int>(1 /*default_args_count*/, 1 /*default_args_start*/ ), 
+	new lua_tinker::constructor<ff, double, unsigned char, int>(1 /*default_args_count*/, 2 /*default_args_start*/ )), 0, 1);
 lua_tinker::class_mem<ff>(L,"m_val",&ff::m_val);
 lua_tinker::class_mem_static<ff>(L,"s_ref",&ff::s_ref);
 lua_tinker::class_mem_static<ff>(L,"s_val",&ff::s_val);
-lua_tinker::class_inh<ff,ff_base>(L);
 }

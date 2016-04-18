@@ -45,11 +45,7 @@ public:
 export_lua class ff : public ff_base
 {
 public:
-	export_lua ff()
-	{
-		s_ref++;
-	}
-	export_lua ff(int a) :m_val(a)
+	export_lua ff(int a = 0) :m_val(a)
 	{
 		s_ref++;
 	}
@@ -57,7 +53,7 @@ public:
 	{
 		s_ref++;
 	}
-	export_lua ff(double, unsigned char, int a) :m_val(a)
+	export_lua ff(double, unsigned char, int a = 1) :m_val(a)
 	{
 		s_ref++;
 	}
