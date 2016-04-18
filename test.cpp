@@ -347,6 +347,12 @@ int test_overload(int n)
 	return n;
 }
 
+int test_overload(double d)
+{
+	return int(d);
+}
+
+
 int test_overload(int n,double d)
 {
 	return n+ (int)d;
@@ -485,7 +491,13 @@ int main()
 
 		lua_tinker::def(L, "test_overload", std::move(overload_functor));
 	}
+	{
+		lua_tinker::args_type_overload_functor overload_functor;
+		overload_functor.push_to_map_help(lua_tinker::make_functor_ptr((int(*)(int)) (&test_overload)));
+		overload_functor.push_to_map_help(lua_tinker::make_functor_ptr((int(*)(double))(&test_overload)));
 
+		lua_tinker::def(L, "test_overload_err", std::move(overload_functor));
+	}
 
 	{
 		lua_tinker::args_type_overload_functor overload_functor;
@@ -1051,6 +1063,26 @@ int main()
 			)";
 		lua_tinker::dostring(L, luabuf.c_str());
 		return  lua_tinker::call<bool>(L, "test_lua_coverloadfunc_6");
+	};
+
+	test_func_set["test_lua_coverloadfunc_err_1"] = [L]()->bool
+	{
+		std::string luabuf =
+			R"(function test_lua_coverloadfunc_err_1()
+					return test_overload_err(1) == 1;
+				end
+			)";
+		lua_tinker::dostring(L, luabuf.c_str());
+		printf("error:function overload resolution have too many same signature \n");
+		try
+		{
+			lua_tinker::call_throw<void>(L, "test_lua_coverloadfunc_err_1");
+			return false;
+		}
+		catch (lua_tinker::lua_call_err&)
+		{
+			return true;
+		}
 	};
 
 	test_func_set["test_lua_stdfunction_1"]  = [L]()->bool

@@ -2061,7 +2061,7 @@ namespace lua_tinker
 	struct args_type_overload_functor_base
 	{
 		typedef std::shared_ptr<detail::functor_base> functor_base_ptr;
-		typedef std::map<unsigned long long, functor_base_ptr > overload_funcmap_t;
+		typedef std::multimap<unsigned long long, functor_base_ptr > overload_funcmap_t;
 		typedef std::map<size_t, overload_funcmap_t > overload_funcmap_by_argsnum_t;
 		overload_funcmap_by_argsnum_t m_overload_funcmap;
 		int m_nParamsOffset = 0;
@@ -2107,7 +2107,8 @@ namespace lua_tinker
 					0xFFFFFFFFFFFFFFFF,
 				};
 				long long new_sig = sig & mask[args_num - i];
-				refMap[new_sig] = ptr;
+
+				refMap.emplace(new_sig,ptr);
 			}
 		}
 
@@ -2120,17 +2121,25 @@ namespace lua_tinker
 				detail::_set_signature(sig, i, lua_type(L, i + m_nParamsOffset + 1));
 			}
 			auto& refMap = m_overload_funcmap[nParamsCount];
-			auto itFind = refMap.find(sig);
-			if (itFind != refMap.end())
+			auto itFind = refMap.equal_range(sig);
+			if(itFind.first == refMap.end())
 			{
-				return itFind->second->apply(L);
+				//signature mismatch
+				lua_pushfstring(L, "function overload resolution can't find same argscount");
+				lua_error(L);
+				return -1;
+			}
+			else if (std::next(itFind.first) != itFind.second)
+			{
+				//signature mismatch
+				lua_pushfstring(L, "function overload resolution have too many same signature");
+				lua_error(L);
+				return -1;
 			}
 			else
 			{
-				//signature mismatch
-				lua_pushfstring(L, "overload function args mismatch");
-				lua_error(L);
-				return -1;
+				return itFind.first->second->apply(L);
+				
 			}
 		}
 
