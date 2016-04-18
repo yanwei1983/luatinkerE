@@ -9,435 +9,31 @@
 #include<utility>
 #include<assert.h>
 #include "lua_tinker.h"
-
-int g_c_int = 0;
-double g_c_double = 0.0;
-void gint_add1()
+#include "test.h"
+namespace test_
 {
-	g_c_int++;
-}
-void gint_addint(int n)
-{
-	g_c_int += n;
-}
-void gint_addintptr(int* p)
-{
-	g_c_int += *p;
-}
-void gint_addintref(const int& ref)
-{
-	g_c_int += ref;
-}
-void gint_add_intref(int& ref, int n)
-{
-	ref += n;
-}
-
-void g_addint_double(int n1,double n2)
-{
-	g_c_int += n1;
-	g_c_double += n2;
-}
-
-int get_gint()
-{
-	return g_c_int;
-}
-int& get_gintref()
-{
-	return g_c_int;
-}
-int* get_gintptr()
-{
-	return &g_c_int;
-}
-double get_gdouble()
-{
-	return g_c_double;
-}
-
-
-class ff_base
-{
-public:
-	ff_base() {}
-	virtual ~ff_base() {}
-
-	int test_base_callfn(int n)
+	namespace lua_
 	{
-		return n;
+		int ff::s_val;
+		int ff::s_ref;
+		int g_c_int = 0;
+		double g_c_double = 0.0;
+		ff g_ff;
+		std::unordered_map<int, int> g_testhashmap = { { 1,1 },{ 3,2 },{ 5,3 },{ 7,4 } };
+		std::map<int, int> g_testmap = { { 1,1 },{ 3,2 },{ 5,3 },{ 7,4 } };
+		std::set<int> g_testset = { 1,2,3,4,5 };
+		std::vector<int> g_testvec = { 1,2,3,4,5 };
+		std::string g_teststring = "test";
+		std::shared_ptr<ff> g_ff_shared;
+		ff_nodef g_ff_nodef;
+		std::shared_ptr<ff_nodef> g_ff_nodef_shared;
+		std::function<int(int)> g_func_lua;
 	}
-};
-
-class ff : public ff_base
-{
-public:
-	ff()
-	{
-		s_ref++;
-	}
-	ff(int a) :m_val(a)
-	{
-		s_ref++;
-	}
-	ff(double a)
-	{
-		s_ref++;
-	}
-	ff(double, unsigned char, int a) :m_val(a)
-	{
-		s_ref++;
-	}
-	ff(const ff& rht) :m_val(rht.m_val)
-	{
-		s_ref++;
-	}
-	ff(ff&& rht) = default;
-
-	ff& operator=(const ff& rht)
-	{
-		if (&rht != this)
-		{
-			m_val = rht.m_val;
-		}
-		std::cout << "ff::operator =" << std::endl;
-
-		return *this;
-	}
-
-	~ff()
-	{
-		s_ref--;
-	}
-	bool test_memfn()
-	{
-		return true;
-	}
-	bool test_const() const
-	{
-		return true;
-	}
-
-	int add(int n)
-	{
-		return m_val += n;
-	}
-
-	int add_ffptr(ff* pff)
-	{
-		return m_val + pff->m_val;
-	}
-	
-	int add_ffcref(const ff& rht)
-	{
-		return m_val + rht.m_val;
-	}
-
-	int test_overload(int n) const
-	{
-		return n;
-	}
-
-	int test_overload(int n, double d)
-	{
-		return n+(int)d;
-	}
-
-	int test_overload(int n1, int n2, double d)
-	{
-		return n1+n2+ (int)d;
-	}
-
-	int test_default_params(int a, int b, int c)
-	{
-		return a + b - c;
-	}
-
-
-	static int get_static_val(int v)
-	{
-		return s_val+v;
-	}
-
-	int getVal()const { return m_val; }
-	void setVal(int v) { m_val = v; }
-
-	int m_val = 0;
-	static int s_val;
-	static int s_ref;
-};
-int ff::s_val;
-int ff::s_ref;
-
-ff g_ff;
-ff* get_gff_ptr()
-{
-	return &g_ff;
-}
-
-const ff& get_gff_cref()
-{
-	return g_ff;
-}
-
-std::unordered_map<int, int> g_testhashmap = { { 1,1 },{ 3,2 },{ 5,3 },{ 7,4 } };
-const std::unordered_map<int, int>& push_hashmap()
-{
-	return g_testhashmap;
-}
-
-std::map<int, int> g_testmap = { {1,1},{3,2},{5,3},{7,4} };
-const std::map<int, int>& push_map()
-{
-	return g_testmap;
-}
-
-std::set<int> g_testset = { 1,2,3,4,5 };
-const std::set<int> & push_set()
-{
-	return g_testset;
 }
 
 
-std::vector<int> g_testvec = { 1,2,3,4,5 };
-const std::vector<int>& push_vector()
+void export_to_lua_manual(lua_State* L)
 {
-	return g_testvec;
-}
-
-std::string g_teststring = "test";
-std::string push_string()
-{
-	return g_teststring;
-}
-
-std::string connect_string(std::string str1,const std::string& str2, const std::string& str3)
-{
-	return str1 + str2 + str3;
-}
-
-const std::string& push_string_ref()
-{
-	return g_teststring;
-}
-
-
-std::shared_ptr<ff> g_ff_shared;
-std::shared_ptr<ff> make_ff()
-{
-	if (!g_ff_shared)
-	{
-		g_ff_shared = std::shared_ptr<ff>(new ff);
-	}
-	return g_ff_shared;
-}
-
-std::shared_ptr<ff> make_ff_to_lua()
-{
-	return std::shared_ptr<ff>(new ff);
-}
-
-std::weak_ptr<ff> make_ff_weak()
-{
-	return std::weak_ptr<ff>(g_ff_shared);
-}
-
-bool visot_ff(ff* pFF)
-{
-	if (pFF)
-	{
-		return true;
-	}
-	return false;
-}
-
-void visot_ff_ref(ff& refFF)
-{
-	std::cout << "visot_ff(" << refFF.m_val << ")" << std::endl;
-}
-void visot_ff_const_ref(const ff& refFF)
-{
-	std::cout << "visot_ff(" << refFF.m_val << ")" << std::endl;
-}
-
-bool visot_ff_shared(std::shared_ptr<ff> pFF)
-{
-	if (pFF)
-	{
-		return true;
-	}
-	return false;
-}
-
-bool visot_ff_weak(std::weak_ptr<ff> pWeakFF)
-{
-	if (pWeakFF.expired() == false)
-	{
-		std::shared_ptr<ff> pFF = pWeakFF.lock();
-		if (pFF)
-		{
-			return true;
-		}
-	}
-	return false;
-}
-
-class ff_nodef
-{
-public:
-	ff_nodef(int n = 0) :m_val(n) {}
-	ff_nodef(const ff_nodef& rht) :m_val(rht.m_val) {}
-	ff_nodef(ff_nodef&& rht) :m_val(rht.m_val) {}
-
-	~ff_nodef()
-	{
-		std::cout << "ff_nodef::~ff_nodef()" << std::endl;
-	}
-
-	int m_val;
-};
-
-ff_nodef g_ff_nodef;
-ff_nodef* make_ff_nodef()
-{
-	return &g_ff_nodef;
-}
-
-bool visot_ff_nodef(ff_nodef* pFF)
-{
-	if (pFF)
-	{
-		return true;
-	}
-	return false;
-}
-
-std::shared_ptr<ff_nodef> g_ff_nodef_shared;
-std::shared_ptr<ff_nodef> make_ff_nodef_shared()
-{
-	if (!g_ff_nodef_shared)
-	{
-		g_ff_nodef_shared = std::shared_ptr<ff_nodef>(new ff_nodef);
-	}
-	return g_ff_nodef_shared;
-}
-
-bool visot_ff_nodef_shared(std::shared_ptr<ff_nodef> pFF)
-{
-	if (pFF)
-	{
-		return true;
-	}
-	return false;
-}
-
-unsigned long long addUL(unsigned long long a, unsigned long long b)
-{
-	return a + b;
-}
-
-long long Number2Interger(double v)
-{
-	return (long long)(v);
-}
-
-
-int test_overload(int n)
-{
-	return n;
-}
-
-int test_overload(double d)
-{
-	return int(d);
-}
-
-
-int test_overload(int n,double d)
-{
-	return n+ (int)d;
-}
-
-int test_overload(int n1,int n2, double d)
-{
-	return n1+n2+ (int)d;
-}
-
-
-
-int test_overload_default(int n, bool b)
-{
-	return n ;
-}
-
-int test_overload_default(int n1, int n2, bool b)
-{
-	return n1 + n2 ;
-}
-
-int test_lua_function(std::function<int(int)> func)
-{
-	return func(1);
-}
-int test_lua_function_ref(const std::function<int(int)>& func)
-{
-	return func(1);
-}
-
-std::function<int(int)> get_c_function()
-{
-	auto func = [](int v)->int
-	{
-		return v + 1;
-	};
-	return std::function<int(int)>(func);
-}
-
-
-//func must be release before lua close.....user_conctrl
-std::function<int(int)> g_func_lua;
-void store_lua_function(std::function<int(int)> func)
-{
-	g_func_lua = func;
-}
-
-int use_stored_lua_function()
-{
-	return g_func_lua(1);
-}
-
-void on_lua_close(lua_State* L)
-{
-	g_func_lua = nullptr;
-	std::cout << "on_lua_close" << std::endl;
-}
-
-int test_default_params(int a, int b, int c)
-{
-	return a + b - c;
-}
-
-int main()
-{
-	lua_State* L = luaL_newstate();
-	luaL_openlibs(L);
-	lua_tinker::init(L);
-
-	lua_tinker::def(L, "addUL", &addUL);
-	lua_tinker::def(L, "Number2Interger", &Number2Interger);
-
-
-	lua_tinker::def(L, "gint_add1", &gint_add1);
-	lua_tinker::def(L, "gint_addint", &gint_addint);
-	lua_tinker::def(L, "gint_addintptr", &gint_addintptr);
-	lua_tinker::def(L, "gint_addintref", &gint_addintref);
-	lua_tinker::def(L, "gint_add_intref", &gint_add_intref);
-	lua_tinker::def(L, "g_addint_double", &g_addint_double);
-	lua_tinker::def(L, "get_gint", &get_gint);
-	lua_tinker::def(L, "get_gintref", &get_gintref);
-	lua_tinker::def(L, "get_gintptr", &get_gintptr);
-	lua_tinker::def(L, "get_gdouble", &get_gdouble);
-
 
 	{
 		std::function<int(int, int)> func = [](int k, int j)->int {	return k + j; };
@@ -446,103 +42,32 @@ int main()
 		lua_tinker::def(L, "std_function_int_bind88", func_c);
 	}
 
-	lua_tinker::def(L, "get_gff_ptr", &get_gff_ptr);
-	lua_tinker::def(L, "get_gff_cref", &get_gff_cref);
-
-	lua_tinker::def(L, "make_ff", &make_ff);
-	lua_tinker::def(L, "make_ff_to_lua", &make_ff_to_lua);
-	lua_tinker::def(L, "make_ff_weak", &make_ff_weak);
-	lua_tinker::def(L, "visot_ff", &visot_ff);
-	lua_tinker::def(L, "visot_ff_ref", &visot_ff_ref);
-	lua_tinker::def(L, "visot_ff_const_ref", &visot_ff_const_ref);
-	lua_tinker::def(L, "visot_ff_weak", &visot_ff_weak);
+	lua_tinker::class_property<test_::lua_::ff>(L, "m_prop", &test_::lua_::ff::getVal, &test_::lua_::ff::setVal);
+	lua_tinker::class_property<test_::lua_::ff>(L, "m_prop_readonly", &test_::lua_::ff::getVal, nullptr);
+}
 
 
-	lua_tinker::def(L, "push_string", &push_string);
-	lua_tinker::def(L, "push_string_ref", &push_string_ref);
-	lua_tinker::def(L, "connect_string", &connect_string);
+void on_lua_close(lua_State* L)
+{
+	test_::lua_::g_func_lua = nullptr;
+	std::cout << "on_lua_close" << std::endl;
+}
 
-	lua_tinker::def(L, "push_map", &push_map);
-	lua_tinker::def(L, "push_vector", &push_vector);
-	lua_tinker::def(L, "push_set", &push_set);
-	lua_tinker::def(L, "push_hashmap", &push_hashmap);
+int main()
+{
+	using namespace test_::lua_;
+	lua_State* L = luaL_newstate();
+	luaL_openlibs(L);
+	lua_tinker::init(L);
 
 
-	lua_tinker::def(L, "make_ff_nodef", &make_ff_nodef);
-	lua_tinker::def(L, "visot_ff_nodef", &visot_ff_nodef);
-	lua_tinker::def(L, "make_ff_nodef_shared", &make_ff_nodef_shared);
-	lua_tinker::def(L, "visot_ff_nodef_shared", &visot_ff_nodef_shared);
-	lua_tinker::def(L, "make_ff", &make_ff);
-	lua_tinker::def(L, "visot_ff_shared", &visot_ff_shared);
-	lua_tinker::def(L, "visot_ff", &visot_ff);
-
-	lua_tinker::def(L, "test_lua_function", &test_lua_function);
-	lua_tinker::def(L, "test_lua_function_ref", &test_lua_function_ref);
-	lua_tinker::def(L, "get_c_function", &get_c_function);
-	lua_tinker::def(L, "store_lua_function", &store_lua_function);
-	lua_tinker::def(L, "use_stored_lua_function", &use_stored_lua_function);
-	lua_tinker::def(L, "test_default_params", &test_default_params, 5, 8);
-
-	{
-		lua_tinker::args_type_overload_functor overload_functor;
-		overload_functor.push_to_map_help(lua_tinker::make_functor_ptr((int(*)(int)) (&test_overload)));
-		overload_functor.push_to_map_help(lua_tinker::make_functor_ptr((int(*)(int, double))(&test_overload)));
-		overload_functor.push_to_map_help(lua_tinker::make_functor_ptr((int(*)(int, int, double))(&test_overload)));
-
-		lua_tinker::def(L, "test_overload", std::move(overload_functor));
-	}
-	{
-		lua_tinker::args_type_overload_functor overload_functor;
-		overload_functor.push_to_map_help(lua_tinker::make_functor_ptr((int(*)(int)) (&test_overload)));
-		overload_functor.push_to_map_help(lua_tinker::make_functor_ptr((int(*)(double))(&test_overload)));
-
-		lua_tinker::def(L, "test_overload_err", std::move(overload_functor));
-	}
-
-	{
-		lua_tinker::args_type_overload_functor overload_functor;
-		overload_functor.push_to_map_help(lua_tinker::make_functor_ptr((int(*)(int, bool))(&test_overload_default)));
-		overload_functor.push_to_map_help(lua_tinker::make_functor_ptr((int(*)(int, int, bool))(&test_overload_default), 1, 1));
-
-		lua_tinker::def(L, "test_overload_default", std::move(overload_functor),true);
-	}
-
-	lua_tinker::class_add<ff_base>(L, "ff_base", true);
-	lua_tinker::class_add<ff>(L, "ff", true);
-	lua_tinker::class_inh<ff,ff_base>(L);
-
-	lua_tinker::class_def<ff_base>(L, "test_base_callfn", &ff_base::test_base_callfn);
-
-	//lua_tinker::class_con<ff>(L, lua_tinker::constructor<ff>::invoke);
-	//lua_tinker::class_con<ff>(L, lua_tinker::constructor<ff, int, double, unsigned char>::invoke);
-	lua_tinker::class_con<ff>(L, lua_tinker::args_type_overload_constructor(new lua_tinker::constructor<ff>(),
-																			new lua_tinker::constructor<ff, int>(),
-																			 //new lua_tinker::constructor<ff, double>(),
-																			new lua_tinker::constructor<ff, double, unsigned char, int>()) );
+	extern void export_to_lua_auto(lua_State* L);
 
 
 
-	lua_tinker::class_def<ff>(L, "test_memfn", &ff::test_memfn);
-	lua_tinker::class_def<ff>(L, "test_const", &ff::test_const);
-	lua_tinker::class_def<ff>(L, "add", &ff::add);
-	lua_tinker::class_def<ff>(L, "add_ffptr", &ff::add_ffptr);
-	lua_tinker::class_def<ff>(L, "add_ffcref", &ff::add_ffcref);
-	lua_tinker::class_def<ff>(L, "getVal", &ff::getVal);
-	lua_tinker::class_def<ff>(L, "setVal", &ff::setVal);
-	lua_tinker::class_def<ff>(L, "test_default_params", &ff::test_default_params, 5, 8);
 
-	lua_tinker::class_def_static<ff>(L, "get_static_val", &ff::get_static_val);
-
-	lua_tinker::class_mem<ff>(L, "m_val", &ff::m_val);
-	lua_tinker::class_property<ff>(L, "m_prop", &ff::getVal, &ff::setVal);
-	lua_tinker::class_property<ff>(L, "m_prop_readonly", &ff::getVal, nullptr);
-	lua_tinker::class_static_mem<ff>(L, "s_val", &ff::s_val);
-
-	lua_tinker::class_def<ff>(L, "test_overload",
-		lua_tinker::args_type_overload_member_functor(	lua_tinker::make_member_functor_ptr((int(ff::*)(int)const) (&ff::test_overload)),
-														lua_tinker::make_member_functor_ptr((int(ff::*)(int, double))(&ff::test_overload)),
-														lua_tinker::make_member_functor_ptr((int(ff::*)(int, int, double))(&ff::test_overload))));
-
+	export_to_lua_auto(L);
+	export_to_lua_manual(L);
 
 	lua_tinker::register_lua_close_callback(L, lua_tinker::Lua_Close_CallBack_Func(on_lua_close) );
 	

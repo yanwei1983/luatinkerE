@@ -116,7 +116,7 @@ namespace lua_tinker
 
 	// Tinker Class Static Variables
 	template<typename T, typename VAR>
-	void class_static_mem(lua_State* L, const char* name, VAR *val);
+	void class_mem_static(lua_State* L, const char* name, VAR *val);
 
 	// Tinker Class Property
 	template<typename T, typename GET_FUNC, typename SET_FUNC>
@@ -1788,7 +1788,7 @@ namespace lua_tinker
 
 	// Tinker Class Variables
 	template<typename T, typename VAR>
-	void class_static_mem(lua_State* L, const char* name, VAR *val)
+	void class_mem_static(lua_State* L, const char* name, VAR *val)
 	{
 		detail::push_meta(L, detail::get_class_name<T>());
 		if (lua_istable(L, -1))
