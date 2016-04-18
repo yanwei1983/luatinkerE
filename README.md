@@ -3,7 +3,7 @@ LUA to C++ Binding Library "lua_tinker" expand for c++14 and lua 5.3
 
 ##why luatinker"E"?
 
-0xE=14, ^_^
+0xE=14, ^_^  
 E=Expand，we add a lot of feature to luatinker
 
 we use Variadic Template and index_sequence, SFINAE enable_if and type_traits, tuple, function, forward_ref, decltype(auto), and more in c++11/14
@@ -40,6 +40,7 @@ complied with vc2015,gcc5.3,clang3.8
 * 新增class_property函数可以为一个名字注册一对get/set函数  
 * 新增class_static_mem函数可以注册类静态变量  
 * 允许调用def/class_def/class_def_static/class_con时同时加入参数默认值，当lua中invoke时，如果参数不足，会使用参数默认值  
+* overload相关函数允许加入参数默认值，但不推荐人工生成，请使用自动化生成工具export2lua  
 
 ***
 
@@ -69,3 +70,4 @@ complied with vc2015,gcc5.3,clang3.8
 * add function class_property for register get/set function for a member_name  
 * add function class_static_mem for register class static ver  
 * when call def/class_def/class_def_static/class_con function,can push params's default value. when invoke in lua, if params not enough, will use default values   
+* overload like function allow add default params, manual generation is not recommended, plz use autogen tools "export2lua"  
