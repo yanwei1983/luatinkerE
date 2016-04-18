@@ -1037,32 +1037,9 @@ namespace lua_tinker
 			}
 		}
 
-		inline void push_upval_to_stack(lua_State* L,int nArgsCount, int nArgsNeed)
-		{
-			if (nArgsCount < nArgsNeed)
-			{
-				//need use upval
-				int nNeedUpval = nArgsNeed - nArgsCount;
-				int nUpvalCount = read<int>(L, lua_upvalueindex(2));
-				for (int i = nUpvalCount - nNeedUpval; i < nUpvalCount; i++)
-				{
-					lua_pushvalue(L, lua_upvalueindex(3 + i));
-				}
-			}
-		}
-
-		inline void push_upval_to_stack(lua_State* L,int nArgsCount, int nArgsNeed, int nUpvalCount, int UpvalStart)
-		{
-			if (nArgsCount < nArgsNeed)
-			{
-				//need use upval
-				int nNeedUpval = nArgsNeed - nArgsCount;
-				for (int i = nUpvalCount - nNeedUpval; i < nUpvalCount; i++)
-				{
-					lua_pushvalue(L, lua_upvalueindex(2 + UpvalStart + i));
-				}
-			}
-		}
+		//upval to stack helper
+		void push_upval_to_stack(lua_State* L,int nArgsCount, int nArgsNeed);
+		void push_upval_to_stack(lua_State* L,int nArgsCount, int nArgsNeed, int nUpvalCount, int UpvalStart);
 		//functor
 		struct functor_base
 		{
@@ -2125,7 +2102,7 @@ namespace lua_tinker
 			if(itFind.first == refMap.end())
 			{
 				//signature mismatch
-				lua_pushfstring(L, "function overload resolution can't find same argscount");
+				lua_pushfstring(L, "function overload resolution can't find same args count");
 				lua_error(L);
 				return -1;
 			}
