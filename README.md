@@ -16,12 +16,13 @@ complied with vc2015,gcc5.3,clang3.8
 
 * 导入lua的函数，现在支持任意多的参数
 * 支持的read/push的元素类型增加std::string,std::function,lua_function_ref,stl容器,std::shared_ptr对象
-* 支持最多16个参数的非精确匹配的函数重载(c++类型downcast到lua类型后生成签名)
+* 支持最多16个参数的非精确匹配的函数重载(c++类型downcast到lua类型后生成签名)， 支持普通函数、类成员函数、构造函数
 * 支持函数默认参数及带默认参数的重载函数的匹配
 * 移除int64相关函数，使用lua5.3的luaInterager来替代  
 * 支持调用lua函数时返回多个返回值用tuple包裹  
 * 支持通过宏定义打开类型一致性检查和常量类成员函数检查
 * 支持通过宏定义允许已注册的shared_ptr对象调用类成员函数    
+* 支持类静态函数注册
 * 支持类静态变量注册
 * 支持property注册
 
