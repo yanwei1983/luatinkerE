@@ -299,7 +299,7 @@ namespace lua_tinker
 
 			virtual ~UserDataWapper() {}
 			virtual bool isSharedPtr() const { return false; }
-			virtual bool isSharedPtr_HoldFromLua() const { return false; }
+			virtual bool haveOwership() const { return false; }
 
 			void* m_p;
 #ifdef LUATINKER_USERDATA_CHECK_TYPEINFO
@@ -347,6 +347,7 @@ namespace lua_tinker
 				: val2user()
 			{}
 
+			virtual bool haveOwership() const { return true; }
 
 			~val2user() { delete ((T*)m_p); }
 
@@ -405,7 +406,7 @@ namespace lua_tinker
 				, m_holder(std::forward<std::shared_ptr<T>>(rht))
 			{}
 			virtual bool isSharedPtr() const override { return true; }
-			virtual bool isSharedPtr_HoldFromLua() const override { return true; }
+			virtual bool haveOwership() const override { return true; }
 			//use weak_ptr to hold it
 			~sharedptr2user() { m_holder.reset(); }
 
@@ -904,7 +905,7 @@ namespace lua_tinker
 					}
 				}
 #endif
-				if (pWapper->isSharedPtr_HoldFromLua())
+				if (pWapper->haveOwership())
 				{
 					sharedptr2user<T>* pSharedWapper = static_cast<sharedptr2user<T>*>(pWapper);
 					return pSharedWapper->m_holder;
@@ -1063,7 +1064,7 @@ namespace lua_tinker
 			if (pWapper->isSharedPtr())
 			{
 				//try covert shared_ptr<T> to T*, don't need check type_idx because call invoke,must be obj:func(), use matatable __parent
-				if (pWapper->isSharedPtr_HoldFromLua())
+				if (pWapper->haveOwership())
 				{
 					sharedptr2user<T>* pSharedWapper = static_cast<sharedptr2user<T>*>(pWapper);
 					return pSharedWapper->m_holder.get();
