@@ -64,7 +64,7 @@ complied with vc2015,gcc5.3,clang3.8
 * 新增class_static_mem函数可以注册类静态变量  
 * 允许调用def/class_def/class_def_static/class_con时同时加入参数默认值，当lua中invoke时，如果参数不足，会使用参数默认值  
 * overload相关函数允许加入参数默认值，但不推荐人工生成，请使用自动化生成工具export2lua  
-* 定义宏LUATINKER_MULTI_INHERITENCE，将会允许继承多个父类，查找时根据顺序依次查找，深度优先，比单次继承是多了一个继承表遍历的过程
+* 定义宏LUATINKER_MULTI_INHERITANCE，将会允许继承多个父类，查找时根据顺序依次查找，深度优先，比单次继承是多了一个继承表遍历的过程
 
 ***
 
