@@ -442,9 +442,8 @@ static void invoke_parent(lua_State *L)
 				lua_rawget(L, -2); //try to invoke
 				if (!lua_isnil(L, -1))	//have value
 				{
-					lua_remove(L, -2);	//pop value
-					lua_remove(L, -2);	//pop key
-					lua_remove(L, -2);	//pop __parent table
+					lua_rotate(L, -1, 4); //move result for next pop
+					lua_pop(L, 3);  //pop key value __parent table
 					return;
 				}
 				else
@@ -453,9 +452,8 @@ static void invoke_parent(lua_State *L)
 					invoke_parent(L);
 					if (!lua_isnil(L, -1))
 					{
-						lua_remove(L, -2);	//pop value
-						lua_remove(L, -2);	//pop key
-						lua_remove(L, -2);	//pop __parent table
+						lua_rotate(L, -1, 4); //move result for next pop
+						lua_pop(L, 3);  //pop key value __parent table
 						return;
 					}
 					else
@@ -464,9 +462,6 @@ static void invoke_parent(lua_State *L)
 					}
 				}
 			}
-
-
-
 		}
 		lua_pop(L, 1);	//pop key
 		//never find return a nil;
