@@ -44,6 +44,7 @@
 #define TRY_LUA_TINKER_INVOKE() try
 #define CATCH_LUA_TINKER_INVOKE() catch(...)
 
+#define LUATINKER_MULTI_INHERITENCE
 
 namespace lua_tinker
 {
@@ -196,7 +197,7 @@ namespace lua_tinker
 
 #ifdef LUATINKER_USERDATA_CHECK_TYPEINFO
 		// inherit map
-		typedef std::map<size_t, size_t> InheritMap;
+		typedef std::multimap<size_t, size_t> InheritMap;
 		bool IsInherit(lua_State* L, size_t idTypeDerived, size_t idTypeBase);
 		void _addInheritMap(lua_State* L, size_t idTypeDerived, size_t idTypeBase);
 
@@ -1678,9 +1679,21 @@ namespace lua_tinker
 			lua_pushcclosure(L, detail::meta_set, 0);
 			lua_rawset(L, -3);
 
+#ifndef LUATINKER_MULTI_INHERITENCE
 			lua_pushstring(L, "__parent");
 			detail::push_meta(L, name);
 			lua_rawset(L, -3);
+#else
+			lua_pushstring(L, "__parent");
+			lua_newtable(L);
+			{
+				lua_pushinteger(L, 1);
+				detail::push_meta(L, name);
+				lua_rawset(L, -3);	// set _parent[1]=table
+			}
+			lua_rawset(L, -3);	//set __parent table
+#endif
+	
 #endif
 			{//register _get_raw_ptr func
 				lua_pushstring(L, "_get_raw_ptr");
@@ -1697,6 +1710,7 @@ namespace lua_tinker
 
 	}
 
+#ifndef LUATINKER_MULTI_INHERITENCE
 	// Tinker Class Inheritence
 	template<typename T, typename P>
 	void class_inh(lua_State* L)
@@ -1716,6 +1730,53 @@ namespace lua_tinker
 #endif
 
 	}
+
+
+#else
+	// Tinker Class Inheritence
+	template<typename T, typename P>
+	void class_inh(lua_State* L)
+	{
+		detail::push_meta(L, detail::get_class_name<T>());
+		if (lua_istable(L, -1))
+		{
+			lua_pushstring(L, "__parent");
+			lua_rawget(L, -2);
+			if (lua_isnil(L, -1))
+			{
+				lua_remove(L, -1); //remove nil
+				lua_pushstring(L, "__parent");
+				lua_newtable(L);
+				{
+					lua_pushinteger(L, 1);
+					detail::push_meta(L, detail::get_class_name<P>());
+					lua_rawset(L, -3);	// set _parent[1]=table
+				}
+				lua_rawset(L, -3);	//set __parent table
+			}
+			else
+			{
+				int nLen = lua_rawlen(L, -1)+1;
+				lua_pushinteger(L, nLen);
+				detail::push_meta(L, detail::get_class_name<P>());
+				lua_rawset(L, -3); // set _parent[n]=table
+				lua_pop(L, 1);	//pop __parent table
+			}
+
+		}
+		lua_pop(L, 1);
+
+#ifdef LUATINKER_USERDATA_CHECK_TYPEINFO
+		//add inheritence map
+		detail::addInheritMap<T, P>(L);
+#endif
+
+	}
+
+
+
+#endif
+
 
 	// Tinker Class Constructor
 	template<typename T, typename F, typename ... DefaultArgs>

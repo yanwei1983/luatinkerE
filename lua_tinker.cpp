@@ -10,6 +10,7 @@
 #include "lua_tinker.h"
 #include<string>
 #include<cstring>
+#include<algorithm>
 #if defined(_MSC_VER)
 #define I64_FMT "I64"
 #elif defined(__APPLE__) 
@@ -163,6 +164,21 @@ void lua_tinker::dobuffer(lua_State *L, const char* buff, size_t len)
 
 #ifdef LUATINKER_USERDATA_CHECK_TYPEINFO
 
+bool find_inherit(size_t idThisType, size_t idTypeBase, lua_tinker::detail::InheritMap& refMap)
+{
+	auto itFindPair = refMap.equal_range(idThisType);
+	if (itFindPair.first == refMap.end())
+		return false;
+	for (auto itFind = itFindPair.first; itFind != itFindPair.second; itFind++)
+	{
+		if (itFind->second == idTypeBase)
+			return true;
+		if (find_inherit(itFind->second, idTypeBase, refMap) == true)
+			return true;
+	}
+	return false;
+}
+
 bool lua_tinker::detail::IsInherit(lua_State* L, size_t idTypeDerived, size_t idTypeBase)
 {
 	lua_getglobal(L, s_lua_ext_value_name);
@@ -174,20 +190,13 @@ bool lua_tinker::detail::IsInherit(lua_State* L, size_t idTypeDerived, size_t id
 	lua_stack_scope_exit scope_exit(L);
 	lua_ext_value* p_lua_ext_val = detail::user2type<lua_ext_value*>(L, -1);
 	auto& refMap = p_lua_ext_val->m_inherit_map;
-	auto itFind = refMap.find(idTypeDerived);
-	if (itFind == refMap.end())
-		return false;
 
-	while (true)
-	{
-		size_t idTypePerent = itFind->second;
-		if (idTypePerent == idTypeBase)
-			return true;
+	
+	return find_inherit(idTypeDerived, idTypeBase, refMap);
+	
 
-		itFind = refMap.find(idTypeDerived);
-		if (itFind == refMap.end())
-			return false;
-	}
+	
+	
 }
 
 void lua_tinker::detail::_addInheritMap(lua_State* L, size_t idTypeDerived, size_t idTypeBase)
@@ -201,7 +210,7 @@ void lua_tinker::detail::_addInheritMap(lua_State* L, size_t idTypeDerived, size
 
 	lua_ext_value* p_lua_ext_val = detail::user2type<lua_ext_value*>(L, -1);
 	auto& refMap = p_lua_ext_val->m_inherit_map;
-	refMap[idTypeDerived] = idTypeBase;
+	refMap.emplace(idTypeDerived,idTypeBase);
 }
 
 
@@ -394,6 +403,8 @@ lua_tinker::table lua_tinker::detail::pop<lua_tinker::table>::apply(lua_State *L
 /*---------------------------------------------------------------------------*/
 /* Tinker Class Helper                                                       */
 /*---------------------------------------------------------------------------*/
+#ifndef LUATINKER_MULTI_INHERITENCE
+
 static void invoke_parent(lua_State *L)
 {
 	lua_pushstring(L, "__parent");
@@ -414,14 +425,65 @@ static void invoke_parent(lua_State *L)
 		}
 	}
 }
+#else
+static void invoke_parent(lua_State *L)
+{
+	lua_pushstring(L, "__parent");
+	lua_rawget(L, -2);		//get __parent
+	if (lua_istable(L, -1))
+	{
+		lua_pushnil(L);
+		while (lua_next(L, -2) != 0)
+		{
+			//-2=key -1=val
+			if (lua_istable(L, -1))	
+			{
+				lua_pushvalue(L, 2);
+				lua_rawget(L, -2); //try to invoke
+				if (!lua_isnil(L, -1))	//have value
+				{
+					lua_remove(L, -2);	//pop value
+					lua_remove(L, -2);	//pop key
+					lua_remove(L, -2);	//pop __parent table
+					return;
+				}
+				else
+				{
+					lua_remove(L, -1);
+					invoke_parent(L);
+					if (!lua_isnil(L, -1))
+					{
+						lua_remove(L, -2);	//pop value
+						lua_remove(L, -2);	//pop key
+						lua_remove(L, -2);	//pop __parent table
+						return;
+					}
+					else
+					{
+						lua_pop(L, 2);	//pop nil and value
+					}
+				}
+			}
+
+
+
+		}
+		lua_pop(L, 1);	//pop key
+		//never find return a nil;
+		lua_pushnil(L);
+	}
+}
+
+
+#endif
 
 /*---------------------------------------------------------------------------*/
 int lua_tinker::detail::meta_get(lua_State *L)
 {
 	lua_getmetatable(L, 1);
+
 	lua_pushvalue(L, 2);
 	lua_rawget(L, -2);
-
 	if (lua_isuserdata(L, -1) != 0)
 	{
 		detail::user2type<var_base*>(L, -1)->get(L);

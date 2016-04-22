@@ -42,7 +42,35 @@ public:
 	}
 };
 
-export_lua class ff : public ff_base
+export_lua class ff_other_baseA
+{
+public:
+	ff_other_baseA() {}
+	virtual ~ff_other_baseA() {}
+
+};
+
+export_lua class ff_other_baseB
+{
+public:
+	ff_other_baseB() {}
+	virtual ~ff_other_baseB() {}
+
+	export_lua int test_other_callfn(int n)
+	{
+		return n;
+	}
+};
+
+export_lua struct ff_other :ff_other_baseA, ff_other_baseB
+{
+public:
+	ff_other() {}
+	virtual ~ff_other() {}
+
+};
+
+export_lua class ff : public ff_other, ff_base
 {
 public:
 	export_lua ff(int a = 0) :m_val(a)
@@ -156,6 +184,8 @@ export_lua std::weak_ptr<ff> make_ff_weak();
 
 
 export_lua bool visot_ff(ff* pFF);
+export_lua bool visot_ffbase(ff_base* pFF);
+export_lua bool visot_ff_other_baseA(ff_other_baseA* pFF);
 export_lua void visot_ff_ref(ff& refFF);
 export_lua void visot_ff_const_ref(const ff& refFF);
 export_lua bool visot_ff_shared(std::shared_ptr<ff> pFF);

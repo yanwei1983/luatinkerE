@@ -134,6 +134,25 @@ std::weak_ptr<ff> make_ff_weak()
 	return std::weak_ptr<ff>(g_ff_shared);
 }
 
+bool visot_ffbase(ff_base* pFF)
+{
+	if (pFF)
+	{
+		return true;
+	}
+	return false;
+}
+
+bool visot_ff_other_baseA(ff_other_baseA* pFF)
+{
+	if (pFF)
+	{
+		return true;
+	}
+	return false;
+}
+
+
 bool visot_ff(ff* pFF)
 {
 	if (pFF)
@@ -145,11 +164,11 @@ bool visot_ff(ff* pFF)
 
 void visot_ff_ref(ff& refFF)
 {
-	std::cout << "visot_ff(" << refFF.m_val << ")" << std::endl;
+
 }
 void visot_ff_const_ref(const ff& refFF)
 {
-	std::cout << "visot_ff(" << refFF.m_val << ")" << std::endl;
+
 }
 
 bool visot_ff_shared(std::shared_ptr<ff> pFF)
@@ -440,6 +459,80 @@ int main()
 		lua_tinker::dostring(L, luabuf.c_str());
 		return  (7 + 3 - 8) == lua_tinker::call<int>(L, "lua_test_default_params4");
 	};
+
+	test_func_set["test_lua_inherit_1"] = [L]()->bool
+	{
+		std::string luabuf =
+			R"(function test_lua_inherit_1()
+					local local_ff =  ff();
+					return visot_ffbase(local_ff);
+				end
+			)";
+
+		lua_tinker::dostring(L, luabuf.c_str());
+		return  lua_tinker::call<bool>(L, "test_lua_inherit_1");
+	};
+	test_func_set["test_lua_inherit_3"] = [L]()->bool
+	{
+		std::string luabuf =
+			R"(function test_lua_inherit_3()
+					local pFF = get_gff_ptr();
+					return pFF:test_base_callfn(1) == 1;
+				end
+			)";
+		lua_tinker::dostring(L, luabuf.c_str());
+		return  lua_tinker::call<bool>(L, "test_lua_inherit_3");
+	};
+
+#ifdef LUATINKER_MULTI_INHERITENCE
+	test_func_set["test_lua_inherit_2"] = [L]()->bool
+	{
+		std::string luabuf =
+			R"(function test_lua_inherit_2()
+					local local_ff =  ff();
+					return visot_ff_other_baseA(local_ff);
+				end
+			)";
+
+		lua_tinker::dostring(L, luabuf.c_str());
+		return  lua_tinker::call<bool>(L, "test_lua_inherit_2");
+	};
+
+
+
+	test_func_set["test_lua_inherit_4"] = [L]()->bool
+	{
+		std::string luabuf =
+			R"(function test_lua_inherit_4()
+					local pFF = get_gff_ptr();
+					return pFF:test_other_callfn(1) == 1;
+				end
+			)";
+		lua_tinker::dostring(L, luabuf.c_str());
+		return  lua_tinker::call<bool>(L, "test_lua_inherit_4");
+	};
+	test_func_set["test_lua_inherit_5"] = [L]()->bool
+	{
+		std::string luabuf =
+			R"(function test_lua_inherit_5()
+					local pFF = get_gff_ptr();
+					pFF:no_name(1);
+				end
+			)";
+		lua_tinker::dostring(L, luabuf.c_str());
+		printf("error: invoke unregister mem_func \n");
+		try
+		{
+			lua_tinker::call_throw<void>(L, "test_lua_inherit_5");
+			return false;
+		}
+		catch (lua_tinker::lua_call_err&)
+		{
+			return true;
+		}
+	};
+
+#endif
 	test_func_set["test_lua_shared_1"]  = [L]()->bool
 	{
 		std::string luabuf =
@@ -993,17 +1086,6 @@ int main()
 			)";
 		lua_tinker::dostring(L, luabuf.c_str());
 		return 44 == lua_tinker::call<int>(L, "test_lua_member_func_6");
-	};
-	test_func_set["test_lua_member_func_7"]  = [L]()->bool
-	{
-		std::string luabuf =
-			R"(function test_lua_member_func_6()
-					local pFF = get_gff_ptr();
-					return pFF:test_base_callfn(1) == 1;
-				end
-			)";
-		lua_tinker::dostring(L, luabuf.c_str());
-		return  lua_tinker::call<bool>(L, "test_lua_member_func_6");
 	};
 	test_func_set["test_lua_member_overloadfunc_1"]  = [L]()->bool
 	{
