@@ -189,8 +189,8 @@ export_lua unsigned long long addUL(unsigned long long a, unsigned long long b);
 export_lua long long Number2Interger(double v);
 
 
-export_lua int test_overload_err(int n);
-export_lua int test_overload_err(double d);
+export_lua void test_overload_err(const char* n);
+export_lua void test_overload_err(const std::string& n);
 
 
 

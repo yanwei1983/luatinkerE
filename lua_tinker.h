@@ -179,15 +179,32 @@ namespace lua_tinker
 		}
 
 
+		struct lua_stack_scope_exit
+		{
+			int m_nOldTop;
+			lua_State* m_L;
+			lua_stack_scope_exit(lua_State* L)
+				:m_L(L)
+			{
+				m_nOldTop = lua_gettop(m_L);
+			}
+			~lua_stack_scope_exit()
+			{
+				lua_settop(m_L, m_nOldTop);
+			}
+		};
+
 #ifdef LUATINKER_USERDATA_CHECK_TYPEINFO
 		// inherit map
 		typedef std::map<size_t, size_t> InheritMap;
-		extern InheritMap s_inherit_map;
-		bool IsInherit(size_t idTypeDerived, size_t idTypeBase);
+		bool IsInherit(lua_State* L, size_t idTypeDerived, size_t idTypeBase);
+		void _addInheritMap(lua_State* L, size_t idTypeDerived, size_t idTypeBase);
+
+
 		template<typename T, typename P>
-		void addInheritMap()
+		void addInheritMap(lua_State* L)
 		{
-			s_inherit_map[get_type_idx<base_type<T>>()] = get_type_idx<base_type<P>>();
+			_addInheritMap(L, get_type_idx<base_type<T>>(), get_type_idx<base_type<P>>());
 		}
 
 #endif
@@ -476,14 +493,49 @@ namespace lua_tinker
 
 
 
+		enum OVERLOAD_PARAMTYPE : unsigned char
+		{
+			CLT_NONE		= LUA_TNIL,
+			CLT_BOOLEAN		= LUA_TBOOLEAN,
+			CLT_NOUSE1		= LUA_TLIGHTUSERDATA,
+			CLT_INT			= LUA_TNUMBER,
+			CLT_STRING		= LUA_TSTRING,
+			CLT_TABLE		= LUA_TTABLE,
+			CLT_FUNCTION	= LUA_TFUNCTION,
+			CLT_USERDATA	= LUA_TUSERDATA,
+			CLT_NOUSE2		= LUA_TTHREAD,
+			CLT_DOUBLE,
+		};
+		const char* const OVERLOAD_PARAMTYPE_NAME[] = 
+		{
+			"CLT_NONE",
+			"CLT_BOOLEAN",
+			"CLT_NOUSE1",
+			"CLT_INT",
+			"CLT_STRING",
+			"CLT_TABLE",
+			"CLT_FUNCTION",
+			"CLT_USERDATA",
+			"CLT_NOUSE2",
+			"CLT_DOUBLE",
+		};
 
-
+		inline unsigned char LType2ParamsType(lua_State* L, int idx)
+		{
+			int nType = lua_type(L, idx);
+			if (nType != LUA_TNUMBER)
+				return nType;
+			if (!lua_isinteger(L, idx))
+				return CLT_DOUBLE;
+			else
+				return CLT_INT;
+		}
 
 		// lua stack help to read/push
 		template<typename T, typename Enable = void>
 		struct _stack_help
 		{
-			static constexpr int cover_to_lua_type() { return LUA_TUSERDATA; }
+			static constexpr int cover_to_lua_type() { return CLT_USERDATA; }
 
 			static T _read(lua_State *L, int index)
 			{
@@ -528,7 +580,7 @@ namespace lua_tinker
 				if (pWapper->m_type_idx != get_type_idx<base_type<_T>>())
 				{
 					//maybe derived to base
-					if (IsInherit(pWapper->m_type_idx, get_type_idx<base_type<_T>>()) == false)
+					if (IsInherit(L, pWapper->m_type_idx, get_type_idx<base_type<_T>>()) == false)
 					{
 						lua_pushfstring(L, "can't convert argument %d to class %s", index, get_class_name<T>());
 						lua_error(L);
@@ -561,7 +613,7 @@ namespace lua_tinker
 		template<>
 		struct _stack_help<char*>
 		{
-			static constexpr int cover_to_lua_type() { return LUA_TSTRING; }
+			static constexpr int cover_to_lua_type() { return CLT_STRING; }
 			static char* _read(lua_State *L, int index);
 			static void  _push(lua_State *L, char* ret);
 		};
@@ -569,7 +621,7 @@ namespace lua_tinker
 		template<>
 		struct _stack_help<const char*>
 		{
-			static constexpr int cover_to_lua_type() { return LUA_TSTRING; }
+			static constexpr int cover_to_lua_type() { return CLT_STRING; }
 			static const char* _read(lua_State *L, int index);
 			static void  _push(lua_State *L, const char* ret);
 		};
@@ -577,7 +629,7 @@ namespace lua_tinker
 		template<>
 		struct _stack_help<bool>
 		{
-			static constexpr int cover_to_lua_type() { return LUA_TBOOLEAN; }
+			static constexpr int cover_to_lua_type() { return CLT_BOOLEAN; }
 
 			static bool _read(lua_State *L, int index);
 			static void  _push(lua_State *L, bool ret);
@@ -587,7 +639,7 @@ namespace lua_tinker
 		template<typename T>
 		struct _stack_help<T, typename std::enable_if<std::is_integral<T>::value>::type>
 		{
-			static constexpr int cover_to_lua_type() { return LUA_TNUMBER; }
+			static constexpr int cover_to_lua_type() { return CLT_INT; }
 
 			static T _read(lua_State *L, int index)
 			{
@@ -603,7 +655,7 @@ namespace lua_tinker
 		template<typename T>
 		struct _stack_help<T, typename std::enable_if<std::is_floating_point<T>::value>::type>
 		{
-			static constexpr int cover_to_lua_type() { return LUA_TNUMBER; }
+			static constexpr int cover_to_lua_type() { return CLT_DOUBLE; }
 
 			static T _read(lua_State *L, int index)
 			{
@@ -618,7 +670,7 @@ namespace lua_tinker
 		template<>
 		struct _stack_help<std::string>
 		{
-			static constexpr int cover_to_lua_type() { return LUA_TSTRING; }
+			static constexpr int cover_to_lua_type() { return CLT_STRING; }
 
 			static std::string _read(lua_State *L, int index);
 			static void _push(lua_State *L, const std::string& ret);
@@ -632,7 +684,7 @@ namespace lua_tinker
 		template<>
 		struct _stack_help<table>
 		{
-			static constexpr int cover_to_lua_type() { return LUA_TTABLE; }
+			static constexpr int cover_to_lua_type() { return CLT_TABLE; }
 			static table _read(lua_State *L, int index);
 			static void _push(lua_State *L, const table& ret);
 		};
@@ -640,7 +692,7 @@ namespace lua_tinker
 		template<>
 		struct _stack_help<lua_value*>
 		{
-			static constexpr int cover_to_lua_type() { return LUA_TUSERDATA; }
+			static constexpr int cover_to_lua_type() { return CLT_USERDATA; }
 			static lua_value* _read(lua_State *L, int index);
 			static void _push(lua_State *L, lua_value* ret);
 		};
@@ -649,7 +701,7 @@ namespace lua_tinker
 		template<typename T>
 		struct _stack_help<T, typename std::enable_if<std::is_enum<T>::value>::type>
 		{
-			static constexpr int cover_to_lua_type() { return LUA_TNUMBER; }
+			static constexpr int cover_to_lua_type() { return CLT_INT; }
 			static T _read(lua_State *L, int index)
 			{
 				return (T)lua_tointeger(L, index);
@@ -664,7 +716,7 @@ namespace lua_tinker
 		template<typename T>
 		struct _stack_help<T, typename std::enable_if<is_container<base_type<T>>::value>::type>
 		{
-			static constexpr int cover_to_lua_type() { return LUA_TTABLE; }
+			static constexpr int cover_to_lua_type() { return CLT_TABLE; }
 
 			static T _read(lua_State *L, int index)
 			{
@@ -747,7 +799,7 @@ namespace lua_tinker
 		template<typename RVal, typename ...Args>
 		struct _stack_help< std::function<RVal(Args...)> >
 		{
-			static constexpr int cover_to_lua_type() { return LUA_TFUNCTION; }
+			static constexpr int cover_to_lua_type() { return CLT_FUNCTION; }
 
 			//func must be release before lua close.....user_conctrl
 			static std::function<RVal(Args...)> _read(lua_State *L, int index)
@@ -785,7 +837,7 @@ namespace lua_tinker
 		template<typename RVal>
 		struct _stack_help< lua_function_ref<RVal> >
 		{
-			static constexpr int cover_to_lua_type() { return LUA_TFUNCTION; }
+			static constexpr int cover_to_lua_type() { return CLT_FUNCTION; }
 			//func must be release before lua close.....user_conctrl
 			static lua_function_ref<RVal> _read(lua_State *L, int index)
 			{
@@ -823,7 +875,7 @@ namespace lua_tinker
 		template<typename T>
 		struct _stack_help< std::shared_ptr<T> >
 		{
-			static constexpr int cover_to_lua_type() { return LUA_TUSERDATA; }
+			static constexpr int cover_to_lua_type() { return CLT_USERDATA; }
 
 			static std::shared_ptr<T> _read(lua_State *L, int index)
 			{
@@ -845,7 +897,7 @@ namespace lua_tinker
 				if (pWapper->m_type_idx != get_type_idx<std::shared_ptr<T>>())
 				{
 					//maybe derived to base
-					if (IsInherit(pWapper->m_type_idx, get_type_idx<std::shared_ptr<T>>()) == false)
+					if (IsInherit(L, pWapper->m_type_idx, get_type_idx<std::shared_ptr<T>>()) == false)
 					{
 						lua_pushfstring(L, "can't convert argument %d to class %s", index, get_class_name<T>());
 						lua_error(L);
@@ -1659,7 +1711,7 @@ namespace lua_tinker
 
 #ifdef LUATINKER_USERDATA_CHECK_TYPEINFO
 		//add inheritence map
-		detail::addInheritMap<T, P>();
+		detail::addInheritMap<T, P>(L);
 #endif
 
 	}
@@ -2031,7 +2083,8 @@ namespace lua_tinker
 
 
 
-		void _set_signature(unsigned long long& sig, size_t idx, unsigned char c);
+		void _set_signature_bit(unsigned long long& sig, size_t idx, unsigned char c);
+		unsigned char _get_signature_bit(const unsigned long long& sig, size_t idx);
 
 	};
 
@@ -2095,21 +2148,32 @@ namespace lua_tinker
 			int nParamsCount = lua_gettop(L) - m_nParamsOffset;
 			for (int i = 0; i < nParamsCount; i++)
 			{
-				detail::_set_signature(sig, i, lua_type(L, i + m_nParamsOffset + 1));
+				int nType = detail::LType2ParamsType(L, i + m_nParamsOffset + 1);
+				detail::_set_signature_bit(sig, i, nType);
 			}
 			auto& refMap = m_overload_funcmap[nParamsCount];
 			auto itFind = refMap.equal_range(sig);
 			if(itFind.first == refMap.end())
 			{
 				//signature mismatch
-				lua_pushfstring(L, "function overload resolution can't find same args count");
+				lua_pushfstring(L, "function overload can't find %d args resolution ", nParamsCount);
 				lua_error(L);
 				return -1;
 			}
 			else if (std::next(itFind.first) != itFind.second)
 			{
 				//signature mismatch
-				lua_pushfstring(L, "function overload resolution have too many same signature");
+				std::string strSig;
+				for (int i = 0; i < nParamsCount; i++)
+				{
+					unsigned char c = detail::_get_signature_bit(sig, i);
+					if (strSig.empty() == false)
+						strSig.push_back(',');
+					const char* pName = detail::OVERLOAD_PARAMTYPE_NAME[c];
+					strSig.append(pName);
+				}
+
+				lua_pushfstring(L, "function(%s) overload resolution more than one", strSig.c_str());
 				lua_error(L);
 				return -1;
 			}

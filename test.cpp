@@ -219,15 +219,13 @@ long long Number2Interger(double v)
 }
 
 
- int test_overload_err(int n)
+void test_overload_err(const char* n)
 {
-	return n;
 }
 
 
- int test_overload_err(double d)
+void test_overload_err(const std::string& n)
 {
-	return int(d);
 }
 
 int test_overload(int n)
@@ -878,7 +876,7 @@ int main()
 	{
 		std::string luabuf =
 			R"(function test_lua_coverloadfunc_err_1()
-					return test_overload_err(1) == 1;
+					test_overload_err("1");
 				end
 			)";
 		lua_tinker::dostring(L, luabuf.c_str());

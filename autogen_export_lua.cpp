@@ -43,8 +43,8 @@ lua_tinker::def(L, "test_overload_default", lua_tinker::args_type_overload_funct
 	lua_tinker::make_functor_ptr((int(*)(int, int, bool))(&test_overload_default),1 /*default_args_count*/, 1 /*default_args_start*/ ), 
 	lua_tinker::make_functor_ptr((int(*)(int, int, int, double, double, double, double, const std::string &))(&test_overload_default),5 /*default_args_count*/, 2 /*default_args_start*/ )), true, 1.0, 2.0, 3.0, 4.0, std::string("test"));
 lua_tinker::def(L, "test_overload_err", lua_tinker::args_type_overload_functor(
-	lua_tinker::make_functor_ptr((int(*)(int))(&test_overload_err)), 
-	lua_tinker::make_functor_ptr((int(*)(double))(&test_overload_err))));
+	lua_tinker::make_functor_ptr((void(*)(const char*))(&test_overload_err)), 
+	lua_tinker::make_functor_ptr((void(*)(const std::string&))(&test_overload_err))));
 lua_tinker::def(L, "use_stored_lua_function",&use_stored_lua_function);
 lua_tinker::def(L, "visot_ff",&visot_ff);
 lua_tinker::def(L, "visot_ff_const_ref",&visot_ff_const_ref);

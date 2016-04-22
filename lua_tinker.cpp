@@ -23,13 +23,6 @@ namespace lua_tinker
 {
 	const char* S_SHARED_PTR_NAME = "__shared_ptr";
 
-	namespace detail
-	{
-
-#ifdef LUATINKER_USERDATA_CHECK_TYPEINFO
-		InheritMap s_inherit_map;
-#endif
-	}
 }
 
 
@@ -38,18 +31,20 @@ namespace lua_tinker
 /* init                                                                      */
 /*---------------------------------------------------------------------------*/
 
-struct lua_hold_ext_value
+struct lua_ext_value
 {
 	lua_State * m_L;
 	typedef std::vector<lua_tinker::Lua_Close_CallBack_Func> CLOSE_CALLBACK_VEC;
 	CLOSE_CALLBACK_VEC m_vecCloseCallBack;
-
-	lua_hold_ext_value(lua_State *L)
+#ifdef LUATINKER_USERDATA_CHECK_TYPEINFO
+	lua_tinker::detail::InheritMap m_inherit_map;
+#endif
+	lua_ext_value(lua_State *L)
 		:m_L(L)
 	{
 
 	}
-	~lua_hold_ext_value()
+	~lua_ext_value()
 	{
 		for (const auto& func : m_vecCloseCallBack)
 		{
@@ -57,34 +52,34 @@ struct lua_hold_ext_value
 		}
 	}
 };
-static const char* s_lua_close_callback_objname = "___lua_close_callback";
+static const char* s_lua_ext_value_name = "___lua_ext_value";
 
 void lua_tinker::register_lua_close_callback(lua_State* L, Lua_Close_CallBack_Func&& callback_func)
 {
-	lua_getglobal(L, s_lua_close_callback_objname);
+	lua_getglobal(L, s_lua_ext_value_name);
 	if (!lua_isuserdata(L, -1))
 	{
-		print_error(L, "can't find close_callback_obj");
+		print_error(L, "can't find lua_ext_value");
 	}
 
 
-	lua_hold_ext_value* p_lua_ext_val = detail::user2type<lua_hold_ext_value*>(L, -1);
+	lua_ext_value* p_lua_ext_val = detail::user2type<lua_ext_value*>(L, -1);
 	p_lua_ext_val->m_vecCloseCallBack.emplace_back(callback_func);
 }
 
 static void init_close_callback(lua_State *L)
 {
 
-	new(lua_newuserdata(L, sizeof(lua_hold_ext_value))) lua_hold_ext_value(L);
+	new(lua_newuserdata(L, sizeof(lua_ext_value))) lua_ext_value(L);
 	//register functor
 	{
 		lua_newtable(L);
 		lua_pushstring(L, "__gc");
-		lua_pushcclosure(L, &lua_tinker::detail::destroyer<lua_hold_ext_value>, 0);
+		lua_pushcclosure(L, &lua_tinker::detail::destroyer<lua_ext_value>, 0);
 		lua_rawset(L, -3);
 		lua_setmetatable(L, -2);
 	}
-	lua_setglobal(L, s_lua_close_callback_objname); //pop
+	lua_setglobal(L, s_lua_ext_value_name); //pop
 }
 
 /*---------------------------------------------------------------------------*/
@@ -168,10 +163,19 @@ void lua_tinker::dobuffer(lua_State *L, const char* buff, size_t len)
 
 #ifdef LUATINKER_USERDATA_CHECK_TYPEINFO
 
-bool lua_tinker::detail::IsInherit(size_t idTypeDerived, size_t idTypeBase)
+bool lua_tinker::detail::IsInherit(lua_State* L, size_t idTypeDerived, size_t idTypeBase)
 {
-	auto itFind = s_inherit_map.find(idTypeDerived);
-	if (itFind == s_inherit_map.end())
+	lua_getglobal(L, s_lua_ext_value_name);
+	if (!lua_isuserdata(L, -1))
+	{
+		print_error(L, "can't find lua_ext_value");
+	}
+
+	lua_stack_scope_exit scope_exit(L);
+	lua_ext_value* p_lua_ext_val = detail::user2type<lua_ext_value*>(L, -1);
+	auto& refMap = p_lua_ext_val->m_inherit_map;
+	auto itFind = refMap.find(idTypeDerived);
+	if (itFind == refMap.end())
 		return false;
 
 	while (true)
@@ -180,11 +184,26 @@ bool lua_tinker::detail::IsInherit(size_t idTypeDerived, size_t idTypeBase)
 		if (idTypePerent == idTypeBase)
 			return true;
 
-		itFind = s_inherit_map.find(idTypeDerived);
-		if (itFind == s_inherit_map.end())
+		itFind = refMap.find(idTypeDerived);
+		if (itFind == refMap.end())
 			return false;
 	}
 }
+
+void lua_tinker::detail::_addInheritMap(lua_State* L, size_t idTypeDerived, size_t idTypeBase)
+{
+	lua_getglobal(L, s_lua_ext_value_name);
+	if (!lua_isuserdata(L, -1))
+	{
+		print_error(L, "can't find lua_ext_value");
+	}
+
+
+	lua_ext_value* p_lua_ext_val = detail::user2type<lua_ext_value*>(L, -1);
+	auto& refMap = p_lua_ext_val->m_inherit_map;
+	refMap[idTypeDerived] = idTypeBase;
+}
+
 
 #endif
 
@@ -515,12 +534,20 @@ void lua_tinker::detail::push_upval_to_stack(lua_State* L, int nArgsCount, int n
 	}
 }
 
-void lua_tinker::detail::_set_signature(unsigned long long& sig, size_t idx, unsigned char c)
+void lua_tinker::detail::_set_signature_bit(unsigned long long& sig, size_t idx, unsigned char c)
 {
 	if (idx > sizeof(sig) * 2)
 		return;
 	sig = (sig & ~(0xF << (idx * 4))) | ((c & 0xF) << (idx * 4));
 }
+
+unsigned char lua_tinker::detail::_get_signature_bit(const unsigned long long& sig, size_t idx)
+{
+	if (idx > sizeof(sig) * 2)
+		return 0;
+	return (sig >> (idx * 4)) & 0xF;
+}
+
 /*---------------------------------------------------------------------------*/
 /* table object on stack                                                     */
 /*---------------------------------------------------------------------------*/
