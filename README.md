@@ -25,6 +25,7 @@ complied with vc2015,gcc5.3,clang3.8
 * 支持类静态函数注册
 * 支持类静态变量注册
 * 支持property注册
+* 支持继承多个父类，查找时根据顺序依次查找，深度优先
 
 ***
 
@@ -63,6 +64,7 @@ complied with vc2015,gcc5.3,clang3.8
 * 新增class_static_mem函数可以注册类静态变量  
 * 允许调用def/class_def/class_def_static/class_con时同时加入参数默认值，当lua中invoke时，如果参数不足，会使用参数默认值  
 * overload相关函数允许加入参数默认值，但不推荐人工生成，请使用自动化生成工具export2lua  
+* 定义宏LUATINKER_MULTI_INHERITENCE，将会允许继承多个父类，查找时根据顺序依次查找，深度优先，比单次继承是多了一个继承表遍历的过程
 
 ***
 
@@ -93,3 +95,4 @@ complied with vc2015,gcc5.3,clang3.8
 * add function class_static_mem for register class static ver  
 * when call def/class_def/class_def_static/class_con function,can push params's default value. when invoke in lua, if params not enough, will use default values   
 * overload like function allow add default params, manual generation is not recommended, plz use autogen tools "export2lua"  
+* define macro LUATINKER_MULTI_INHERITANCE，will allow call class_inh multi-times. sequence searching when invoke,depth-first, spend more time than single inheritance
