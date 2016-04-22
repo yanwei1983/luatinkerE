@@ -403,7 +403,7 @@ lua_tinker::table lua_tinker::detail::pop<lua_tinker::table>::apply(lua_State *L
 /*---------------------------------------------------------------------------*/
 /* Tinker Class Helper                                                       */
 /*---------------------------------------------------------------------------*/
-#ifndef LUATINKER_MULTI_INHERITENCE
+#ifndef LUATINKER_MULTI_INHERITANCE
 
 static void invoke_parent(lua_State *L)
 {

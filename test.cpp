@@ -484,7 +484,7 @@ int main()
 		return  lua_tinker::call<bool>(L, "test_lua_inherit_3");
 	};
 
-#ifdef LUATINKER_MULTI_INHERITENCE
+#ifdef LUATINKER_MULTI_INHERITANCE
 	test_func_set["test_lua_inherit_2"] = [L]()->bool
 	{
 		std::string luabuf =

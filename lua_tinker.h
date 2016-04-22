@@ -44,7 +44,7 @@
 #define TRY_LUA_TINKER_INVOKE() try
 #define CATCH_LUA_TINKER_INVOKE() catch(...)
 
-#define LUATINKER_MULTI_INHERITENCE
+#define LUATINKER_MULTI_INHERITANCE
 
 namespace lua_tinker
 {
@@ -101,7 +101,7 @@ namespace lua_tinker
 	// Tinker Class Constructor
 	template<typename T, typename F, typename ... DefaultArgs>
 	void class_con(lua_State* L, F&& func, DefaultArgs&& ... default_args);
-	// Tinker Class Inheritence
+	// Tinker Class Inheritance
 	template<typename T, typename P>
 	void class_inh(lua_State* L);
 
@@ -1679,7 +1679,7 @@ namespace lua_tinker
 			lua_pushcclosure(L, detail::meta_set, 0);
 			lua_rawset(L, -3);
 
-#ifndef LUATINKER_MULTI_INHERITENCE
+#ifndef LUATINKER_MULTI_INHERITANCE
 			lua_pushstring(L, "__parent");
 			detail::push_meta(L, name);
 			lua_rawset(L, -3);
@@ -1710,8 +1710,8 @@ namespace lua_tinker
 
 	}
 
-#ifndef LUATINKER_MULTI_INHERITENCE
-	// Tinker Class Inheritence
+#ifndef LUATINKER_MULTI_INHERITANCE
+	// Tinker Class Inheritance
 	template<typename T, typename P>
 	void class_inh(lua_State* L)
 	{
@@ -1725,7 +1725,7 @@ namespace lua_tinker
 		lua_pop(L, 1);
 
 #ifdef LUATINKER_USERDATA_CHECK_TYPEINFO
-		//add inheritence map
+		//add inheritance map
 		detail::addInheritMap<T, P>(L);
 #endif
 
@@ -1733,7 +1733,7 @@ namespace lua_tinker
 
 
 #else
-	// Tinker Class Inheritence
+	// Tinker Class Inheritance
 	template<typename T, typename P>
 	void class_inh(lua_State* L)
 	{
@@ -1767,7 +1767,7 @@ namespace lua_tinker
 		lua_pop(L, 1);
 
 #ifdef LUATINKER_USERDATA_CHECK_TYPEINFO
-		//add inheritence map
+		//add inheritance map
 		detail::addInheritMap<T, P>(L);
 #endif
 
