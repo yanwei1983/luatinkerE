@@ -412,17 +412,17 @@ static void invoke_parent(lua_State *L)
 
 	stack_obj index_key(L, 2);
 	stack_obj class_meta = stack_obj::get_top(L);
-	stack_obj __parent= class_meta.rawget("__parent");
-	if (__parent.is_nil())
+	stack_obj parent_table= class_meta.rawget("__parent");
+	if (parent_table.is_nil())
 	{
 		return;
 	}
-	else if (__parent.is_table())
+	else if (parent_table.is_table())
 	{
-		stack_obj val_obj = __parent.rawget(index_key);	//__parent[key]
+		stack_obj val_obj = parent_table.rawget(index_key);	//parent_table[key]
 		if (val_obj.is_nil() == false)
 		{
-			val_obj.pop_up(__parent._stack_pos); //pop all after this
+			val_obj.pop_up(parent_table._stack_pos); //pop all after this
 			return;
 		}
 		else
@@ -432,7 +432,7 @@ static void invoke_parent(lua_State *L)
 			stack_obj result = stack_obj::get_top(L);
 			if (result.is_nil() == false)
 			{
-				val_obj.pop_up(__parent._stack_pos); //pop all after this
+				val_obj.pop_up(parent_table._stack_pos); //pop all after this
 				return;
 			}
 			else
@@ -445,11 +445,11 @@ static void invoke_parent(lua_State *L)
 
 	//try multi_parent
 	{
-		__parent.remove();
-		stack_obj __parent = class_meta.rawget("__multi_parent");
-		if (__parent.is_table())
+		parent_table.remove();
+		stack_obj parent_table = class_meta.rawget("__multi_parent");
+		if (parent_table.is_table())
 		{
-			table_iterator it(__parent);
+			table_iterator it(parent_table);
 			while (it.hasNext())
 			{
 				stack_obj __base_table = it.value();
@@ -458,7 +458,7 @@ static void invoke_parent(lua_State *L)
 					stack_obj val_obj = __base_table.rawget(index_key);	//__multi_parent[n][key]
 					if (val_obj.is_nil() == false)
 					{
-						val_obj.pop_up(__parent._stack_pos); //pop all after this
+						val_obj.pop_up(parent_table._stack_pos); //pop all after this
 						return;
 					}
 					else
@@ -468,7 +468,7 @@ static void invoke_parent(lua_State *L)
 						stack_obj result = stack_obj::get_top(L);
 						if (result.is_nil() == false)
 						{
-							val_obj.pop_up(__parent._stack_pos); //pop all after this
+							val_obj.pop_up(parent_table._stack_pos); //pop all after this
 							return;
 						}
 						else

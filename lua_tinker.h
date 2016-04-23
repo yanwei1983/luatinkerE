@@ -46,7 +46,7 @@
 #define TRY_LUA_TINKER_INVOKE() try
 #define CATCH_LUA_TINKER_INVOKE() catch(...)
 
-//#define LUATINKER_MULTI_INHERITANCE
+#define LUATINKER_MULTI_INHERITANCE
 
 namespace lua_tinker
 {
@@ -1713,35 +1713,35 @@ namespace lua_tinker
 			detail::push_meta(L, detail::get_class_name<P>());
 			class_meta.rawset();// set class_meta["__parent"] = __parent
 #else
-			detail::stack_obj __parent = class_meta.rawget("__parent");
-			if (__parent.is_nil())
+			detail::stack_obj parent_table = class_meta.rawget("__parent");
+			if (parent_table.is_nil())
 			{
-				__parent.remove();
+				parent_table.remove();
 				lua_pushstring(L, "__parent");
 				detail::push_meta(L, detail::get_class_name<P>());
 				class_meta.rawset();// set class_meta["__parent"] = __parent
 			}
 			else
 			{
-				detail::stack_obj __parent = class_meta.rawget("__multi_parent");
-				if (__parent.is_nil())
+				detail::stack_obj parent_table = class_meta.rawget("__multi_parent");
+				if (parent_table.is_nil())
 				{
-					__parent.remove();
+					parent_table.remove();
 					lua_pushstring(L, "__multi_parent");
 					lua_newtable(L);
-					__parent = detail::stack_obj::get_top(L);
+					parent_table = detail::stack_obj::get_top(L);
 					{
 						detail::push_meta(L, detail::get_class_name<P>());
-						__parent.rawseti(1);// set __multi_parent[1]=table
+						parent_table.rawseti(1);// set __multi_parent[1]=table
 					}
 					class_meta.rawset();// set class_meta["__multi_parent"] = __multi_parent
 				}
 				else
 				{
-					int nLen = __parent.get_rawlen() + 1;
+					int nLen = parent_table.get_rawlen() + 1;
 					detail::push_meta(L, detail::get_class_name<P>());
-					__parent.rawseti(nLen); // set __multi_parent[n]=table
-					__parent.remove();//pop __multi_parent table
+					parent_table.rawseti(nLen); // set __multi_parent[n]=table
+					parent_table.remove();//pop __multi_parent table
 				}
 			}
 #endif
