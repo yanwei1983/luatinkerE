@@ -15,14 +15,16 @@
 #include <string>
 #include <typeinfo>
 #include <type_traits>
-#include"lua.hpp"
-#include"type_traits_ext.h" 
 #include<memory>
 #include<typeindex>
 #include<functional>
 #include<set>
 #include<map>
 #include<vector>
+
+#include"lua.hpp"
+#include"type_traits_ext.h" 
+#include"lua_tinker_stackobj.h" 
 
 #ifdef  _DEBUG
 #define LUATINKER_USERDATA_CHECK_TYPEINFO
@@ -44,7 +46,7 @@
 #define TRY_LUA_TINKER_INVOKE() try
 #define CATCH_LUA_TINKER_INVOKE() catch(...)
 
-#define LUATINKER_MULTI_INHERITANCE
+//#define LUATINKER_MULTI_INHERITANCE
 
 namespace lua_tinker
 {
@@ -419,7 +421,7 @@ namespace lua_tinker
 		struct pop
 		{
 			static constexpr const int nresult = 1;
-			static T apply(lua_State *L) { T t = read_nocheck<T>(L, -1); lua_pop(L, 1); return t; }
+			static T apply(lua_State *L) { stack_delay_pop  _dealy(L, nresult); return read_nocheck<T>(L, -1);; }
 		};
 
 		template<typename ...TS>
@@ -429,15 +431,14 @@ namespace lua_tinker
 
 			static std::tuple<TS...> apply(lua_State* L)
 			{
+				stack_delay_pop  _dealy(L, nresult);
 				return apply_help(L, std::make_index_sequence<nresult>{});
 			}
 
 			template<std::size_t... index>
 			static std::tuple<TS...> apply_help(lua_State *L, std::index_sequence<index...>)
 			{
-				std::tuple<TS...> t = std::make_tuple(read_nocheck<TS>(L, (int)(index - nresult))...);
-				lua_pop(L, nresult);
-				return t;
+				return std::make_tuple(read_nocheck<TS>(L, (int)(index - nresult))...);
 			}
 		};
 
@@ -1679,21 +1680,9 @@ namespace lua_tinker
 			lua_pushcclosure(L, detail::meta_set, 0);
 			lua_rawset(L, -3);
 
-#ifndef LUATINKER_MULTI_INHERITANCE
 			lua_pushstring(L, "__parent");
 			detail::push_meta(L, name);
-			lua_rawset(L, -3);
-#else
-			lua_pushstring(L, "__parent");
-			lua_newtable(L);
-			{
-				lua_pushinteger(L, 1);
-				detail::push_meta(L, name);
-				lua_rawset(L, -3);	// set _parent[1]=table
-			}
-			lua_rawset(L, -3);	//set __parent table
-#endif
-	
+			lua_rawset(L, -3);	
 #endif
 			{//register _get_raw_ptr func
 				lua_pushstring(L, "_get_raw_ptr");
@@ -1710,61 +1699,55 @@ namespace lua_tinker
 
 	}
 
-#ifndef LUATINKER_MULTI_INHERITANCE
+
 	// Tinker Class Inheritance
 	template<typename T, typename P>
 	void class_inh(lua_State* L)
 	{
 		detail::push_meta(L, detail::get_class_name<T>());
-		if (lua_istable(L, -1))
+		detail::stack_obj class_meta = detail::stack_obj::get_top(L);
+		if (class_meta.is_table())
 		{
+#ifndef LUATINKER_MULTI_INHERITANCE
 			lua_pushstring(L, "__parent");
 			detail::push_meta(L, detail::get_class_name<P>());
-			lua_rawset(L, -3);
-		}
-		lua_pop(L, 1);
-
-#ifdef LUATINKER_USERDATA_CHECK_TYPEINFO
-		//add inheritance map
-		detail::addInheritMap<T, P>(L);
-#endif
-
-	}
-
-
+			class_meta.rawset();// set class_meta["__parent"] = __parent
 #else
-	// Tinker Class Inheritance
-	template<typename T, typename P>
-	void class_inh(lua_State* L)
-	{
-		detail::push_meta(L, detail::get_class_name<T>());
-		if (lua_istable(L, -1))
-		{
-			lua_pushstring(L, "__parent");
-			lua_rawget(L, -2);
-			if (lua_isnil(L, -1))
+			detail::stack_obj __parent = class_meta.rawget("__parent");
+			if (__parent.is_nil())
 			{
-				lua_remove(L, -1); //remove nil
+				__parent.remove();
 				lua_pushstring(L, "__parent");
-				lua_newtable(L);
-				{
-					lua_pushinteger(L, 1);
-					detail::push_meta(L, detail::get_class_name<P>());
-					lua_rawset(L, -3);	// set _parent[1]=table
-				}
-				lua_rawset(L, -3);	//set __parent table
+				detail::push_meta(L, detail::get_class_name<P>());
+				class_meta.rawset();// set class_meta["__parent"] = __parent
 			}
 			else
 			{
-				int nLen = lua_rawlen(L, -1)+1;
-				lua_pushinteger(L, nLen);
-				detail::push_meta(L, detail::get_class_name<P>());
-				lua_rawset(L, -3); // set _parent[n]=table
-				lua_pop(L, 1);	//pop __parent table
+				detail::stack_obj __parent = class_meta.rawget("__multi_parent");
+				if (__parent.is_nil())
+				{
+					__parent.remove();
+					lua_pushstring(L, "__multi_parent");
+					lua_newtable(L);
+					__parent = detail::stack_obj::get_top(L);
+					{
+						detail::push_meta(L, detail::get_class_name<P>());
+						__parent.rawseti(1);// set __multi_parent[1]=table
+					}
+					class_meta.rawset();// set class_meta["__multi_parent"] = __multi_parent
+				}
+				else
+				{
+					int nLen = __parent.get_rawlen() + 1;
+					detail::push_meta(L, detail::get_class_name<P>());
+					__parent.rawseti(nLen); // set __multi_parent[n]=table
+					__parent.remove();//pop __multi_parent table
+				}
 			}
+#endif
 
 		}
-		lua_pop(L, 1);
+		class_meta.remove();
 
 #ifdef LUATINKER_USERDATA_CHECK_TYPEINFO
 		//add inheritance map
@@ -1772,10 +1755,6 @@ namespace lua_tinker
 #endif
 
 	}
-
-
-
-#endif
 
 
 	// Tinker Class Constructor

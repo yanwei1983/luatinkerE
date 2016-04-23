@@ -42,6 +42,18 @@ public:
 	}
 };
 
+export_lua class ff_other_base
+{
+public:
+	ff_other_base() {}
+	virtual ~ff_other_base() {}
+
+	export_lua int test_other_callfn(int n)
+	{
+		return n;
+	}
+};
+
 export_lua class ff_other_baseA
 {
 public:
@@ -50,16 +62,11 @@ public:
 
 };
 
-export_lua class ff_other_baseB
+export_lua class ff_other_baseB : public ff_other_base
 {
 public:
 	ff_other_baseB() {}
 	virtual ~ff_other_baseB() {}
-
-	export_lua int test_other_callfn(int n)
-	{
-		return n;
-	}
 };
 
 export_lua struct ff_other :ff_other_baseA, ff_other_baseB

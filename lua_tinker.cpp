@@ -397,141 +397,165 @@ void lua_tinker::detail::pop<void>::apply(lua_State *L)
 
 lua_tinker::table lua_tinker::detail::pop<lua_tinker::table>::apply(lua_State *L)
 {
+	stack_delay_pop  _dealy(L, nresult);
 	return lua_tinker::table(L, lua_gettop(L));
 }
 
 /*---------------------------------------------------------------------------*/
 /* Tinker Class Helper                                                       */
 /*---------------------------------------------------------------------------*/
-#ifndef LUATINKER_MULTI_INHERITANCE
 
 static void invoke_parent(lua_State *L)
 {
-	lua_pushstring(L, "__parent");
-	lua_rawget(L, -2);
-	if (lua_istable(L, -1))
+	using namespace lua_tinker;
+	using namespace lua_tinker::detail;
+
+	stack_obj index_key(L, 2);
+	stack_obj class_meta = stack_obj::get_top(L);
+	stack_obj __parent= class_meta.rawget("__parent");
+	if (__parent.is_nil())
 	{
-		lua_pushvalue(L, 2);
-		lua_rawget(L, -2);
-		if (!lua_isnil(L, -1))
+		return;
+	}
+	else if (__parent.is_table())
+	{
+		stack_obj val_obj = __parent.rawget(index_key);	//__parent[key]
+		if (val_obj.is_nil() == false)
 		{
-			lua_remove(L, -2);
+			val_obj.pop_up(__parent._stack_pos); //pop all after this
+			return;
 		}
 		else
 		{
-			lua_remove(L, -1);
+			val_obj.remove();
 			invoke_parent(L);
-			lua_remove(L, -2);
+			stack_obj result = stack_obj::get_top(L);
+			if (result.is_nil() == false)
+			{
+				val_obj.pop_up(__parent._stack_pos); //pop all after this
+				return;
+			}
+			else
+			{
+				result.remove();
+			}
 		}
 	}
-}
-#else
-static void invoke_parent(lua_State *L)
-{
-	lua_pushstring(L, "__parent");
-	lua_rawget(L, -2);		//get __parent
-	if (lua_istable(L, -1))
+#ifdef LUATINKER_MULTI_INHERITANCE
+
+	//try multi_parent
 	{
-		lua_pushnil(L);
-		while (lua_next(L, -2) != 0)
+		__parent.remove();
+		stack_obj __parent = class_meta.rawget("__multi_parent");
+		if (__parent.is_table())
 		{
-			//-2=key -1=val
-			if (lua_istable(L, -1))	
+			table_iterator it(__parent);
+			while (it.hasNext())
 			{
-				lua_pushvalue(L, 2);
-				lua_rawget(L, -2); //try to invoke
-				if (!lua_isnil(L, -1))	//have value
+				stack_obj __base_table = it.value();
+				if (__base_table.is_table())
 				{
-					lua_rotate(L, -1, 4); //move result for next pop
-					lua_pop(L, 3);  //pop key value __parent table
-					return;
-				}
-				else
-				{
-					lua_remove(L, -1);
-					invoke_parent(L);
-					if (!lua_isnil(L, -1))
+					stack_obj val_obj = __base_table.rawget(index_key);	//__multi_parent[n][key]
+					if (val_obj.is_nil() == false)
 					{
-						lua_rotate(L, -1, 4); //move result for next pop
-						lua_pop(L, 3);  //pop key value __parent table
+						val_obj.pop_up(__parent._stack_pos); //pop all after this
 						return;
 					}
 					else
 					{
-						lua_pop(L, 2);	//pop nil and value
+						val_obj.remove();
+						invoke_parent(L);
+						stack_obj result = stack_obj::get_top(L);
+						if (result.is_nil() == false)
+						{
+							val_obj.pop_up(__parent._stack_pos); //pop all after this
+							return;
+						}
+						else
+						{
+							result.remove();
+						}
 					}
 				}
+				it.moveNext();
 			}
+			it.key().remove();
+			lua_pushnil(L); //not find return nil
+
+
 		}
-		lua_pop(L, 1);	//pop key
-		//never find return a nil;
-		lua_pushnil(L);
 	}
-}
 
 
 #endif
 
+}
+
+
+
 /*---------------------------------------------------------------------------*/
 int lua_tinker::detail::meta_get(lua_State *L)
 {
-	lua_getmetatable(L, 1);
-
-	lua_pushvalue(L, 2);
-	lua_rawget(L, -2);
-	if (lua_isuserdata(L, -1) != 0)
+	stack_obj class_obj(L, 1);
+	stack_obj key_obj(L, 2);
+	stack_obj class_meta = class_obj.get_metatable();
+	stack_obj val_obj = class_meta.rawget(key_obj);
+	if (val_obj.is_userdata())
 	{
-		detail::user2type<var_base*>(L, -1)->get(L);
-		lua_remove(L, -2);
+		detail::user2type<var_base*>(L, val_obj._stack_pos)->get(L);	//push a val
+		val_obj.remove();
 	}
-	else if (lua_isnil(L, -1))
+	else if (val_obj.is_nil())
 	{
-		lua_remove(L, -1);
+		val_obj.remove();
 		invoke_parent(L);
-		if (lua_isuserdata(L, -1))
+		val_obj = stack_obj::get_top(L);
+		if (val_obj.is_userdata())
 		{
-			detail::user2type<var_base*>(L, -1)->get(L);
-			lua_remove(L, -2);
+			detail::user2type<var_base*>(L, val_obj._stack_pos)->get(L); //push a val
+			val_obj.remove();
 		}
-		else if (lua_isnil(L, -1))
+		else if (val_obj.is_nil())
 		{
-			lua_pushfstring(L, "can't find '%s' class variable. (forgot registering class variable ?)", lua_tostring(L, 2));
+			lua_pushfstring(L, "can't find '%s' class variable. (forgot registering class variable ?)", read_nocheck<const char*>(L,key_obj._stack_pos));
 			lua_error(L);
 		}
 	}
-	lua_remove(L, -2);
-
+	class_meta.remove();
 	return 1;
 }
 
 /*---------------------------------------------------------------------------*/
 int lua_tinker::detail::meta_set(lua_State *L)
 {
-	lua_getmetatable(L, 1);
-	lua_pushvalue(L, 2);
-	lua_rawget(L, -2);
+	stack_scope_exit scope_exit(L);
+	stack_obj class_obj(L, 1);
+	stack_obj key_obj(L, 2);
+	stack_obj class_meta = class_obj.get_metatable();
+	stack_obj val_obj = class_meta.rawget(key_obj);//class_meta[key]
 
-	if (lua_isuserdata(L, -1))
+
+	if (val_obj.is_userdata())
 	{
-		detail::user2type<var_base*>(L, -1)->set(L);
+		detail::user2type<var_base*>(L, val_obj._stack_pos)->set(L);
 	}
-	else if (lua_isnil(L, -1))
+	else if (val_obj.is_nil())
 	{
-		lua_remove(L, -1);
-		lua_pushvalue(L, 2);
-		lua_pushvalue(L, 4);
+		val_obj.remove();
+		key_obj.push_top();
+		class_meta.push_top();
 		invoke_parent(L);
-		if (lua_isuserdata(L, -1))
+		val_obj = stack_obj::get_top(L);
+		if (val_obj.is_userdata())
 		{
-			detail::user2type<var_base*>(L, -1)->set(L);
+			detail::user2type<var_base*>(L, val_obj._stack_pos)->set(L);
 		}
-		else if (lua_isnil(L, -1))
+		else if (val_obj.is_nil())
 		{
-			lua_pushfstring(L, "can't find '%s' class variable. (forgot registering class variable ?)", lua_tostring(L, 2));
+			lua_pushfstring(L, "can't find '%s' class variable. (forgot registering class variable ?)", read_nocheck<const char*>(L, key_obj._stack_pos));
 			lua_error(L);
 		}
 	}
-	lua_settop(L, 3);
 	return 0;
 }
 
