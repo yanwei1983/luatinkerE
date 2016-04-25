@@ -508,6 +508,7 @@ namespace lua_tinker
 			CLT_USERDATA	= LUA_TUSERDATA,
 			CLT_NOUSE2		= LUA_TTHREAD,
 			CLT_DOUBLE,
+			CLT_MAX			= 0xF,
 		};
 		const char* const OVERLOAD_PARAMTYPE_NAME[] = 
 		{
@@ -2087,7 +2088,7 @@ namespace lua_tinker
 {
 
 	//convert args to luatype store in longlong
-	//so void(int) = LUA_TNUMBER = 0x3, void(double) = LUA_TNUMBER = 0x3, they have the same signature,
+	//so void(int) = LUA_TNUMBER = 0x3, void(unsigned shart) = LUA_TNUMBER = 0x3, they have the same signature,
 	//void(int,a*) = LUA_TNUMBER,LUA_TUSERDATA = 0x73 , void(long long,b*) = LUA_TNUMBER,LUA_TUSERDATA = 0x73 , they have the same signature,
 	//and use longlong to stroe,so we only support 16 args
 
