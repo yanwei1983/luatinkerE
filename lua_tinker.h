@@ -116,10 +116,15 @@ namespace lua_tinker
 	// Tinker Class Variables
 	template<typename T, typename BASE, typename VAR>
 	void class_mem(lua_State* L, const char* name, VAR BASE::*val);
-
+	template<typename T, typename BASE, typename VAR>
+	void class_mem_readonly(lua_State* L, const char* name, VAR BASE::*val);
 	// Tinker Class Static Variables
 	template<typename T, typename VAR>
 	void class_mem_static(lua_State* L, const char* name, VAR *val);
+	template<typename T, typename VAR>
+	void class_mem_static_readonly(lua_State* L, const char* name, VAR *val);
+	template<typename T, typename VAR>
+	void class_var_static(lua_State* L, const char* name, VAR&& val);
 
 	// Tinker Class Property
 	template<typename T, typename GET_FUNC, typename SET_FUNC>
@@ -1495,7 +1500,7 @@ namespace lua_tinker
 		lua_getglobal(L, name);
 		if (lua_isfunction(L, -1))
 		{
-			detail::push_args(L, std::forward<Args&&>(arg)...);
+			detail::push_args(L, std::forward<Args>(arg)...);
 
 			if (lua_pcall(L, sizeof...(Args), detail::pop<RVal>::nresult, errfunc) != LUA_OK)
 			{
@@ -1523,7 +1528,7 @@ namespace lua_tinker
 		lua_getglobal(L, name);
 		if (lua_isfunction(L, -1))
 		{
-			detail::push_args(L, std::forward<Args&&>(arg)...);
+			detail::push_args(L, std::forward<Args>(arg)...);
 
 			if (lua_pcall(L, sizeof...(Args), detail::pop<RVal>::nresult, errfunc) != LUA_OK)
 			{
@@ -1633,6 +1638,83 @@ namespace lua_tinker
 	};
 
 
+	//getmetatable(scope_global_name)[name] = getmetatable(global_name)
+	static void scope_inner(lua_State* L, const char* scope_global_name, const char* name, const char* global_name)
+	{
+		detail::stack_scope_exit scope_exit(L);
+		detail::push_meta(L, scope_global_name);
+		if (lua_istable(L, -1))
+		{
+			lua_pushstring(L, name);
+			detail::push_meta(L, global_name);
+			lua_rawset(L, -3);
+		}
+	}
+
+	//namespace
+	static void namespace_add(lua_State* L, const char* namespace_name)
+	{
+		lua_newtable(L);
+
+		lua_pushstring(L, "__name");
+		lua_pushstring(L, namespace_name);
+		lua_rawset(L, -3);
+
+		lua_pushstring(L, "__index");
+		lua_pushcclosure(L, detail::meta_get, 0);
+		lua_rawset(L, -3);
+
+		lua_pushstring(L, "__newindex");
+		lua_pushcclosure(L, detail::meta_set, 0);
+		lua_rawset(L, -3);
+
+		lua_setglobal(L, namespace_name);
+	}
+
+	//namespace func
+	template<typename Func, typename ... DefaultArgs>
+	void namespace_def(lua_State* L, const char* namespace_name, const char* name, Func&& func, DefaultArgs&& ... default_args)
+	{
+		detail::push_meta(L, namespace_name);
+		if (lua_istable(L, -1))
+		{
+			//register functor
+			lua_pushstring(L, name);
+			detail::_push_functor(L, std::forward<Func>(func), std::forward<DefaultArgs>(default_args)...);
+			lua_rawset(L, -3);
+		}
+		lua_pop(L, 1);
+	}
+
+	template<typename T>
+	void namespace_set(lua_State* L, const char* namespace_name,  const char* name, T&& object)
+	{
+		detail::push_meta(L, namespace_name);
+		if (lua_istable(L, -1))
+		{
+			//register functor
+			lua_pushstring(L, name);
+			detail::push(L, std::forward<T>(object));
+			lua_rawset(L, -3);
+		}
+		lua_pop(L, 1);
+	}
+
+	template<typename T>
+	T namespace_get(lua_State* L, const char* namespace_name, const char* name)
+	{
+		detail::push_meta(L, namespace_name);
+		detail::stack_obj namespace_meta = detail::stack_obj::get_top();
+		if (namespace_meta.is_table())
+		{
+			//register functor
+			namespace_meta.rawget(name);
+		}
+		namespace_meta.remove();
+
+		return detail::pop<T>::apply(L);
+	}
+
 	// class init
 	template<typename T>
 	void class_add(lua_State* L, const char* name, bool bInitShared)
@@ -1700,7 +1782,6 @@ namespace lua_tinker
 
 	}
 
-
 	// Tinker Class Inheritance
 	template<typename T, typename P>
 	void class_inh(lua_State* L)
@@ -1757,7 +1838,13 @@ namespace lua_tinker
 
 	}
 
+	template<typename T, typename C>
+	void class_inner(lua_State* L, const char* name)
+	{
+		scope_inner(L, detail::get_class_name<T>(), name, detail::get_class_name<C>())
+	}
 
+	
 	// Tinker Class Constructor
 	template<typename T, typename F, typename ... DefaultArgs>
 	void class_con(lua_State* L, F&& func, DefaultArgs&& ... default_args)
@@ -1802,30 +1889,131 @@ namespace lua_tinker
 		lua_pop(L, 1);
 	}
 
-	// member variable
-	struct var_base
+	namespace detail
 	{
-		virtual ~var_base() {};
-		virtual void get(lua_State *L) = 0;
-		virtual void set(lua_State *L) = 0;
-	};
+		// member variable
+		struct var_base
+		{
+			virtual ~var_base() {};
+			virtual void get(lua_State *L) = 0;
+			virtual void set(lua_State *L) = 0;
+		};
 
-	template<typename T, typename V>
-	struct mem_var : var_base
-	{
-		V T::*_var;
-		mem_var(V T::*val) : _var(val) {}
-		virtual void get(lua_State *L) override
+		template<typename T, typename V>
+		struct mem_var : var_base
 		{
-			CHECK_CLASS_PTR(T);
-			detail::push(L, detail::_read_classptr_from_index1<T, true>(L)->*(_var));
-		}
-		virtual void set(lua_State *L) override
+			V T::*_var;
+			mem_var(V T::*val) : _var(val) {}
+			virtual void get(lua_State *L) override
+			{
+				CHECK_CLASS_PTR(T);
+				push(L, _read_classptr_from_index1<T, true>(L)->*(_var));
+			}
+			virtual void set(lua_State *L) override
+			{
+				CHECK_CLASS_PTR(T);
+				_read_classptr_from_index1<T, false>(L)->*(_var) = read<V>(L, 3);
+			}
+		};
+
+		template<typename T, typename V>
+		struct mem_readonly_var : var_base
 		{
-			CHECK_CLASS_PTR(T);
-			detail::_read_classptr_from_index1<T, false>(L)->*(_var) = detail::read<V>(L, 3);
-		}
-	};
+			V T::*_var;
+			mem_readonly_var(V T::*val) : _var(val) {}
+			virtual void get(lua_State *L) override
+			{
+				CHECK_CLASS_PTR(T);
+				push(L, _read_classptr_from_index1<T, true>(L)->*(_var));
+			}
+			virtual void set(lua_State *L) override
+			{
+				lua_pushfstring(L, "member is readonly.");
+				lua_error(L);
+			}
+		};
+
+		template<typename V>
+		struct static_mem_var : var_base
+		{
+			V *_var;
+			static_mem_var(V *val) : _var(val) {}
+			virtual void get(lua_State *L) override
+			{
+				push(L, *(_var));
+			}
+			virtual void set(lua_State *L) override
+			{
+				*(_var) = read<V>(L, 3);
+			}
+		};
+
+		template<typename V>
+		struct static_readonly_mem_var : var_base
+		{
+			V *_var;
+			static_readonly_mem_var(V *val) : _var(val) {}
+			virtual void get(lua_State *L) override
+			{
+				push(L, *(_var));
+			}
+			virtual void set(lua_State *L) override
+			{
+				lua_pushfstring(L, "static_member is readonly.");
+				lua_error(L);
+			}
+		};
+
+		template<typename T, typename GET_FUNC, typename SET_FUNC>
+		struct member_property : var_base
+		{
+			GET_FUNC m_get_func = nullptr;
+			SET_FUNC m_set_func = nullptr;
+			member_property(GET_FUNC get_func, SET_FUNC set_func)
+				:m_get_func(get_func)
+				, m_set_func(set_func)
+			{}
+
+
+			virtual void get(lua_State *L) override
+			{
+				_get<GET_FUNC>(L);
+			}
+
+			virtual void set(lua_State *L) override
+			{
+				_set<SET_FUNC>(L);
+			}
+
+			template<typename FUNC>
+			typename std::enable_if<!std::is_null_pointer<FUNC>::value, void>::type _get(lua_State *L)
+			{
+				CHECK_CLASS_PTR(T);
+				push(L, (_read_classptr_from_index1<T, true>(L)->*m_get_func)());
+			}
+
+			template<typename FUNC>
+			typename std::enable_if<std::is_null_pointer<FUNC>::value, void>::type _get(lua_State *L)
+			{
+				lua_pushfstring(L, "property didn't have get_func");
+				lua_error(L);
+			}
+
+			template<typename FUNC>
+			typename std::enable_if<!std::is_null_pointer<FUNC>::value, void>::type _set(lua_State *L)
+			{
+				CHECK_CLASS_PTR(T);
+				(_read_classptr_from_index1<T, false>(L)->*m_set_func)(read<typename function_traits<SET_FUNC>::template argv<0>::type>(L, 3));
+			}
+
+			template<typename FUNC>
+			typename std::enable_if<std::is_null_pointer<FUNC>::value, void>::type _set(lua_State *L)
+			{
+				lua_pushfstring(L, "property didn't have set_func");
+				lua_error(L);
+			}
+		};
+	}
 
 	// Tinker Class Variables
 	template<typename T, typename BASE, typename VAR>
@@ -1835,27 +2023,25 @@ namespace lua_tinker
 		if (lua_istable(L, -1))
 		{
 			lua_pushstring(L, name);
-			new(lua_newuserdata(L, sizeof(mem_var<BASE, VAR>))) mem_var<BASE, VAR>(val);
+			new(lua_newuserdata(L, sizeof(detail::mem_var<BASE, VAR>))) detail::mem_var<BASE, VAR>(val);
 			lua_rawset(L, -3);
 		}
 		lua_pop(L, 1);
 	}
 
-
-	template<typename V>
-	struct static_mem_var : var_base
+	// Tinker Class Variables
+	template<typename T, typename BASE, typename VAR>
+	void class_mem_readonly(lua_State* L, const char* name, VAR BASE::*val)
 	{
-		V *_var;
-		static_mem_var(V *val) : _var(val) {}
-		virtual void get(lua_State *L) override
+		detail::push_meta(L, detail::get_class_name<T>());
+		if (lua_istable(L, -1))
 		{
-			detail::push(L, *(_var));
+			lua_pushstring(L, name);
+			new(lua_newuserdata(L, sizeof(detail::mem_readonly_var<BASE, VAR>))) detail::mem_readonly_var<BASE, VAR>(val);
+			lua_rawset(L, -3);
 		}
-		virtual void set(lua_State *L) override
-		{
-			*(_var) = detail::read<V>(L, 3);
-		}
-	};
+		lua_pop(L, 1);
+	}
 
 	// Tinker Class Variables
 	template<typename T, typename VAR>
@@ -1865,61 +2051,38 @@ namespace lua_tinker
 		if (lua_istable(L, -1))
 		{
 			lua_pushstring(L, name);
-			new(lua_newuserdata(L, sizeof(static_mem_var<VAR>))) static_mem_var<VAR>(val);
+			new(lua_newuserdata(L, sizeof(detail::static_mem_var<VAR>))) detail::static_mem_var<VAR>(val);
 			lua_rawset(L, -3);
 		}
 		lua_pop(L, 1);
 	}
 
-	template<typename T, typename GET_FUNC, typename SET_FUNC>
-	struct member_property : var_base
+	template<typename T, typename VAR>
+	void class_mem_static_readonly(lua_State* L, const char* name, VAR *val)
 	{
-		GET_FUNC m_get_func = nullptr;
-		SET_FUNC m_set_func = nullptr;
-		member_property(GET_FUNC get_func, SET_FUNC set_func)
-			:m_get_func(get_func)
-			,m_set_func(set_func)
-		{}
-
-
-		virtual void get(lua_State *L) override
+		detail::push_meta(L, detail::get_class_name<T>());
+		if (lua_istable(L, -1))
 		{
-			_get<GET_FUNC>(L);
+			lua_pushstring(L, name);
+			new(lua_newuserdata(L, sizeof(detail::static_readonly_mem_var<VAR>))) detail::static_readonly_mem_var<VAR>(val);
+			lua_rawset(L, -3);
 		}
+		lua_pop(L, 1);
+	}
 
-		virtual void set(lua_State *L) override
+	template<typename T, typename VAR>
+	void class_var_static(lua_State* L, const char* name, VAR&& val)
+	{
+		detail::push_meta(L, detail::get_class_name<T>());
+		if (lua_istable(L, -1))
 		{
-			_set<SET_FUNC>(L);
+			lua_pushstring(L, name);
+			detail::push(L,std::forward<VAR>(val));
+			lua_rawset(L, -3);
 		}
+		lua_pop(L, 1);
+	}
 
-		template<typename FUNC>
-		typename std::enable_if<!std::is_null_pointer<FUNC>::value, void>::type _get(lua_State *L)
-		{
-			CHECK_CLASS_PTR(T);
-			detail::push(L, (detail::_read_classptr_from_index1<T, true>(L)->*m_get_func)());
-		}
-
-		template<typename FUNC>
-		typename std::enable_if<std::is_null_pointer<FUNC>::value, void>::type _get(lua_State *L)
-		{
-			lua_pushfstring(L, "property didn't have get_func");
-			lua_error(L);
-		}
-
-		template<typename FUNC>
-		typename std::enable_if<!std::is_null_pointer<FUNC>::value, void>::type _set(lua_State *L)
-		{
-			CHECK_CLASS_PTR(T);
-			(detail::_read_classptr_from_index1<T, false>(L)->*m_set_func)(detail::read<typename function_traits<SET_FUNC>::template argv<0>::type>(L, 3));
-		}
-
-		template<typename FUNC>
-		typename std::enable_if<std::is_null_pointer<FUNC>::value, void>::type _set(lua_State *L)
-		{
-			lua_pushfstring(L, "property didn't have set_func");
-			lua_error(L);
-		}
-	};
 
 	// Tinker Class Variables
 	template<typename T, typename GET_FUNC, typename SET_FUNC>
@@ -1929,7 +2092,7 @@ namespace lua_tinker
 		if (lua_istable(L, -1))
 		{
 			lua_pushstring(L, name);
-			new(lua_newuserdata(L, sizeof(member_property<T,GET_FUNC, SET_FUNC>))) member_property<T, GET_FUNC, SET_FUNC>(std::forward<GET_FUNC>(get_func), std::forward<SET_FUNC>(set_func));
+			new(lua_newuserdata(L, sizeof(detail::member_property<T,GET_FUNC, SET_FUNC>))) detail::member_property<T, GET_FUNC, SET_FUNC>(std::forward<GET_FUNC>(get_func), std::forward<SET_FUNC>(set_func));
 			lua_rawset(L, -3);
 		}
 		lua_pop(L, 1);

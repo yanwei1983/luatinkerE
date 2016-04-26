@@ -324,6 +324,11 @@ int test_default_params(int a, int b, int c)
 }
 
 
+int NS_TEST::test_function_in_namespace(int a)
+{
+	return a;
+}
+
 void export_to_lua_manual(lua_State* L)
 {
 
@@ -734,6 +739,95 @@ int main()
 			return true;
 		}
 	};
+
+	test_func_set["test_lua_member_static"] = [L]()->bool
+	{
+		std::string luabuf =
+			R"(function test_lua_member_static()
+					local pFF1 = ff(1);
+					pFF1.s_val = 901;
+					local pFF2 = ff(2);
+					return pFF2.s_val == 901;
+				end
+			)";
+		lua_tinker::dostring(L, luabuf.c_str());
+		return lua_tinker::call<bool>(L, "test_lua_member_static");
+	};
+	test_func_set["test_lua_var_static"] = [L]()->bool
+	{
+		std::string luabuf =
+			R"(function test_lua_var_static()
+					return ff.ENUM_1;
+				end
+			)";
+		lua_tinker::dostring(L, luabuf.c_str());
+		return ff::ENUM_1 == lua_tinker::call<int>(L, "test_lua_var_static");
+	};
+	test_func_set["test_lua_inner_class1"] = [L]()->bool
+	{
+		std::string luabuf =
+			R"(function test_lua_inner_class1()
+					return 1 == ff.inner.test_static_func(1);
+				end
+			)";
+		lua_tinker::dostring(L, luabuf.c_str());
+		return lua_tinker::call<bool>(L, "test_lua_inner_class1");
+	};
+	test_func_set["test_lua_inner_class2"] = [L]()->bool
+	{
+		std::string luabuf =
+			R"(function test_lua_inner_class2()
+					return ff.visit_inner_ptr(ff.get_inner_ptr());
+				end
+			)";
+		lua_tinker::dostring(L, luabuf.c_str());
+		return lua_tinker::call<bool>(L, "test_lua_inner_class2");
+	};
+	test_func_set["test_lua_namespace1"] = [L]()->bool
+	{
+		std::string luabuf =
+			R"(function test_lua_namespace1()
+					return 11 == NS_TEST.test_function_in_namespace(11);
+				end
+			)";
+		lua_tinker::dostring(L, luabuf.c_str());
+		return lua_tinker::call<bool>(L, "test_lua_namespace1");
+	};
+	test_func_set["test_lua_namespace2"] = [L]()->bool
+	{
+		std::string luabuf =
+			R"(function test_lua_namespace2()
+					local pTest = NS_TEST.Test.getStaticFunc();
+					return pTest:IsEqual(pTest:getIterator());
+				end
+			)";
+		lua_tinker::dostring(L, luabuf.c_str());
+		return lua_tinker::call<bool>(L, "test_lua_namespace2");
+	};
+
+	test_func_set["test_lua_namespace3"] = [L]()->bool
+	{
+		std::string luabuf =
+			R"(function test_lua_namespace3()
+					local pTest = NS_TEST.Test.getStaticFunc();
+					return pTest:getIterator().ENUM_1;
+				end
+			)";
+		lua_tinker::dostring(L, luabuf.c_str());
+		return NS_TEST::Test::Iterator::ENUM_1 == lua_tinker::call<NS_TEST::Test::Iterator::ENUM_T>(L, "test_lua_namespace3");
+	};
+
+	test_func_set["test_lua_namespace4"] = [L]()->bool
+	{
+		std::string luabuf =
+			R"(function test_lua_namespace4()
+					return NS_TEST.ENUM_1;
+				end
+			)";
+		lua_tinker::dostring(L, luabuf.c_str());
+		return NS_TEST::ENUM_1 == lua_tinker::call<NS_TEST::ENUM_T>(L, "test_lua_namespace4");
+	};
+
 	test_func_set["test_lua_hold_shared_ptr"]  = [L]()->bool
 	{
 		std::string luabuf =

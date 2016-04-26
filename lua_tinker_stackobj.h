@@ -44,6 +44,11 @@ namespace lua_tinker
 			{
 				return stack_obj(L, lua_gettop(L));
 			}
+			static stack_obj new_table(lua_State* L)
+			{
+				lua_newtable(L);
+				return stack_obj(L, lua_gettop(L));
+			}
 
 			bool is_vaild() const { return _stack_pos != 0; }
 			int get_type() const { return is_vaild() && lua_type(L, _stack_pos); }

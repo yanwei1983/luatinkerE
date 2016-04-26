@@ -1,3 +1,5 @@
+#pragma once
+
 #include<functional>
 #include<vector>
 #include<map>
@@ -8,7 +10,6 @@
 #include<utility>
 #include<assert.h>
 #include<memory>
-
 
 #define export_lua
 
@@ -69,7 +70,7 @@ public:
 	virtual ~ff_other_baseB() {}
 };
 
-export_lua struct ff_other :ff_other_baseA, ff_other_baseB
+export_lua struct ff_other :public ff_other_baseA, public ff_other_baseB
 {
 public:
 	ff_other() {}
@@ -77,7 +78,7 @@ public:
 
 };
 
-export_lua class ff : public ff_other, ff_base
+export_lua class ff : public ff_other, public ff_base
 {
 public:
 	export_lua ff(int a = 0) :m_val(a)
@@ -169,6 +170,35 @@ public:
 	export_lua int m_val = 0;
 	export_lua static int s_val;
 	export_lua static int s_ref;
+
+	export_lua static const int s_const_val = 1;
+	export_lua const int m_const_val = 1;
+
+
+	export_lua enum
+	{
+		ENUM_1 = 5,
+		ENUM_2 = 7,
+		ENUM_3 = 9,
+	};
+
+	export_lua struct inner
+	{
+		export_lua void test_func() {}
+		export_lua static int test_static_func(int n) { return n; }
+	};
+
+	export_lua static inner* get_inner_ptr()
+	{
+		static inner s_inner;
+		return &s_inner;
+	}
+
+	export_lua static bool visit_inner_ptr(inner* p)
+	{
+		return p != NULL;
+	}
+
 };
 
 export_lua ff* get_gff_ptr();
@@ -246,5 +276,48 @@ export_lua void store_lua_function(std::function<int(int)> func);
 export_lua int use_stored_lua_function();
 
 export_lua int test_default_params(int a, int b = 5, int c = 8);
+
+
+export_lua namespace NS_TEST
+{
+	export_lua struct Test
+	{
+		export_lua struct Iterator
+		{
+			export_lua enum ENUM_T
+			{
+				ENUM_1 = 8,
+				ENUM_2 = 6,
+				ENUM_3 = 2,
+			};
+		};
+
+		export_lua static Test* getStaticFunc()
+		{
+			static Test s_test;
+			return &s_test;
+		}
+
+		export_lua Iterator* getIterator()
+		{
+			return &m_iter;
+		}
+
+		export_lua bool IsEqual(Iterator* pIter)
+		{
+			return &m_iter == pIter;
+		}
+		export_lua Iterator m_iter;
+	};
+
+	export_lua int test_function_in_namespace(int n);
+
+	export_lua enum ENUM_T
+	{
+		ENUM_1 = 3,
+		ENUM_2 = 11,
+		ENUM_3 = 99,
+	};
+}
 
 

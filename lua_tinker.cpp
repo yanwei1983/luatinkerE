@@ -502,7 +502,7 @@ int lua_tinker::detail::meta_get(lua_State *L)
 	stack_obj val_obj = class_meta.rawget(key_obj);
 	if (val_obj.is_userdata())
 	{
-		detail::user2type<var_base*>(L, val_obj._stack_pos)->get(L);	//push a val
+		detail::user2type<detail::var_base*>(L, val_obj._stack_pos)->get(L);	//push a val
 		val_obj.remove();
 	}
 	else if (val_obj.is_nil())
@@ -512,7 +512,7 @@ int lua_tinker::detail::meta_get(lua_State *L)
 		val_obj = stack_obj::get_top(L);
 		if (val_obj.is_userdata())
 		{
-			detail::user2type<var_base*>(L, val_obj._stack_pos)->get(L); //push a val
+			detail::user2type<detail::var_base*>(L, val_obj._stack_pos)->get(L); //push a val
 			val_obj.remove();
 		}
 		else if (val_obj.is_nil())
@@ -537,7 +537,7 @@ int lua_tinker::detail::meta_set(lua_State *L)
 
 	if (val_obj.is_userdata())
 	{
-		detail::user2type<var_base*>(L, val_obj._stack_pos)->set(L);
+		detail::user2type<detail::var_base*>(L, val_obj._stack_pos)->set(L);
 	}
 	else if (val_obj.is_nil())
 	{
@@ -548,7 +548,7 @@ int lua_tinker::detail::meta_set(lua_State *L)
 		val_obj = stack_obj::get_top(L);
 		if (val_obj.is_userdata())
 		{
-			detail::user2type<var_base*>(L, val_obj._stack_pos)->set(L);
+			detail::user2type<detail::var_base*>(L, val_obj._stack_pos)->set(L);
 		}
 		else if (val_obj.is_nil())
 		{
@@ -558,6 +558,7 @@ int lua_tinker::detail::meta_set(lua_State *L)
 	}
 	return 0;
 }
+
 
 /*---------------------------------------------------------------------------*/
 void lua_tinker::detail::push_meta(lua_State *L, const char* name)
