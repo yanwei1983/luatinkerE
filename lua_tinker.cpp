@@ -57,10 +57,11 @@ static const char* s_lua_ext_value_name = "___lua_ext_value";
 
 void lua_tinker::register_lua_close_callback(lua_State* L, Lua_Close_CallBack_Func&& callback_func)
 {
-	lua_getglobal(L, s_lua_ext_value_name);
-	if (!lua_isuserdata(L, -1))
+	detail::stack_scope_exit scope_exit(L);
+	if (lua_getglobal(L, s_lua_ext_value_name) != LUA_TUSERDATA)
 	{
 		print_error(L, "can't find lua_ext_value");
+		return;
 	}
 
 
@@ -181,13 +182,13 @@ bool find_inherit(size_t idThisType, size_t idTypeBase, lua_tinker::detail::Inhe
 
 bool lua_tinker::detail::IsInherit(lua_State* L, size_t idTypeDerived, size_t idTypeBase)
 {
-	lua_getglobal(L, s_lua_ext_value_name);
-	if (!lua_isuserdata(L, -1))
+	lua_stack_scope_exit scope_exit(L);
+	if (lua_getglobal(L, s_lua_ext_value_name) != LUA_TUSERDATA)
 	{
 		print_error(L, "can't find lua_ext_value");
+		return;
 	}
 
-	lua_stack_scope_exit scope_exit(L);
 	lua_ext_value* p_lua_ext_val = detail::user2type<lua_ext_value*>(L, -1);
 	auto& refMap = p_lua_ext_val->m_inherit_map;
 
@@ -201,12 +202,12 @@ bool lua_tinker::detail::IsInherit(lua_State* L, size_t idTypeDerived, size_t id
 
 void lua_tinker::detail::_addInheritMap(lua_State* L, size_t idTypeDerived, size_t idTypeBase)
 {
-	lua_getglobal(L, s_lua_ext_value_name);
-	if (!lua_isuserdata(L, -1))
+	lua_stack_scope_exit scope_exit(L);
+	if (lua_getglobal(L, s_lua_ext_value_name) != LUA_TUSERDATA)
 	{
 		print_error(L, "can't find lua_ext_value");
+		return;
 	}
-
 
 	lua_ext_value* p_lua_ext_val = detail::user2type<lua_ext_value*>(L, -1);
 	auto& refMap = p_lua_ext_val->m_inherit_map;
@@ -266,8 +267,7 @@ void lua_tinker::print_error(lua_State *L, const char* fmt, ...)
 	vsnprintf(text, sizeof(text), fmt, args);
 	va_end(args);
 
-	lua_getglobal(L, "_ALERT");
-	if (lua_isfunction(L, -1))
+	if (lua_getglobal(L, "_ALERT") == LUA_TFUNCTION)
 	{
 		lua_pushstring(L, text);
 		lua_call(L, 1, 0);
@@ -713,9 +713,7 @@ lua_tinker::table::table(lua_State* L)
 
 lua_tinker::table::table(lua_State* L, const char* name)
 {
-	lua_getglobal(L, name);
-
-	if (lua_istable(L, -1) == 0)
+	if (lua_getglobal(L, name) != LUA_TTABLE)
 	{
 		lua_pop(L, 1);
 
