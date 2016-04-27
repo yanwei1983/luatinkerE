@@ -797,7 +797,7 @@ int main()
 	{
 		std::string luabuf =
 			R"(function test_lua_namespace2()
-					local pTest = NS_TEST.Test.getStaticFunc();
+					local pTest = NS_TEST.NS_INNER.Test.getStaticFunc();
 					return pTest:IsEqual(pTest:getIterator());
 				end
 			)";
@@ -809,12 +809,12 @@ int main()
 	{
 		std::string luabuf =
 			R"(function test_lua_namespace3()
-					local pTest = NS_TEST.Test.getStaticFunc();
-					return pTest:getIterator().ENUM_1;
+					local pTest = NS_TEST.NS_INNER.Test.getStaticFunc();
+					return pTest:getIterator().ENUM_T.ENUM_1;
 				end
 			)";
 		lua_tinker::dostring(L, luabuf.c_str());
-		return NS_TEST::Test::Iterator::ENUM_1 == lua_tinker::call<NS_TEST::Test::Iterator::ENUM_T>(L, "test_lua_namespace3");
+		return NS_TEST::NS_INNER::Test::Iterator::ENUM_T::ENUM_1 == lua_tinker::call<NS_TEST::NS_INNER::Test::Iterator::ENUM_T>(L, "test_lua_namespace3");
 	};
 
 	test_func_set["test_lua_namespace4"] = [L]()->bool

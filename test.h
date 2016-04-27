@@ -280,35 +280,40 @@ export_lua int test_default_params(int a, int b = 5, int c = 8);
 
 export_lua namespace NS_TEST
 {
-	export_lua struct Test
+	export_lua namespace NS_INNER
 	{
-		export_lua struct Iterator
+		export_lua struct Test
 		{
-			export_lua enum ENUM_T
+			export_lua struct Iterator
 			{
-				ENUM_1 = 8,
-				ENUM_2 = 6,
-				ENUM_3 = 2,
+				export_lua enum class ENUM_T
+				{
+					ENUM_1 = 8,
+					ENUM_2 = 6,
+					ENUM_3 = 2,
+				};
+
 			};
+
+			export_lua static Test* getStaticFunc()
+			{
+				static Test s_test;
+				return &s_test;
+			}
+
+			export_lua Iterator* getIterator()
+			{
+				return &m_iter;
+			}
+
+			export_lua bool IsEqual(Iterator* pIter)
+			{
+				return &m_iter == pIter;
+			}
+			export_lua Iterator m_iter;
 		};
-
-		export_lua static Test* getStaticFunc()
-		{
-			static Test s_test;
-			return &s_test;
-		}
-
-		export_lua Iterator* getIterator()
-		{
-			return &m_iter;
-		}
-
-		export_lua bool IsEqual(Iterator* pIter)
-		{
-			return &m_iter == pIter;
-		}
-		export_lua Iterator m_iter;
-	};
+	}
+	
 
 	export_lua int test_function_in_namespace(int n);
 

@@ -62,17 +62,21 @@ void export_to_lua_auto(lua_State* L)
 	lua_tinker::namespace_set(L, "NS_TEST", "ENUM_1", NS_TEST::ENUM_1);
 	lua_tinker::namespace_set(L, "NS_TEST", "ENUM_2", NS_TEST::ENUM_2);
 	lua_tinker::namespace_set(L, "NS_TEST", "ENUM_3", NS_TEST::ENUM_3);
-	lua_tinker::class_add<NS_TEST::Test>(L, "NS_TEST::Test", true);
-	lua_tinker::class_def<NS_TEST::Test>(L, "IsEqual", &NS_TEST::Test::IsEqual);
-	lua_tinker::class_def<NS_TEST::Test>(L, "getIterator", &NS_TEST::Test::getIterator);
-	lua_tinker::class_def_static<NS_TEST::Test>(L, "getStaticFunc", &NS_TEST::Test::getStaticFunc);
-	lua_tinker::class_mem<NS_TEST::Test>(L, "m_iter", &NS_TEST::Test::m_iter);
-	lua_tinker::class_add<NS_TEST::Test::Iterator>(L, "NS_TEST::Test::Iterator", true);
-	lua_tinker::class_var_static<NS_TEST::Test::Iterator>(L, "ENUM_1", NS_TEST::Test::Iterator::ENUM_1);
-	lua_tinker::class_var_static<NS_TEST::Test::Iterator>(L, "ENUM_2", NS_TEST::Test::Iterator::ENUM_2);
-	lua_tinker::class_var_static<NS_TEST::Test::Iterator>(L, "ENUM_3", NS_TEST::Test::Iterator::ENUM_3);
-	lua_tinker::scope_inner(L, "NS_TEST::Test", "Iterator", "NS_TEST::Test::Iterator");
-	lua_tinker::scope_inner(L, "NS_TEST", "Test", "NS_TEST::Test");
+	lua_tinker::namespace_add(L, "NS_TEST::NS_INNER");
+	lua_tinker::class_add<NS_TEST::NS_INNER::Test>(L, "NS_TEST::NS_INNER::Test", true);
+	lua_tinker::class_def<NS_TEST::NS_INNER::Test>(L, "IsEqual", &NS_TEST::NS_INNER::Test::IsEqual);
+	lua_tinker::class_def<NS_TEST::NS_INNER::Test>(L, "getIterator", &NS_TEST::NS_INNER::Test::getIterator);
+	lua_tinker::class_def_static<NS_TEST::NS_INNER::Test>(L, "getStaticFunc", &NS_TEST::NS_INNER::Test::getStaticFunc);
+	lua_tinker::class_mem<NS_TEST::NS_INNER::Test>(L, "m_iter", &NS_TEST::NS_INNER::Test::m_iter);
+	lua_tinker::class_add<NS_TEST::NS_INNER::Test::Iterator>(L, "NS_TEST::NS_INNER::Test::Iterator", true);
+	lua_tinker::namespace_add(L, "NS_TEST::NS_INNER::Test::Iterator::ENUM_T");
+	lua_tinker::namespace_set(L, "NS_TEST::NS_INNER::Test::Iterator::ENUM_T", "ENUM_1", NS_TEST::NS_INNER::Test::Iterator::ENUM_T::ENUM_1);
+	lua_tinker::namespace_set(L, "NS_TEST::NS_INNER::Test::Iterator::ENUM_T", "ENUM_2", NS_TEST::NS_INNER::Test::Iterator::ENUM_T::ENUM_2);
+	lua_tinker::namespace_set(L, "NS_TEST::NS_INNER::Test::Iterator::ENUM_T", "ENUM_3", NS_TEST::NS_INNER::Test::Iterator::ENUM_T::ENUM_3);
+	lua_tinker::scope_inner(L, "NS_TEST::NS_INNER::Test::Iterator", "ENUM_T", "NS_TEST::NS_INNER::Test::Iterator::ENUM_T");
+	lua_tinker::scope_inner(L, "NS_TEST::NS_INNER::Test", "Iterator", "NS_TEST::NS_INNER::Test::Iterator");
+	lua_tinker::scope_inner(L, "NS_TEST::NS_INNER", "Test", "NS_TEST::NS_INNER::Test");
+	lua_tinker::scope_inner(L, "NS_TEST", "NS_INNER", "NS_TEST::NS_INNER");
 	lua_tinker::class_add<ff>(L, "ff", true);
 	lua_tinker::class_def<ff>(L, "add", &ff::add);
 	lua_tinker::class_def<ff>(L, "add_ffcref", &ff::add_ffcref);
@@ -116,6 +120,7 @@ void export_to_lua_auto(lua_State* L)
 	lua_tinker::class_inh<ff_other, ff_other_baseA>(L);
 	lua_tinker::class_inh<ff_other, ff_other_baseB>(L);
 	lua_tinker::class_inh<ff_other_baseB, ff_other_base>(L);
+
 
 
 }

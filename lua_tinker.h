@@ -87,15 +87,29 @@ namespace lua_tinker
 	void def(lua_State* L, const char* name, Func&& func, DefaultArgs&& ... default_args);
 	// global variable
 	template<typename T>
-	void set(lua_State* L, const char* name, T object);
+	void set(lua_State* L, const char* name, T&& object);
 	template<typename T>
 	T get(lua_State* L, const char* name);
 	template<typename T>
-	void decl(lua_State* L, const char* name, T object);
+	void decl(lua_State* L, const char* name, T&& object);
 	// call lua func
 	template<typename RVal, typename ...Args>
 	RVal call(lua_State* L, const char* name, Args&&... arg);
 
+	//getmetatable(scope_global_name)[name] = getmetatable(global_name)
+	static void scope_inner(lua_State* L, const char* scope_global_name, const char* name, const char* global_name);
+	//namespace
+	static void namespace_add(lua_State* L, const char* namespace_name);
+	template<typename T>
+	void namespace_set(lua_State* L, const char* namespace_name, const char* name, T&& object);
+	template<typename T>
+	T namespace_get(lua_State* L, const char* namespace_name, const char* name);
+
+
+
+	//namespace func
+	template<typename Func, typename ... DefaultArgs>
+	void namespace_def(lua_State* L, const char* namespace_name, const char* name, Func&& func, DefaultArgs&& ... default_args);
 
 	// class init
 	template<typename T>
@@ -1470,9 +1484,9 @@ namespace lua_tinker
 
 	// global variable
 	template<typename T>
-	void set(lua_State* L, const char* name, T object)
+	void set(lua_State* L, const char* name, T&& object)
 	{
-		detail::push(L, object);
+		detail::push(L, std::forward<T>(object));
 		lua_setglobal(L, name);
 	}
 
@@ -1484,9 +1498,9 @@ namespace lua_tinker
 	}
 
 	template<typename T>
-	void decl(lua_State* L, const char* name, T object)
+	void decl(lua_State* L, const char* name, T&& object)
 	{
-		set(L, name, object);
+		set(L, name, std::forward<T>(object));
 	}
 
 	// call lua func
@@ -2110,12 +2124,12 @@ namespace lua_tinker
 		bool validate();
 
 		template<typename T>
-		void set(const char* name, T object)
+		void set(const char* name, T&& object)
 		{
 			if (validate())
 			{
 				lua_pushstring(m_L, name);
-				detail::push(m_L, object);
+				detail::push(m_L, std::forward<T>(object));
 				lua_settable(m_L, m_index);
 			}
 		}
@@ -2168,9 +2182,9 @@ namespace lua_tinker
 		~table();
 
 		template<typename T>
-		void set(const char* name, T object)
+		void set(const char* name, T&& object)
 		{
-			m_obj->set(name, object);
+			m_obj->set(name, std::forward<T>(object));
 		}
 
 		template<typename T>
