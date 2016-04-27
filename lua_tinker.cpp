@@ -186,7 +186,7 @@ bool lua_tinker::detail::IsInherit(lua_State* L, size_t idTypeDerived, size_t id
 	if (lua_getglobal(L, s_lua_ext_value_name) != LUA_TUSERDATA)
 	{
 		print_error(L, "can't find lua_ext_value");
-		return;
+		return false;
 	}
 
 	lua_ext_value* p_lua_ext_val = detail::user2type<lua_ext_value*>(L, -1);
