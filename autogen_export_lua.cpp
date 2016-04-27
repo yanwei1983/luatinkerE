@@ -57,6 +57,16 @@ void export_to_lua_auto(lua_State* L)
 	lua_tinker::def(L, "visot_ffbase", &visot_ffbase);
 	lua_tinker::set(L, "g_c_double", g_c_double);
 	lua_tinker::set(L, "g_c_int", g_c_int);
+	lua_tinker::class_add<IntOpTest>(L, "IntOpTest", true);
+	lua_tinker::class_def<IntOpTest>(L, "__mul", &IntOpTest::operator*);
+	lua_tinker::class_def<IntOpTest>(L, "__add", &IntOpTest::operator+);
+	lua_tinker::class_def<IntOpTest>(L, "__sub", &IntOpTest::operator-);
+	lua_tinker::class_def<IntOpTest>(L, "__idiv", &IntOpTest::operator/);
+	lua_tinker::class_def<IntOpTest>(L, "__lt", &IntOpTest::operator<);
+	lua_tinker::class_def<IntOpTest>(L, "__le", &IntOpTest::operator<=);
+	lua_tinker::class_def<IntOpTest>(L, "__eq", &IntOpTest::operator==);
+	lua_tinker::class_con<IntOpTest>(L, lua_tinker::constructor<IntOpTest, int>::invoke);
+	lua_tinker::class_mem<IntOpTest>(L, "m_n", &IntOpTest::m_n);
 	lua_tinker::namespace_add(L, "NS_TEST");
 	lua_tinker::namespace_def(L, "NS_TEST", "test_function_in_namespace", &NS_TEST::test_function_in_namespace);
 	lua_tinker::namespace_set(L, "NS_TEST", "ENUM_1", NS_TEST::ENUM_1);

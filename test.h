@@ -326,3 +326,44 @@ export_lua namespace NS_TEST
 }
 
 
+export_lua struct IntOpTest
+{
+	export_lua int m_n;
+	export_lua IntOpTest(int n) :m_n(n){}
+
+	export_lua bool operator==(const IntOpTest& rht) const
+	{
+		return m_n == rht.m_n;
+	}
+
+
+	export_lua bool operator<(const IntOpTest& rht) const
+	{
+		return m_n < rht.m_n;
+	}
+
+	export_lua bool operator<=(const IntOpTest& rht) const
+	{
+		return m_n <= rht.m_n;
+	}
+
+	export_lua IntOpTest operator+(const IntOpTest& rht)
+	{
+		return IntOpTest(m_n + rht.m_n);
+	}
+
+	export_lua IntOpTest operator-(const IntOpTest& rht)
+	{
+		return IntOpTest(m_n - rht.m_n);
+	}
+
+	export_lua IntOpTest operator*(const IntOpTest& rht)
+	{
+		return IntOpTest(m_n * rht.m_n);
+	}
+
+	export_lua IntOpTest operator/(const IntOpTest& rht)
+	{
+		return IntOpTest(m_n / rht.m_n);
+	}
+};

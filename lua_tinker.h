@@ -1354,18 +1354,18 @@ namespace lua_tinker
 		}
 
 		template<typename T, typename ... DEFAULT_ARGS>
-		void _push_functor_invoke(lua_State* L, T&& t, DEFAULT_ARGS&& ... default_args)
+		void _push_functor_invoke(lua_State* L, int upval_num, T&& t, DEFAULT_ARGS&& ... default_args)
 		{
 			const size_t size_args = sizeof...(default_args);
 			push<int>(L, size_args);
 			push_args(L, std::forward<DEFAULT_ARGS>(default_args)...);
-			lua_pushcclosure(L, std::forward<T>(t), 2 + size_args);
+			lua_pushcclosure(L, std::forward<T>(t), upval_num + 1 + size_args);
 		}
 
 		template<typename T>
-		void _push_functor_invoke(lua_State* L, T&& t)
+		void _push_functor_invoke(lua_State* L, int upval_num, T&& t)
 		{
-			lua_pushcclosure(L, std::forward<T>(t), 1);
+			lua_pushcclosure(L, std::forward<T>(t), upval_num);
 		}
 
 		// global function
@@ -1374,7 +1374,7 @@ namespace lua_tinker
 		{
 			using Functor_Warp = functor<R, ARGS...>;
 			lua_pushlightuserdata(L, (void*)func);
-			_push_functor_invoke(L,&Functor_Warp::invoke, std::forward<DEFAULT_ARGS>(default_args)...);
+			_push_functor_invoke(L, 1, &Functor_Warp::invoke, std::forward<DEFAULT_ARGS>(default_args)...);
 		}
 
 		template<typename R, typename ...ARGS, typename ... DEFAULT_ARGS>
@@ -1390,7 +1390,7 @@ namespace lua_tinker
 				lua_rawset(L, -3);
 				lua_setmetatable(L, -2);
 			}
-			_push_functor_invoke(L,&Functor_Warp::invoke_function, std::forward<DEFAULT_ARGS>(default_args)...);
+			_push_functor_invoke(L, 1, &Functor_Warp::invoke_function, std::forward<DEFAULT_ARGS>(default_args)...);
 		}
 
 	
@@ -1407,7 +1407,7 @@ namespace lua_tinker
 				lua_rawset(L, -3);
 				lua_setmetatable(L, -2);
 			}
-			_push_functor_invoke(L,&Functor_Warp::invoke_function, std::forward<DEFAULT_ARGS>(default_args)...);
+			_push_functor_invoke(L, 1, &Functor_Warp::invoke_function, std::forward<DEFAULT_ARGS>(default_args)...);
 		}
 
 		template<typename overload_functor, typename ... DEFAULT_ARGS>
@@ -1423,11 +1423,23 @@ namespace lua_tinker
 				lua_rawset(L, -3);
 				lua_setmetatable(L, -2);
 			}
-			_push_functor_invoke(L,&overload_functor::invoke_function, std::forward<DEFAULT_ARGS>(default_args)...);
+			_push_functor_invoke(L, 1, &overload_functor::invoke_function, std::forward<DEFAULT_ARGS>(default_args)...);
 
 		}
 
+		template<typename F, typename ... DefaultArgs>
+		auto _push_constructor(lua_State* L, F&& f, DefaultArgs&& ... default_args)
+			-> typename std::enable_if<!std::is_base_of<args_type_overload_functor_base, F>::value, void>::type
+		{
+			_push_functor_invoke(L, 0, std::forward<F>(f), std::forward<DefaultArgs>(default_args)...);
+		}
 
+		template<typename F, typename ... DefaultArgs>
+		auto _push_constructor(lua_State* L, F&& f, DefaultArgs&& ... default_args)
+			-> typename std::enable_if<std::is_base_of<args_type_overload_functor_base, F>::value, void>::type
+		{
+			_push_functor(L, std::forward<F>(f), std::forward<DefaultArgs>(default_args)...);
+		}
 
 	}
 
@@ -1568,7 +1580,7 @@ namespace lua_tinker
 			using FunctionType = R(T::*)(ARGS...);
 			//register functor
 			new(lua_newuserdata(L, sizeof(FunctionType))) FunctionType(func);
-			_push_functor_invoke(L,&Functor_Warp::invoke, std::forward<DEFAULT_ARGS>(default_args)...);
+			_push_functor_invoke(L, 1, &Functor_Warp::invoke, std::forward<DEFAULT_ARGS>(default_args)...);
 		}
 
 		
@@ -1579,7 +1591,7 @@ namespace lua_tinker
 			using FunctionType = R(T::*)(ARGS...)const;
 			//register functor
 			new(lua_newuserdata(L, sizeof(FunctionType))) FunctionType(func);
-			_push_functor_invoke(L,&Functor_Warp::invoke, std::forward<DEFAULT_ARGS>(default_args)...);
+			_push_functor_invoke(L, 1, &Functor_Warp::invoke, std::forward<DEFAULT_ARGS>(default_args)...);
 
 		}
 
@@ -1599,7 +1611,7 @@ namespace lua_tinker
 				lua_setmetatable(L, -2);
 			}
 
-			_push_functor_invoke(L,&Functor_Warp::invoke_function, std::forward<DEFAULT_ARGS>(default_args)...);
+			_push_functor_invoke(L, 1, &Functor_Warp::invoke_function, std::forward<DEFAULT_ARGS>(default_args)...);
 
 		}
 
@@ -1619,7 +1631,7 @@ namespace lua_tinker
 				lua_setmetatable(L, -2);
 			}
 
-			_push_functor_invoke(L,&Functor_Warp::invoke_function, std::forward<DEFAULT_ARGS>(default_args)...);
+			_push_functor_invoke(L, 1, &Functor_Warp::invoke_function, std::forward<DEFAULT_ARGS>(default_args)...);
 
 		}
 
@@ -1638,7 +1650,7 @@ namespace lua_tinker
 
 				lua_setmetatable(L, -2);
 			}
-			_push_functor_invoke(L,&overload_functor::invoke_function, std::forward<DEFAULT_ARGS>(default_args)...);
+			_push_functor_invoke(L, 1, &overload_functor::invoke_function, std::forward<DEFAULT_ARGS>(default_args)...);
 		}
 		
 
@@ -1868,12 +1880,13 @@ namespace lua_tinker
 		{
 			lua_newtable(L);
 			lua_pushstring(L, "__call");
-			detail::_push_functor(L, std::forward<F>(func), std::forward<DefaultArgs>(default_args)...);
+			detail::_push_constructor(L, std::forward<F>(func), std::forward<DefaultArgs>(default_args)...);
 			lua_rawset(L, -3);
 			lua_setmetatable(L, -2);
 		}
 		lua_pop(L, 1);
 	}
+
 
 	// Tinker Class Functions
 	template<typename T, typename Func, typename ... DefaultArgs>
