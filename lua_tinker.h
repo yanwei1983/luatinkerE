@@ -2237,8 +2237,7 @@ namespace lua_tinker
 			lua_pushcclosure(m_L, on_error, 0);
 			int errfunc = lua_gettop(m_L);
 
-			lua_rawgeti(m_L, LUA_REGISTRYINDEX, m_regidx);
-			if (lua_isfunction(m_L, -1) != 0)
+			if (lua_rawgeti(m_L, LUA_REGISTRYINDEX, m_regidx) == LUA_TFUNCTION)
 			{
 				detail::push_args(m_L, std::forward<Args>(args)...);
 				if (lua_pcall(m_L, sizeof...(Args), detail::pop<RVal>::nresult, errfunc) != 0)
