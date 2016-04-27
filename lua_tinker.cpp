@@ -561,9 +561,9 @@ int lua_tinker::detail::meta_set(lua_State *L)
 
 
 /*---------------------------------------------------------------------------*/
-void lua_tinker::detail::push_meta(lua_State *L, const char* name)
+int lua_tinker::detail::push_meta(lua_State *L, const char* name)
 {
-	lua_getglobal(L, name);
+	return lua_getglobal(L, name);
 }
 
 void lua_tinker::detail::push_args(lua_State *L)

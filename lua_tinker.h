@@ -149,7 +149,7 @@ namespace lua_tinker
 	// class helper
 		int meta_get(lua_State *L);
 		int meta_set(lua_State *L);
-		void push_meta(lua_State *L, const char* name);
+		int push_meta(lua_State *L, const char* name);
 	
 
 		template<typename T>
@@ -1668,8 +1668,7 @@ namespace lua_tinker
 	static void scope_inner(lua_State* L, const char* scope_global_name, const char* name, const char* global_name)
 	{
 		detail::stack_scope_exit scope_exit(L);
-		detail::push_meta(L, scope_global_name);
-		if (lua_istable(L, -1))
+		if (detail::push_meta(L, scope_global_name) == LUA_TTABLE)
 		{
 			lua_pushstring(L, name);
 			detail::push_meta(L, global_name);
@@ -1701,29 +1700,27 @@ namespace lua_tinker
 	template<typename Func, typename ... DefaultArgs>
 	void namespace_def(lua_State* L, const char* namespace_name, const char* name, Func&& func, DefaultArgs&& ... default_args)
 	{
-		detail::push_meta(L, namespace_name);
-		if (lua_istable(L, -1))
+		detail::stack_scope_exit scope_exit(L);
+		if (detail::push_meta(L, namespace_name) == LUA_TTABLE)
 		{
 			//register functor
 			lua_pushstring(L, name);
 			detail::_push_functor(L, std::forward<Func>(func), std::forward<DefaultArgs>(default_args)...);
 			lua_rawset(L, -3);
 		}
-		lua_pop(L, 1);
 	}
 
 	template<typename T>
 	void namespace_set(lua_State* L, const char* namespace_name,  const char* name, T&& object)
 	{
-		detail::push_meta(L, namespace_name);
-		if (lua_istable(L, -1))
+		detail::stack_scope_exit scope_exit(L);
+		if (detail::push_meta(L, namespace_name) == LUA_TTABLE)
 		{
 			//register functor
 			lua_pushstring(L, name);
 			detail::push(L, std::forward<T>(object));
 			lua_rawset(L, -3);
 		}
-		lua_pop(L, 1);
 	}
 
 	template<typename T>
@@ -1812,10 +1809,10 @@ namespace lua_tinker
 	template<typename T, typename P>
 	void class_inh(lua_State* L)
 	{
-		detail::push_meta(L, detail::get_class_name<T>());
-		detail::stack_obj class_meta = detail::stack_obj::get_top(L);
-		if (class_meta.is_table())
+		detail::stack_scope_exit scope_exit(L);
+		if (detail::push_meta(L, detail::get_class_name<T>()) == LUA_TTABLE)
 		{
+			detail::stack_obj class_meta = detail::stack_obj::get_top(L);
 #ifndef LUATINKER_MULTI_INHERITANCE
 			lua_pushstring(L, "__parent");
 			detail::push_meta(L, detail::get_class_name<P>());
@@ -1855,7 +1852,6 @@ namespace lua_tinker
 #endif
 
 		}
-		class_meta.remove();
 
 #ifdef LUATINKER_USERDATA_CHECK_TYPEINFO
 		//add inheritance map
@@ -1875,8 +1871,8 @@ namespace lua_tinker
 	template<typename T, typename F, typename ... DefaultArgs>
 	void class_con(lua_State* L, F&& func, DefaultArgs&& ... default_args)
 	{
-		detail::push_meta(L, detail::get_class_name<T>());
-		if (lua_istable(L, -1))
+		detail::stack_scope_exit scope_exit(L);
+		if (detail::push_meta(L, detail::get_class_name<T>()) == LUA_TTABLE)
 		{
 			lua_newtable(L);
 			lua_pushstring(L, "__call");
@@ -1884,7 +1880,6 @@ namespace lua_tinker
 			lua_rawset(L, -3);
 			lua_setmetatable(L, -2);
 		}
-		lua_pop(L, 1);
 	}
 
 
@@ -1892,28 +1887,26 @@ namespace lua_tinker
 	template<typename T, typename Func, typename ... DefaultArgs>
 	void class_def(lua_State* L, const char* name, Func&& func, DefaultArgs&& ... default_args)
 	{
-		detail::push_meta(L, detail::get_class_name<T>());
-		if (lua_istable(L, -1))
+		detail::stack_scope_exit scope_exit(L);
+		if (detail::push_meta(L, detail::get_class_name<T>()) == LUA_TTABLE)
 		{
 			//register functor
 			lua_pushstring(L, name);
 			detail::_push_class_functor(L, std::forward<Func>(func),std::forward<DefaultArgs>(default_args)...);
 			lua_rawset(L, -3);
 		}
-		lua_pop(L, 1);
 	}
 	template<typename T, typename Func, typename ... DefaultArgs>
 	void class_def_static(lua_State* L, const char* name, Func&& func, DefaultArgs&& ... default_args)
 	{
-		detail::push_meta(L, detail::get_class_name<T>());
-		if (lua_istable(L, -1))
+		detail::stack_scope_exit scope_exit(L);
+		if (detail::push_meta(L, detail::get_class_name<T>()) == LUA_TTABLE)
 		{
 			//register functor
 			lua_pushstring(L, name);
 			detail::_push_functor(L, std::forward<Func>(func), std::forward<DefaultArgs>(default_args)...);
 			lua_rawset(L, -3);
 		}
-		lua_pop(L, 1);
 	}
 
 	namespace detail
@@ -2046,68 +2039,63 @@ namespace lua_tinker
 	template<typename T, typename BASE, typename VAR>
 	void class_mem(lua_State* L, const char* name, VAR BASE::*val)
 	{
-		detail::push_meta(L, detail::get_class_name<T>());
-		if (lua_istable(L, -1))
+		detail::stack_scope_exit scope_exit(L);
+		if (detail::push_meta(L, detail::get_class_name<T>()) == LUA_TTABLE)
 		{
 			lua_pushstring(L, name);
 			new(lua_newuserdata(L, sizeof(detail::mem_var<BASE, VAR>))) detail::mem_var<BASE, VAR>(val);
 			lua_rawset(L, -3);
 		}
-		lua_pop(L, 1);
 	}
 
 	// Tinker Class Variables
 	template<typename T, typename BASE, typename VAR>
 	void class_mem_readonly(lua_State* L, const char* name, VAR BASE::*val)
 	{
-		detail::push_meta(L, detail::get_class_name<T>());
-		if (lua_istable(L, -1))
+		detail::stack_scope_exit scope_exit(L);
+		if (detail::push_meta(L, detail::get_class_name<T>()) == LUA_TTABLE)
 		{
 			lua_pushstring(L, name);
 			new(lua_newuserdata(L, sizeof(detail::mem_readonly_var<BASE, VAR>))) detail::mem_readonly_var<BASE, VAR>(val);
 			lua_rawset(L, -3);
 		}
-		lua_pop(L, 1);
 	}
 
 	// Tinker Class Variables
 	template<typename T, typename VAR>
 	void class_mem_static(lua_State* L, const char* name, VAR *val)
 	{
-		detail::push_meta(L, detail::get_class_name<T>());
-		if (lua_istable(L, -1))
+		detail::stack_scope_exit scope_exit(L);
+		if (detail::push_meta(L, detail::get_class_name<T>()) == LUA_TTABLE)
 		{
 			lua_pushstring(L, name);
 			new(lua_newuserdata(L, sizeof(detail::static_mem_var<VAR>))) detail::static_mem_var<VAR>(val);
 			lua_rawset(L, -3);
 		}
-		lua_pop(L, 1);
 	}
 
 	template<typename T, typename VAR>
 	void class_mem_static_readonly(lua_State* L, const char* name, VAR *val)
 	{
-		detail::push_meta(L, detail::get_class_name<T>());
-		if (lua_istable(L, -1))
+		detail::stack_scope_exit scope_exit(L);
+		if (detail::push_meta(L, detail::get_class_name<T>()) == LUA_TTABLE)
 		{
 			lua_pushstring(L, name);
 			new(lua_newuserdata(L, sizeof(detail::static_readonly_mem_var<VAR>))) detail::static_readonly_mem_var<VAR>(val);
 			lua_rawset(L, -3);
 		}
-		lua_pop(L, 1);
 	}
 
 	template<typename T, typename VAR>
 	void class_var_static(lua_State* L, const char* name, VAR&& val)
 	{
-		detail::push_meta(L, detail::get_class_name<T>());
-		if (lua_istable(L, -1))
+		detail::stack_scope_exit scope_exit(L);
+		if (detail::push_meta(L, detail::get_class_name<T>()) == LUA_TTABLE)
 		{
 			lua_pushstring(L, name);
 			detail::push(L,std::forward<VAR>(val));
 			lua_rawset(L, -3);
 		}
-		lua_pop(L, 1);
 	}
 
 
@@ -2115,14 +2103,13 @@ namespace lua_tinker
 	template<typename T, typename GET_FUNC, typename SET_FUNC>
 	void class_property(lua_State* L, const char* name, GET_FUNC&& get_func, SET_FUNC&& set_func)
 	{
-		detail::push_meta(L, detail::get_class_name<T>());
-		if (lua_istable(L, -1))
+		detail::stack_scope_exit scope_exit(L);
+		if (detail::push_meta(L, detail::get_class_name<T>()) == LUA_TTABLE)
 		{
 			lua_pushstring(L, name);
 			new(lua_newuserdata(L, sizeof(detail::member_property<T,GET_FUNC, SET_FUNC>))) detail::member_property<T, GET_FUNC, SET_FUNC>(std::forward<GET_FUNC>(get_func), std::forward<SET_FUNC>(set_func));
 			lua_rawset(L, -3);
 		}
-		lua_pop(L, 1);
 	};
 
 	// Table Object on Stack
