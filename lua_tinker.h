@@ -1531,7 +1531,6 @@ namespace lua_tinker
 
 			if (lua_pcall(L, sizeof...(Args), detail::pop<RVal>::nresult, errfunc) != LUA_OK)
 			{
-				return RVal();
 			}
 		}
 		else
@@ -1559,6 +1558,7 @@ namespace lua_tinker
 
 			if (lua_pcall(L, sizeof...(Args), detail::pop<RVal>::nresult, errfunc) != LUA_OK)
 			{
+				lua_pop(L, lua_gettop(L));
 				throw lua_call_err();
 			}
 		}

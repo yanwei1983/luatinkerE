@@ -398,7 +398,21 @@ void lua_tinker::enum_stack(lua_State *L)
 			print_error(L, "\t%s    %s", lua_typename(L, lua_type(L, i)), lua_tostring(L, i));
 			break;
 		case LUA_TTABLE:
-			print_error(L, "\t%s    0x%08p", lua_typename(L, lua_type(L, i)), lua_topointer(L, i));
+			{
+				std::string name;
+				lua_pushstring(L,"__name");
+				if (lua_rawget(L, i) == LUA_TSTRING)
+				{
+					name.assign(lua_tostring(L, -1));
+					lua_remove(L, -1);
+					print_error(L, "\t%s    0x%08p [%s]", lua_typename(L, lua_type(L, i)), lua_topointer(L, i), name.c_str());
+				}
+				else
+				{
+					lua_remove(L, -1);
+					print_error(L, "\t%s    0x%08p ", lua_typename(L, lua_type(L, i)), lua_topointer(L, i));
+				}
+			}
 			break;
 		case LUA_TFUNCTION:
 			print_error(L, "\t%s()  0x%08p", lua_typename(L, lua_type(L, i)), lua_topointer(L, i));

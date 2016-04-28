@@ -1702,6 +1702,10 @@ int main()
 	{
 		const auto& func = v.second;
 		bool result = func();
+		if (lua_gettop(L) != 0)
+		{
+			printf("unit test stack leak: %s error\n", v.first.c_str());
+		}
 		if (result == false)
 		{
 			printf("unit test: %s error\n", v.first.c_str());
