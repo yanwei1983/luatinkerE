@@ -28,6 +28,8 @@ complied with vc2015,gcc5.3,clang3.8
 * 支持继承多个父类，查找时根据顺序依次查找，深度优先
 * 支持注册namespace及内的函数/变量/枚举/类
 * 支持注册嵌套的类
+* 支持在lua中扩展已经注册的类
+* 支持在lua中注册一个新类继承已经注册的类
 
 ***
 
@@ -73,6 +75,7 @@ complied with vc2015,gcc5.3,clang3.8
 * 通过namespace_def注册一个namespace中的函数
 * 通过namespace_set/get 注册一个namespace中的变量或枚举
 * 通过scope_inner关联meta表，getmetatable(scope_global_name)[name] = getmetatable(global_name),来实现namespace, inner class的关联
+* 通过在lua中调用lua_create_class(class_name,base_name)来注册一个新的类继承base
 
 ***
 
@@ -110,4 +113,5 @@ complied with vc2015,gcc5.3,clang3.8
 * add function namespace_def for register a function in namespace
 * add function namespace_set/get for register a ver or enum in namespace
 * add function scope_inner relate between two metatable，getmetatable(scope_global_name)[name] = getmetatable(global_name), to implement namespace and inner class 's relationship
+* can use lua_create_class(class_name,base_name) in lua to register a new class inhert base
 
