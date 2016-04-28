@@ -484,9 +484,9 @@ namespace lua_tinker
 		// push value_list to lua stack //here need a T/T*/T& not a T&&
 		void push_args(lua_State *L);
 		template<typename T, typename ...Args>
-		void push_args(lua_State *L, T&& ret, Args&&...args) { push(L, std::forward<T>(ret)); push_args<Args...>(L, std::forward<Args>(args)...); }
-		template<typename T, typename ...Args>
 		void push_args(lua_State *L, T&& ret) { push(L, std::forward<T>(ret)); }
+		template<typename T, typename ...Args>
+		void push_args(lua_State *L, T&& ret, Args&&...args) { push(L, std::forward<T>(ret)); push_args<Args...>(L, std::forward<Args>(args)...); }
 
 
 		// to lua
@@ -1715,7 +1715,7 @@ namespace lua_tinker
 	{
 		using namespace detail;
 		push_meta(L, namespace_name);
-		stack_obj namespace_meta = stack_obj::get_top();
+		stack_obj namespace_meta = stack_obj::get_top(L);
 		if (namespace_meta.is_table())
 		{
 			//register functor
@@ -1858,7 +1858,7 @@ namespace lua_tinker
 	template<typename T, typename C>
 	void class_inner(lua_State* L, const char* name)
 	{
-		scope_inner(L, detail::get_class_name<T>(), name, detail::get_class_name<C>())
+		scope_inner(L, detail::get_class_name<T>(), name, detail::get_class_name<C>());
 	}
 
 	

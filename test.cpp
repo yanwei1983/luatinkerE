@@ -58,8 +58,11 @@ double get_gdouble()
 }
 
 
-int ff::s_val;
-int ff::s_ref;
+int ff::s_val = 0;
+int ff::s_ref = 0;
+const int ff::s_const_val;
+int ff_nodef::s_ref = 0;
+
 
 ff g_ff;
 ff* get_gff_ptr()
