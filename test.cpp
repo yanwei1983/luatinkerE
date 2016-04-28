@@ -34,7 +34,7 @@ void gint_add_intref(int& ref, int n)
 	ref += n;
 }
 
-void g_addint_double(int n1,double n2)
+void g_addint_double(int n1, double n2)
 {
 	g_c_int += n1;
 	g_c_double += n2;
@@ -103,7 +103,7 @@ std::string push_string()
 	return g_teststring;
 }
 
-std::string connect_string(std::string str1,const std::string& str2, const std::string& str3)
+std::string connect_string(std::string str1, const std::string& str2, const std::string& str3)
 {
 	return str1 + str2 + str3;
 }
@@ -258,26 +258,26 @@ int test_overload(double d)
 }
 
 
-int test_overload(int n,double d)
+int test_overload(int n, double d)
 {
-	return n+ (int)d;
+	return n + (int)d;
 }
 
-int test_overload(int n1,int n2, double d)
+int test_overload(int n1, int n2, double d)
 {
-	return n1+n2+ (int)d;
+	return n1 + n2 + (int)d;
 }
 
 
 
 int test_overload_default(int n, bool b)
 {
-	return n ;
+	return n;
 }
 
 int test_overload_default(int n1, int n2, bool b)
 {
-	return n1 + n2 ;
+	return n1 + n2;
 }
 
 
@@ -365,9 +365,9 @@ int main()
 	export_to_lua_auto(L);
 	export_to_lua_manual(L);
 
-	lua_tinker::register_lua_close_callback(L, lua_tinker::Lua_Close_CallBack_Func(on_lua_close) );
-	
-	
+	lua_tinker::register_lua_close_callback(L, lua_tinker::Lua_Close_CallBack_Func(on_lua_close));
+
+
 	std::map<std::string, std::function<bool()> > test_func_set;
 
 
@@ -382,7 +382,7 @@ int main()
 
 	};
 
-	test_func_set["test_lua_int64_1"]  = [L]()->bool
+	test_func_set["test_lua_int64_1"] = [L]()->bool
 	{
 		std::string luabuf =
 			R"(function lua_test_int64_1()
@@ -391,10 +391,10 @@ int main()
 				end
 			)";
 		lua_tinker::dostring(L, luabuf.c_str());
-		return (0x8000000000000000+1) == lua_tinker::call<unsigned long long>(L, "lua_test_int64_1");
+		return (0x8000000000000000 + 1) == lua_tinker::call<unsigned long long>(L, "lua_test_int64_1");
 
 	};
-	test_func_set["test_lua_int64_2"]  = [L]()->bool
+	test_func_set["test_lua_int64_2"] = [L]()->bool
 	{
 		std::string luabuf =
 			R"(function lua_test_int64_2()
@@ -405,7 +405,7 @@ int main()
 		lua_tinker::dostring(L, luabuf.c_str());
 		return (0x8000000000000001) == lua_tinker::call<unsigned long long>(L, "lua_test_int64_2");
 	};
-	test_func_set["test_lua_int64_3"]  = [L]()->bool
+	test_func_set["test_lua_int64_3"] = [L]()->bool
 	{
 		std::string luabuf =
 			R"(function lua_test_int64_3()
@@ -427,7 +427,7 @@ int main()
 			)";
 
 		lua_tinker::dostring(L, luabuf.c_str());
-		return  (7+5-8) == lua_tinker::call<int>(L, "lua_test_default_params1");
+		return  (7 + 5 - 8) == lua_tinker::call<int>(L, "lua_test_default_params1");
 	};
 	test_func_set["lua_test_default_params2"] = [L]()->bool
 	{
@@ -525,20 +525,23 @@ int main()
 				end
 			)";
 		lua_tinker::dostring(L, luabuf.c_str());
-		printf("error: invoke unregister mem_func \n");
-		try
+		lua_tinker::set_error_callback([](lua_State *L) -> int
 		{
-			lua_tinker::call_throw<void>(L, "test_lua_inherit_5");
-			return false;
-		}
-		catch (lua_tinker::lua_call_err&)
-		{
-			return true;
-		}
+			std::string errinfo(lua_tostring(L, -1));
+			if (errinfo != "can't find 'no_name' class variable. (forgot registering class variable ?)")
+			{
+				lua_tinker::on_error(L);
+			}
+			return 0;
+		});
+
+		lua_tinker::call<void>(L, "test_lua_inherit_5");
+		lua_tinker::set_error_callback(&lua_tinker::on_error);
+		return true;
 	};
 
 #endif
-	test_func_set["test_lua_shared_1"]  = [L]()->bool
+	test_func_set["test_lua_shared_1"] = [L]()->bool
 	{
 		std::string luabuf =
 			R"(function lua_test_shared_1()
@@ -551,7 +554,7 @@ int main()
 		return  lua_tinker::call<bool>(L, "lua_test_shared_1");
 	};
 #ifdef LUATINKER_USERDATA_CHECK_TYPEINFO
-	test_func_set["test_lua_shared_2"]  = [L]()->bool
+	test_func_set["test_lua_shared_2"] = [L]()->bool
 	{
 		std::string luabuf =
 			R"(function lua_test_shared_2()
@@ -561,18 +564,23 @@ int main()
 			)";
 
 		lua_tinker::dostring(L, luabuf.c_str());
-		printf("error: error sharedptr->raw_ptr \n");
-		try
+
+		lua_tinker::set_error_callback([](lua_State *L) -> int
 		{
-			lua_tinker::call_throw<void>(L, "lua_test_shared_2");
-			return false;
-		}
-		catch (lua_tinker::lua_call_err&)
-		{
-			return true;
-		}
+			std::string errinfo(lua_tostring(L, -1));
+			if (errinfo != "can't convert argument 1 to class ff")
+			{
+				lua_tinker::on_error(L);
+			}
+			return 0;
+		});
+
+		lua_tinker::call<void>(L, "lua_test_shared_2");
+		lua_tinker::set_error_callback(&lua_tinker::on_error);
+		return true;
+
 	};
-	test_func_set["test_lua_shared_3"]  = [L]()->bool
+	test_func_set["test_lua_shared_3"] = [L]()->bool
 	{
 		std::string luabuf =
 			R"(function lua_test_shared_3()
@@ -582,20 +590,24 @@ int main()
 			)";
 
 		lua_tinker::dostring(L, luabuf.c_str());
-		printf("error: error shared_ptr to weak_ptr \n");
-		try
+		lua_tinker::set_error_callback([](lua_State *L) -> int
 		{
-			lua_tinker::call_throw<void>(L, "lua_test_shared_3");
-			return false;
-		}
-		catch (lua_tinker::lua_call_err&)
-		{
-			return true;
-		}
+			std::string errinfo(lua_tostring(L, -1));
+			if (errinfo != "can't convert argument 1 to class ")
+			{
+				lua_tinker::on_error(L);
+			}
+			return 0;
+		});
+		lua_tinker::call<void>(L, "lua_test_shared_3");
+		lua_tinker::set_error_callback(&lua_tinker::on_error);
+
+		return true;
+
 	};
 #endif
 
-	test_func_set["test_lua_shared_4"]  = [L]()->bool
+	test_func_set["test_lua_shared_4"] = [L]()->bool
 	{
 		std::string luabuf =
 			R"(function test_lua_shared_4(shared_ptr)
@@ -609,7 +621,7 @@ int main()
 		return ffshared == testshared;
 	};
 
-	test_func_set["test_lua_shared_5"]  = [L]()->bool
+	test_func_set["test_lua_shared_5"] = [L]()->bool
 	{
 		std::string luabuf =
 			R"(function test_lua_shared_5(shared_ptr)
@@ -622,7 +634,7 @@ int main()
 		return ffshared.use_count() == 2;
 	};
 
-	test_func_set["test_lua_weak_1"]  = [L]()->bool
+	test_func_set["test_lua_weak_1"] = [L]()->bool
 	{
 		std::string luabuf =
 			R"(function lua_test_weak_1()
@@ -637,7 +649,7 @@ int main()
 
 #ifdef LUATINKER_USERDATA_CHECK_TYPEINFO
 
-	test_func_set["test_lua_weak_2"]  = [L]()->bool
+	test_func_set["test_lua_weak_2"] = [L]()->bool
 	{
 		std::string luabuf =
 			R"(function test_lua_weak_2()
@@ -646,20 +658,24 @@ int main()
 				end
 			)";
 		lua_tinker::dostring(L, luabuf.c_str());
-		printf("error: error weak_ptr to shared_ptr \n");
-		try
+		lua_tinker::set_error_callback([](lua_State *L) -> int
 		{
-			lua_tinker::call_throw<void>(L, "test_lua_weak_2");
-			return false;
-		}
-		catch (lua_tinker::lua_call_err&)
-		{
-			return true;
-		}
+			std::string errinfo(lua_tostring(L, -1));
+			if (errinfo != "can't convert argument 1 to class ff")
+			{
+				lua_tinker::on_error(L);
+			}
+			return 0;
+		});
+		lua_tinker::call<void>(L, "test_lua_weak_2");
+		lua_tinker::set_error_callback(&lua_tinker::on_error);
+
+		return true;
+
 	};
 #endif
 
-	test_func_set["test_lua_shared_invoke_1"]  = [L]()->bool
+	test_func_set["test_lua_shared_invoke_1"] = [L]()->bool
 	{
 		std::string luabuf =
 			R"(function test_lua_shared_invoke_1()
@@ -670,7 +686,7 @@ int main()
 		lua_tinker::dostring(L, luabuf.c_str());
 		return lua_tinker::call<bool>(L, "test_lua_shared_invoke_1");
 	};
-	test_func_set["test_lua_shared_invoke_2"]  = [L]()->bool
+	test_func_set["test_lua_shared_invoke_2"] = [L]()->bool
 	{
 		std::string luabuf =
 			R"(function test_lua_shared_invoke_2()
@@ -682,7 +698,7 @@ int main()
 		lua_tinker::dostring(L, luabuf.c_str());
 		return  lua_tinker::call<bool>(L, "test_lua_shared_invoke_2");
 	};
-	test_func_set["test_lua_shared_invoke_3"]  = [L]()->bool
+	test_func_set["test_lua_shared_invoke_3"] = [L]()->bool
 	{
 		std::string luabuf =
 			R"(function test_lua_shared_invoke_3()
@@ -695,7 +711,7 @@ int main()
 		lua_tinker::dostring(L, luabuf.c_str());
 		return  lua_tinker::call<bool>(L, "test_lua_shared_invoke_3");
 	};
-	test_func_set["test_lua_member_property"]  = [L]()->bool
+	test_func_set["test_lua_member_property"] = [L]()->bool
 	{
 		std::string luabuf =
 			R"(function test_lua_member_property()
@@ -708,7 +724,7 @@ int main()
 		lua_tinker::dostring(L, luabuf.c_str());
 		return  lua_tinker::call<bool>(L, "test_lua_member_property");
 	};
-	test_func_set["test_lua_member_readonly_1"]  = [L]()->bool
+	test_func_set["test_lua_member_readonly_1"] = [L]()->bool
 	{
 		std::string luabuf =
 			R"(function test_lua_member_readonly_1()
@@ -719,7 +735,7 @@ int main()
 		lua_tinker::dostring(L, luabuf.c_str());
 		return 1 == lua_tinker::call<int>(L, "test_lua_member_readonly_1");
 	};
-	test_func_set["test_lua_member_readonly_2"]  = [L]()->bool
+	test_func_set["test_lua_member_readonly_2"] = [L]()->bool
 	{
 		std::string luabuf =
 			R"(function test_lua_member_readonly_2()
@@ -728,16 +744,20 @@ int main()
 				end
 			)";
 		lua_tinker::dostring(L, luabuf.c_str());
-		printf("error: visit porp readonly \n");
-		try
+		lua_tinker::set_error_callback([](lua_State *L) -> int
 		{
-			lua_tinker::call_throw<void>(L, "test_lua_member_readonly_2");
-			return false;
-		}
-		catch (lua_tinker::lua_call_err&)
-		{
-			return true;
-		}
+			std::string errinfo(lua_tostring(L, -1));
+			if (errinfo != "property didn't have set_func")
+			{
+				lua_tinker::on_error(L);
+			}
+			return 0;
+		});
+		lua_tinker::call<void>(L, "test_lua_member_readonly_2");
+		lua_tinker::set_error_callback(&lua_tinker::on_error);
+
+		return true;
+
 	};
 
 	test_func_set["test_lua_member_static"] = [L]()->bool
@@ -828,7 +848,7 @@ int main()
 		return NS_TEST::ENUM_1 == lua_tinker::call<NS_TEST::ENUM_T>(L, "test_lua_namespace4");
 	};
 
-	test_func_set["test_lua_hold_shared_ptr"]  = [L]()->bool
+	test_func_set["test_lua_hold_shared_ptr"] = [L]()->bool
 	{
 		std::string luabuf =
 			R"(function test_lua_hold_shared_ptr()
@@ -846,9 +866,9 @@ int main()
 		return (ref_count_old + 2) == ref_count_new		//pFF1 + 1,  g_ffshared+1
 			&& (ref_count_old + 1) == ref_count_new_gc;	//g_ffshared+1
 	};
-	
 
-	test_func_set["test_lua_nodef_shared_1"]  = [L]()->bool
+
+	test_func_set["test_lua_nodef_shared_1"] = [L]()->bool
 	{
 		std::string luabuf =
 			R"(function test_lua_nodef_shared_1()
@@ -859,7 +879,7 @@ int main()
 		lua_tinker::dostring(L, luabuf.c_str());
 		return  lua_tinker::call<bool>(L, "test_lua_nodef_shared_1");
 	};
-	test_func_set["test_lua_nodef_shared_2"]  = [L]()->bool
+	test_func_set["test_lua_nodef_shared_2"] = [L]()->bool
 	{
 		std::string luabuf =
 			R"(function test_lua_nodef_shared_2()
@@ -872,7 +892,7 @@ int main()
 	};
 #ifdef LUATINKER_USERDATA_CHECK_TYPEINFO
 
-	test_func_set["test_lua_nodef_shared_3"]  = [L]()->bool
+	test_func_set["test_lua_nodef_shared_3"] = [L]()->bool
 	{
 		std::string luabuf =
 			R"(function test_lua_nodef_shared_3()
@@ -881,16 +901,20 @@ int main()
 				end
 			)";
 		lua_tinker::dostring(L, luabuf.c_str());
-		printf("error: shared_ptr to raw_ptr \n");
-		try
+		lua_tinker::set_error_callback([](lua_State *L) -> int
 		{
-			lua_tinker::call_throw<void>(L, "test_lua_nodef_shared_3");
-			return false;
-		}
-		catch (lua_tinker::lua_call_err&)
-		{
-			return true;
-		}
+			std::string errinfo(lua_tostring(L, -1));
+			if (errinfo != "can't convert argument 1 to class ")
+			{
+				lua_tinker::on_error(L);
+			}
+			return 0;
+		});
+		lua_tinker::call<void>(L, "test_lua_nodef_shared_3");
+		lua_tinker::set_error_callback(&lua_tinker::on_error);
+
+		return true;
+
 	};
 
 	test_func_set["test_lua_nodef_shared_4"] = [L]()->bool
@@ -902,20 +926,24 @@ int main()
 				end
 			)";
 		lua_tinker::dostring(L, luabuf.c_str());
-		printf("error: shared_ptr to raw_ptr \n");
-		try
+		lua_tinker::set_error_callback([](lua_State *L) -> int
 		{
-			lua_tinker::call_throw<void>(L, "test_lua_nodef_shared_4");
-			return false;
-		}
-		catch (lua_tinker::lua_call_err&)
-		{
-			return true;
-		}
+			std::string errinfo(lua_tostring(L, -1));
+			if (errinfo != "can't convert argument 1 to class ")
+			{
+				lua_tinker::on_error(L);
+			}
+			return 0;
+		});
+		lua_tinker::call<void>(L, "test_lua_nodef_shared_4");
+		lua_tinker::set_error_callback(&lua_tinker::on_error);
+
+		return true;
+
 	};
 #endif
 
-	test_func_set["test_lua_cfunc_1"]  = [L]()->bool
+	test_func_set["test_lua_cfunc_1"] = [L]()->bool
 	{
 		std::string luabuf =
 			R"(function test_lua_cfunc_1()
@@ -927,7 +955,7 @@ int main()
 		g_c_int = 0;
 		return 1 == lua_tinker::call<int>(L, "test_lua_cfunc_1");
 	};
-	test_func_set["test_lua_cfunc_2"]  = [L]()->bool
+	test_func_set["test_lua_cfunc_2"] = [L]()->bool
 	{
 		std::string luabuf =
 			R"(function test_lua_cfunc_2()
@@ -939,7 +967,7 @@ int main()
 		g_c_int = 0;
 		return 1 == lua_tinker::call<int>(L, "test_lua_cfunc_2");
 	};
-	test_func_set["test_lua_cfunc_3"]  = [L]()->bool
+	test_func_set["test_lua_cfunc_3"] = [L]()->bool
 	{
 		std::string luabuf =
 			R"(function test_lua_cfunc_3()
@@ -951,7 +979,7 @@ int main()
 		g_c_int = 1;
 		return 2 == lua_tinker::call<int>(L, "test_lua_cfunc_3");
 	};
-	test_func_set["test_lua_cfunc_4"]  = [L]()->bool
+	test_func_set["test_lua_cfunc_4"] = [L]()->bool
 	{
 		std::string luabuf =
 			R"(function test_lua_cfunc_4()
@@ -963,7 +991,7 @@ int main()
 		g_c_int = 1;
 		return 2 == lua_tinker::call<int>(L, "test_lua_cfunc_4");
 	};
-	test_func_set["test_lua_cfunc_5"]  = [L]()->bool
+	test_func_set["test_lua_cfunc_5"] = [L]()->bool
 	{
 		std::string luabuf =
 			R"(function test_lua_cfunc_5()
@@ -975,7 +1003,7 @@ int main()
 		g_c_int = 1;
 		return 2 == lua_tinker::call<int>(L, "test_lua_cfunc_5");
 	};
-	test_func_set["test_lua_cfunc_6"]  = [L]()->bool
+	test_func_set["test_lua_cfunc_6"] = [L]()->bool
 	{
 		std::string luabuf =
 			R"(function test_lua_cfunc_6()
@@ -988,7 +1016,7 @@ int main()
 		g_c_double = 0.0;
 		return  lua_tinker::call<bool>(L, "test_lua_cfunc_6");
 	};
-	test_func_set["test_lua_coverloadfunc_1"]  = [L]()->bool
+	test_func_set["test_lua_coverloadfunc_1"] = [L]()->bool
 	{
 		std::string luabuf =
 			R"(function test_lua_coverloadfunc_1()
@@ -998,7 +1026,7 @@ int main()
 		lua_tinker::dostring(L, luabuf.c_str());
 		return  lua_tinker::call<bool>(L, "test_lua_coverloadfunc_1");
 	};
-	test_func_set["test_lua_coverloadfunc_2"]  = [L]()->bool
+	test_func_set["test_lua_coverloadfunc_2"] = [L]()->bool
 	{
 		std::string luabuf =
 			R"(function test_lua_coverloadfunc_2()
@@ -1008,7 +1036,7 @@ int main()
 		lua_tinker::dostring(L, luabuf.c_str());
 		return  lua_tinker::call<bool>(L, "test_lua_coverloadfunc_2");
 	};
-	test_func_set["test_lua_coverloadfunc_3"]  = [L]()->bool
+	test_func_set["test_lua_coverloadfunc_3"] = [L]()->bool
 	{
 		std::string luabuf =
 			R"(function test_lua_coverloadfunc_3()
@@ -1067,19 +1095,23 @@ int main()
 				end
 			)";
 		lua_tinker::dostring(L, luabuf.c_str());
-		printf("error:function overload resolution have too many same signature \n");
-		try
+		lua_tinker::set_error_callback([](lua_State *L) -> int
 		{
-			lua_tinker::call_throw<void>(L, "test_lua_coverloadfunc_err_1");
-			return false;
-		}
-		catch (lua_tinker::lua_call_err&)
-		{
-			return true;
-		}
+			std::string errinfo(lua_tostring(L, -1));
+			if (errinfo != "function(CLT_STRING) overload resolution more than one")
+			{
+				lua_tinker::on_error(L);
+			}
+			return 0;
+		});
+		lua_tinker::call<void>(L, "test_lua_coverloadfunc_err_1");
+		lua_tinker::set_error_callback(&lua_tinker::on_error);
+
+		return true;
+
 	};
 
-	test_func_set["test_lua_stdfunction_1"]  = [L]()->bool
+	test_func_set["test_lua_stdfunction_1"] = [L]()->bool
 	{
 		std::string luabuf =
 			R"(function test_lua_stdfunction_1()
@@ -1087,9 +1119,9 @@ int main()
 				end
 			)";
 		lua_tinker::dostring(L, luabuf.c_str());
-		return (2+3) == lua_tinker::call<int>(L, "test_lua_stdfunction_1");
+		return (2 + 3) == lua_tinker::call<int>(L, "test_lua_stdfunction_1");
 	};
-	test_func_set["test_lua_stdfunction_2"]  = [L]()->bool
+	test_func_set["test_lua_stdfunction_2"] = [L]()->bool
 	{
 		std::string luabuf =
 			R"(function test_lua_stdfunction_2()
@@ -1097,10 +1129,10 @@ int main()
 				end
 			)";
 		lua_tinker::dostring(L, luabuf.c_str());
-		return (2+88) == lua_tinker::call<int>(L, "test_lua_stdfunction_2");
+		return (2 + 88) == lua_tinker::call<int>(L, "test_lua_stdfunction_2");
 	};
 
-	test_func_set["test_lua_member_func_1"]  = [L]()->bool
+	test_func_set["test_lua_member_func_1"] = [L]()->bool
 	{
 		std::string luabuf =
 			R"(function test_lua_member_func_1()
@@ -1111,7 +1143,7 @@ int main()
 		lua_tinker::dostring(L, luabuf.c_str());
 		return  lua_tinker::call<bool>(L, "test_lua_member_func_1");
 	};
-	test_func_set["test_lua_member_func_2"]  = [L]()->bool
+	test_func_set["test_lua_member_func_2"] = [L]()->bool
 	{
 		std::string luabuf =
 			R"(function test_lua_member_func_2()
@@ -1122,7 +1154,7 @@ int main()
 		lua_tinker::dostring(L, luabuf.c_str());
 		return  lua_tinker::call<bool>(L, "test_lua_member_func_2");
 	};
-	test_func_set["test_lua_member_func_3"]  = [L]()->bool
+	test_func_set["test_lua_member_func_3"] = [L]()->bool
 	{
 		std::string luabuf =
 			R"(function test_lua_member_func_3()
@@ -1134,7 +1166,7 @@ int main()
 		return  lua_tinker::call<bool>(L, "test_lua_member_func_3");
 	};
 #ifdef LUATINKER_USERDATA_CHECK_CONST
-	test_func_set["test_lua_member_func_4"]  = [L]()->bool
+	test_func_set["test_lua_member_func_4"] = [L]()->bool
 	{
 		std::string luabuf =
 			R"(function test_lua_member_func_4()
@@ -1143,19 +1175,23 @@ int main()
 				end
 			)";
 		lua_tinker::dostring(L, luabuf.c_str());
-		printf("error:const_ptr -> member_func \n");
-		try
+		lua_tinker::set_error_callback([](lua_State *L) -> int
 		{
-			lua_tinker::call_throw<void>(L, "test_lua_member_func_4");
-			return false;
-		}
-		catch (lua_tinker::lua_call_err&)
-		{
-			return true;
-		}
+			std::string errinfo(lua_tostring(L, -1));
+			if (errinfo != "const class_ptr ff can't invoke non-const member func.")
+			{
+				lua_tinker::on_error(L);
+			}
+			return 0;
+		});
+		lua_tinker::call<void>(L, "test_lua_member_func_4");
+		lua_tinker::set_error_callback(&lua_tinker::on_error);
+
+		return true;
+
 	};
 #endif
-	test_func_set["test_lua_member_func_5"]  = [L]()->bool
+	test_func_set["test_lua_member_func_5"] = [L]()->bool
 	{
 		std::string luabuf =
 			R"(function test_lua_member_func_5()
@@ -1168,7 +1204,7 @@ int main()
 		return 55 == lua_tinker::call<int>(L, "test_lua_member_func_5");
 	};
 
-	test_func_set["test_lua_member_func_6"]  = [L]()->bool
+	test_func_set["test_lua_member_func_6"] = [L]()->bool
 	{
 		std::string luabuf =
 			R"(function test_lua_member_func_6()
@@ -1181,7 +1217,7 @@ int main()
 		lua_tinker::dostring(L, luabuf.c_str());
 		return 44 == lua_tinker::call<int>(L, "test_lua_member_func_6");
 	};
-	test_func_set["test_lua_member_overloadfunc_1"]  = [L]()->bool
+	test_func_set["test_lua_member_overloadfunc_1"] = [L]()->bool
 	{
 		std::string luabuf =
 			R"(function test_lua_member_overloadfunc_1()
@@ -1192,7 +1228,7 @@ int main()
 		lua_tinker::dostring(L, luabuf.c_str());
 		return 1 == lua_tinker::call<int>(L, "test_lua_member_overloadfunc_1");
 	};
-	test_func_set["test_lua_member_overloadfunc_2"]  = [L]()->bool
+	test_func_set["test_lua_member_overloadfunc_2"] = [L]()->bool
 	{
 		std::string luabuf =
 			R"(function test_lua_member_overloadfunc_2()
@@ -1203,7 +1239,7 @@ int main()
 		lua_tinker::dostring(L, luabuf.c_str());
 		return 3 == lua_tinker::call<int>(L, "test_lua_member_overloadfunc_2");
 	};
-	test_func_set["test_lua_member_overloadfunc_3"]  = [L]()->bool
+	test_func_set["test_lua_member_overloadfunc_3"] = [L]()->bool
 	{
 		std::string luabuf =
 			R"(function test_lua_member_overloadfunc_3()
@@ -1214,7 +1250,7 @@ int main()
 		lua_tinker::dostring(L, luabuf.c_str());
 		return 6 == lua_tinker::call<int>(L, "test_lua_member_overloadfunc_3");
 	};
-	test_func_set["test_lua_member_overload_con_1"]  = [L]()->bool
+	test_func_set["test_lua_member_overload_con_1"] = [L]()->bool
 	{
 		std::string luabuf =
 			R"(function test_lua_member_overload_con_1()
@@ -1225,7 +1261,7 @@ int main()
 		lua_tinker::dostring(L, luabuf.c_str());
 		return  lua_tinker::call<bool>(L, "test_lua_member_overload_con_1");
 	};
-	test_func_set["test_lua_member_overload_con_2"]  = [L]()->bool
+	test_func_set["test_lua_member_overload_con_2"] = [L]()->bool
 	{
 		std::string luabuf =
 			R"(function test_lua_member_overload_con_2()
@@ -1236,7 +1272,7 @@ int main()
 		lua_tinker::dostring(L, luabuf.c_str());
 		return  lua_tinker::call<bool>(L, "test_lua_member_overload_con_2");
 	};
-	test_func_set["test_lua_member_overload_con_3"]  = [L]()->bool
+	test_func_set["test_lua_member_overload_con_3"] = [L]()->bool
 	{
 		std::string luabuf =
 			R"(function test_lua_member_overload_con_3()
@@ -1248,7 +1284,7 @@ int main()
 		return  lua_tinker::call<bool>(L, "test_lua_member_overload_con_3");
 	};
 
-	test_func_set["test_lua_string_1"]  = [L]()->bool
+	test_func_set["test_lua_string_1"] = [L]()->bool
 	{
 		std::string luabuf =
 			R"(function test_lua_string_1()
@@ -1258,7 +1294,7 @@ int main()
 		lua_tinker::dostring(L, luabuf.c_str());
 		return g_teststring == lua_tinker::call<std::string>(L, "test_lua_string_1");
 	};
-	test_func_set["test_lua_string_2"]  = [L]()->bool
+	test_func_set["test_lua_string_2"] = [L]()->bool
 	{
 		std::string luabuf =
 			R"(function test_lua_string_2(string)
@@ -1266,10 +1302,10 @@ int main()
 				end
 			)";
 		lua_tinker::dostring(L, luabuf.c_str());
-		return (g_teststring+ g_teststring+ g_teststring) == lua_tinker::call<std::string>(L, "test_lua_string_2", g_teststring);
+		return (g_teststring + g_teststring + g_teststring) == lua_tinker::call<std::string>(L, "test_lua_string_2", g_teststring);
 	};
 
-	test_func_set["test_lua_map"]  = [L]()->bool
+	test_func_set["test_lua_map"] = [L]()->bool
 	{
 		std::string luabuf =
 			R"(function test_lua_map()
@@ -1287,7 +1323,7 @@ int main()
 		return true;
 	};
 
-	test_func_set["test_lua_hashmap"]  = [L]()->bool
+	test_func_set["test_lua_hashmap"] = [L]()->bool
 	{
 		std::string luabuf =
 			R"(function test_lua_hashmap()
@@ -1305,7 +1341,7 @@ int main()
 		return true;
 	};
 
-	test_func_set["test_lua_set"]  = [L]()->bool
+	test_func_set["test_lua_set"] = [L]()->bool
 	{
 		std::string luabuf =
 			R"(function test_lua_set()
@@ -1325,7 +1361,7 @@ int main()
 
 
 
-	test_func_set["test_lua_vec"]  = [L]()->bool
+	test_func_set["test_lua_vec"] = [L]()->bool
 	{
 		std::string luabuf =
 			R"(function test_lua_vec()
@@ -1343,7 +1379,7 @@ int main()
 		return true;
 	};
 
-	test_func_set["test_lua_funobj_1"]  = [L]()->bool
+	test_func_set["test_lua_funobj_1"] = [L]()->bool
 	{
 		std::string luabuf =
 			R"(function test_lua_funobj_1()
@@ -1360,7 +1396,7 @@ int main()
 		return lua_tinker::call<bool>(L, "test_lua_funobj_1");
 	};
 
-	test_func_set["test_lua_funobj_2"]  = [L]()->bool
+	test_func_set["test_lua_funobj_2"] = [L]()->bool
 	{
 		std::string luabuf =
 			R"(function test_lua_funobj_2()
@@ -1377,7 +1413,7 @@ int main()
 		return lua_tinker::call<bool>(L, "test_lua_funobj_2");
 	};
 
-	test_func_set["test_lua_funobj_3"]  = [L]()->bool
+	test_func_set["test_lua_funobj_3"] = [L]()->bool
 	{
 		std::string luabuf =
 			R"(function test_lua_funobj_3()
@@ -1395,7 +1431,7 @@ int main()
 		return lua_tinker::call<bool>(L, "test_lua_funobj_3");
 	};
 
-	test_func_set["test_lua_funobj_4"]  = [L]()->bool
+	test_func_set["test_lua_funobj_4"] = [L]()->bool
 	{
 		std::string luabuf =
 			R"(function test_lua_funobj_4()
@@ -1410,7 +1446,7 @@ int main()
 		return g_func_lua != nullptr;
 	};
 
-	test_func_set["test_lua_funobj_5"]  = [L]()->bool
+	test_func_set["test_lua_funobj_5"] = [L]()->bool
 	{
 		std::string luabuf =
 			R"(function test_lua_funobj_5()
@@ -1420,12 +1456,12 @@ int main()
 				end
 			)";
 		lua_tinker::dostring(L, luabuf.c_str());
-		
+
 		return  lua_tinker::call<bool>(L, "test_lua_funobj_5");;
 	};
 
 
-	test_func_set["test_lua_funobj_6"]  = [L]()->bool
+	test_func_set["test_lua_funobj_6"] = [L]()->bool
 	{
 		std::string luabuf =
 			R"(function test_lua_funobj_6()
@@ -1494,7 +1530,7 @@ int main()
 		return 14 == lua_tinker::call<int>(L, "test_lua_luafunction_ref_2_2", lua_func);
 	};
 
-	test_func_set["test_lua_gettable_1"]  = [L]()->bool
+	test_func_set["test_lua_gettable_1"] = [L]()->bool
 	{
 		std::string luabuf =
 			R"(
@@ -1516,7 +1552,7 @@ int main()
 	};
 
 
-	test_func_set["test_lua_multireturn"]  = [L]()->bool
+	test_func_set["test_lua_multireturn"] = [L]()->bool
 	{
 		std::string luabuf =
 			R"(function test_lua_multireturn()
@@ -1580,7 +1616,7 @@ int main()
 		std::string luabuf =
 			R"( lua_create_class("ff_inlua2","ff")
 
-				function test_lua_inhert_lua1()
+							function test_lua_inhert_lua1()
 					local local_ff = ff_inlua2(1);
 					return true;
 				end
@@ -1712,7 +1748,7 @@ int main()
 		}
 	}
 
-	
+
 
 	//func must be release before lua close.....user_conctrl
 	//g_func_lua = nullptr;

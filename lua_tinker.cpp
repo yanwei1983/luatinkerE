@@ -24,6 +24,17 @@ namespace lua_tinker
 {
 	const char* S_SHARED_PTR_NAME = "__shared_ptr";
 
+
+	error_call_back_fn g_error_call_back;
+	error_call_back_fn get_error_callback()
+	{
+		return g_error_call_back;
+	}
+	void set_error_callback(error_call_back_fn fn)
+	{
+		g_error_call_back = fn;
+	}
+
 }
 
 
@@ -188,11 +199,15 @@ int create_class(lua_State*L)
 
 	{
 		lua_createtable(L, 0, 1);
-		lua_pushstring(L, "__call");
-		lua_pushstring(L, szClassName);
-		lua_pushstring(L, szBaseClassName);
-		lua_pushcclosure(L, &lua_class_call, 2);
-		lua_rawset(L, -3);
+		{
+			lua_pushstring(L, "__call");
+			{
+				lua_pushstring(L, szClassName);
+				lua_pushstring(L, szBaseClassName);
+				lua_pushcclosure(L, &lua_class_call, 2);
+			}
+			lua_rawset(L, -3);
+		}
 		lua_setmetatable(L, -2);
 	}
 
@@ -207,14 +222,17 @@ void lua_tinker::init(lua_State *L)
 	init_close_callback(L);
 
 	lua_register(L, "lua_create_class", create_class);
+	set_error_callback(&on_error);
 }
+
+
 
 /*---------------------------------------------------------------------------*/
 /* excution                                                                  */
 /*---------------------------------------------------------------------------*/
 void lua_tinker::dofile(lua_State *L, const char *filename)
 {
-	lua_pushcclosure(L, on_error, 0);
+	lua_pushcclosure(L, get_error_callback(), 0);
 	int errfunc = lua_gettop(L);
 
 	if (luaL_loadfile(L, filename) == 0)
@@ -239,7 +257,7 @@ void lua_tinker::dostring(lua_State *L, const char* buff)
 /*---------------------------------------------------------------------------*/
 void lua_tinker::dobuffer(lua_State *L, const char* buff, size_t len)
 {
-	lua_pushcclosure(L, on_error, 0);
+	lua_pushcclosure(L, get_error_callback(), 0);
 	int errfunc = lua_gettop(L);
 
 	if (luaL_loadbuffer(L, buff, len, "lua_tinker::dobuffer()") == 0)
