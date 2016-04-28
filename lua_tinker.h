@@ -750,21 +750,21 @@ namespace lua_tinker
 			template<typename _T>
 			static typename std::enable_if<is_associative_container<_T>::value, _T>::type _readfromtable(lua_State *L, int index)
 			{
-				if (!lua_istable(L, index))
+				stack_obj table_obj(L, index);
+				if (table_obj.is_table() == false)
 				{
 					lua_pushfstring(L, "convert k-v container from argument %d must be a table", index);
 					lua_error(L);
 				}
 
 				_T t;
-				lua_pushnil(L);
-				while (lua_next(L, -2) != 0)
+				table_iterator it(table_obj);
+				while (it.hasNext())
 				{
-					if (lua_isnoneornil(L, -2) || lua_isnoneornil(L, -1))
-						break;
-					t.emplace(std::make_pair(read<typename T::key_type>(L, -2), read<typename T::mapped_type>(L, -1)));
-					lua_remove(L, -1);
+					t.emplace(std::make_pair(read<typename T::key_type>(L, it.key_idx()), read<typename T::mapped_type>(L, it.value_idx())));
+					it.moveNext();
 				}
+
 				return t;
 			}
 
@@ -772,21 +772,22 @@ namespace lua_tinker
 			template<typename _T>
 			static typename std::enable_if<!is_associative_container<_T>::value, _T>::type _readfromtable(lua_State *L, int index)
 			{
-				if (!lua_istable(L, index))
+				stack_obj table_obj(L, index);
+				if (table_obj.is_table() == false)
 				{
 					lua_pushfstring(L, "convert container from argument %d must be a table", index);
 					lua_error(L);
 				}
+				
 
 				_T t;
-				lua_pushnil(L);
-				while (lua_next(L, -2) != 0)
+				table_iterator it(table_obj);
+				while (it.hasNext())
 				{
-					if (lua_isnoneornil(L, -2) || lua_isnoneornil(L, -1))
-						break;
-					t.emplace_back(read<typename T::value_type>(L, -1));
-					lua_remove(L, -1);
+					t.emplace_back(read<typename T::value_type>(L, it.value_idx()));
+					it.moveNext();
 				}
+				
 				return t;
 			}
 
@@ -796,25 +797,25 @@ namespace lua_tinker
 			template<typename _T>
 			static typename std::enable_if<is_associative_container<_T>::value, void>::type  _push(lua_State *L, const _T& ret)
 			{
-				lua_newtable(L);
+				stack_obj table_obj = stack_obj::new_table(L, 0, ret.size());
 				for (auto it = ret.begin(); it != ret.end(); it++)
 				{
 					push(L, it->first);
 					push(L, it->second);
-					lua_settable(L, -3);
+					lua_settable(L, table_obj._stack_pos);
 				}
 			}
 			//t container to lua
 			template<typename _T>
 			static typename std::enable_if<!is_associative_container<_T>::value, void>::type  _push(lua_State *L, const _T& ret)
 			{
-				lua_newtable(L);
+				stack_obj table_obj = stack_obj::new_table(L, ret.size(), 0);
 				auto it = ret.begin();
 				for (int i = 1; it != ret.end(); it++, i++)
 				{
 					push(L, i);
 					push(L, *it);
-					lua_settable(L, -3);
+					lua_settable(L, table_obj._stack_pos);
 				}
 			}
 		};
@@ -1384,7 +1385,7 @@ namespace lua_tinker
 			new(lua_newuserdata(L, sizeof(Functor_Warp))) Functor_Warp(func);
 			//register functor
 			{
-				lua_newtable(L);
+				lua_createtable(L, 0, 1);
 				lua_pushstring(L, "__gc");
 				lua_pushcclosure(L, &destroyer<Functor_Warp>, 0);
 				lua_rawset(L, -3);
@@ -1401,7 +1402,7 @@ namespace lua_tinker
 			new(lua_newuserdata(L, sizeof(Functor_Warp))) Functor_Warp(func);
 			//register functor
 			{
-				lua_newtable(L);
+				lua_createtable(L, 0, 1);
 				lua_pushstring(L, "__gc");
 				lua_pushcclosure(L, &destroyer<Functor_Warp>, 0);
 				lua_rawset(L, -3);
@@ -1417,7 +1418,7 @@ namespace lua_tinker
 			new(lua_newuserdata(L, sizeof(overload_functor))) overload_functor(std::forward<overload_functor>(functor));
 			//register functor
 			{
-				lua_newtable(L);
+				lua_createtable(L, 0, 1);
 				lua_pushstring(L, "__gc");
 				lua_pushcclosure(L, &destroyer<overload_functor>, 0);
 				lua_rawset(L, -3);
@@ -1603,7 +1604,7 @@ namespace lua_tinker
 			new(lua_newuserdata(L, sizeof(Functor_Warp))) Functor_Warp(func);
 			//register metatable for gc
 			{
-				lua_newtable(L);
+				lua_createtable(L, 0, 1);
 				lua_pushstring(L, "__gc");
 				lua_pushcclosure(L, &destroyer<Functor_Warp>, 0);
 				lua_rawset(L, -3);
@@ -1623,7 +1624,7 @@ namespace lua_tinker
 			new(lua_newuserdata(L, sizeof(Functor_Warp))) Functor_Warp(func);
 			//register metatable for gc
 			{
-				lua_newtable(L);
+				lua_createtable(L, 0, 1);
 				lua_pushstring(L, "__gc");
 				lua_pushcclosure(L, &destroyer<Functor_Warp>, 0);
 				lua_rawset(L, -3);
@@ -1643,7 +1644,7 @@ namespace lua_tinker
 			new(lua_newuserdata(L, sizeof(overload_functor))) overload_functor(std::forward<overload_functor>(functor));
 			//register metatable for gc
 			{
-				lua_newtable(L);
+				lua_createtable(L, 0, 1);
 				lua_pushstring(L, "__gc");
 				lua_pushcclosure(L, &destroyer<overload_functor>, 0);
 				lua_rawset(L, -3);
@@ -1679,7 +1680,7 @@ namespace lua_tinker
 	//namespace
 	static void namespace_add(lua_State* L, const char* namespace_name)
 	{
-		lua_newtable(L);
+		lua_createtable(L, 0, 3);
 
 		lua_pushstring(L, "__name");
 		lua_pushstring(L, namespace_name);
@@ -1743,7 +1744,7 @@ namespace lua_tinker
 	void class_add(lua_State* L, const char* name, bool bInitShared)
 	{
 		detail::class_name<T>::name(name);
-		lua_newtable(L);
+		lua_createtable(L, 0, 4);
 
 		lua_pushstring(L, "__name");
 		lua_pushstring(L, name);
@@ -1767,8 +1768,14 @@ namespace lua_tinker
 		{
 			std::string strSharedName = (std::string(name) + S_SHARED_PTR_NAME);
 			detail::class_name< std::shared_ptr<T> >::name(strSharedName.c_str());
-			lua_newtable(L);
+			int nReserveSize = 3;
 
+#ifdef _ALLOW_SHAREDPTR_INVOKE
+			nReserveSize = 6;
+#endif
+
+
+			lua_createtable(L, 0, nReserveSize);
 			lua_pushstring(L, "__name");
 			lua_pushstring(L, strSharedName.c_str());
 			lua_rawset(L, -3);
@@ -1833,7 +1840,7 @@ namespace lua_tinker
 				{
 					parent_table.remove();
 					lua_pushstring(L, "__multi_parent");
-					lua_newtable(L);
+					lua_createtable(L, 1, 0);
 					parent_table = detail::stack_obj::get_top(L);
 					{
 						detail::push_meta(L, detail::get_class_name<P>());
@@ -1874,7 +1881,7 @@ namespace lua_tinker
 		detail::stack_scope_exit scope_exit(L);
 		if (detail::push_meta(L, detail::get_class_name<T>()) == LUA_TTABLE)
 		{
-			lua_newtable(L);
+			lua_createtable(L, 0, 1);
 			lua_pushstring(L, "__call");
 			detail::_push_constructor(L, std::forward<F>(func), std::forward<DefaultArgs>(default_args)...);
 			lua_rawset(L, -3);

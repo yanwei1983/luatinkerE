@@ -75,7 +75,7 @@ static void init_close_callback(lua_State *L)
 	new(lua_newuserdata(L, sizeof(lua_ext_value))) lua_ext_value(L);
 	//register functor
 	{
-		lua_newtable(L);
+		lua_createtable(L, 0 ,1);
 		lua_pushstring(L, "__gc");
 		lua_pushcclosure(L, &lua_tinker::detail::destroyer<lua_ext_value>, 0);
 		lua_rawset(L, -3);
@@ -88,7 +88,7 @@ static void init_close_callback(lua_State *L)
 static void init_shared_ptr(lua_State *L)
 {
 	using namespace lua_tinker;
-	lua_newtable(L);
+	lua_createtable(L, 0, 4);
 
 	lua_pushstring(L, "__name");
 	lua_pushstring(L, S_SHARED_PTR_NAME);
@@ -109,11 +109,104 @@ static void init_shared_ptr(lua_State *L)
 	lua_setglobal(L, S_SHARED_PTR_NAME); //pop table
 }
 
+int lua_class_call(lua_State*L)
+{
+	using namespace lua_tinker;
+	using namespace lua_tinker::detail;
+	const char* szClassName = read<const char*>(L, lua_upvalueindex(1));
+	const char* szBaseClassName = read<const char*>(L, lua_upvalueindex(2));
+
+	int nArgCount = lua_gettop(L);
+
+	push_meta(L,szBaseClassName);
+	stack_obj base_meta = stack_obj::get_top(L);
+	if (base_meta.is_table())
+	{
+		stack_obj base_meta_meta = base_meta.get_metatable();
+		if (base_meta_meta.is_table())
+		{
+			stack_obj base_meta_meta_call = base_meta_meta.rawget("__call");
+			if (base_meta_meta_call.is_function())
+			{
+				base_meta_meta_call.pop_up(base_meta._stack_pos);
+				base_meta_meta_call.insert_to(1);
+				lua_pcall(L, nArgCount, 1, 0);
+				//replace ret's metatable
+				lua_tinker::detail::push_meta(L, szClassName);
+				lua_setmetatable(L, -2);
+				return 1;
+			}
+
+		}
+	}
+
+	lua_pushfstring(L, "can't direct invoke %s", szClassName);
+	lua_error(L);
+
+	lua_pop(L, lua_gettop(L) - nArgCount);
+	return 0;
+
+	
+}
+int create_class(lua_State*L)
+{
+	size_t nClassName;
+	const char* szClassName = luaL_checklstring(L, -2, &nClassName);
+	if (!szClassName)
+	{
+		return 0;
+	}
+
+	size_t nBaseClassName;
+	const char* szBaseClassName = luaL_checklstring(L, -1, &nBaseClassName);
+	if (!szBaseClassName)
+	{
+		return 0;
+	}
+
+	lua_createtable(L, 0, 5);
+
+	lua_pushstring(L, "__name");
+	lua_pushstring(L, szClassName);
+	lua_rawset(L, -3);
+
+	lua_pushstring(L, "__index");
+	lua_pushcclosure(L, lua_tinker::detail::meta_get, 0);
+	lua_rawset(L, -3);
+
+	lua_pushstring(L, "__newindex");
+	lua_pushcclosure(L, lua_tinker::detail::meta_set, 0);
+	lua_rawset(L, -3);
+
+	lua_pushstring(L, "__gc");
+	lua_pushcclosure(L, lua_tinker::detail::destroyer<lua_tinker::detail::UserDataWapper>, 0);
+	lua_rawset(L, -3);
+
+	lua_pushstring(L, "__parent");
+	lua_tinker::detail::push_meta(L, szBaseClassName);
+	lua_rawset(L, -3);
+
+	{
+		lua_createtable(L, 0, 1);
+		lua_pushstring(L, "__call");
+		lua_pushstring(L, szClassName);
+		lua_pushstring(L, szBaseClassName);
+		lua_pushcclosure(L, &lua_class_call, 2);
+		lua_rawset(L, -3);
+		lua_setmetatable(L, -2);
+	}
+
+	lua_setglobal(L, szClassName);
+
+	return 1;
+}
+
 void lua_tinker::init(lua_State *L)
 {
 	init_shared_ptr(L);
-
 	init_close_callback(L);
+
+	lua_register(L, "lua_create_class", create_class);
 }
 
 /*---------------------------------------------------------------------------*/
@@ -479,7 +572,6 @@ static void invoke_parent(lua_State *L)
 				}
 				it.moveNext();
 			}
-			it.key().remove();
 			lua_pushnil(L); //not find return nil
 
 

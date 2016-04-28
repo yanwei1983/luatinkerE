@@ -44,9 +44,9 @@ namespace lua_tinker
 			{
 				return stack_obj(L, lua_gettop(L));
 			}
-			static stack_obj new_table(lua_State* L)
+			static stack_obj new_table(lua_State* L, int narr = 0, int nrec = 0)
 			{
-				lua_newtable(L);
+				lua_createtable(L, narr, nrec);
 				return stack_obj(L, lua_gettop(L));
 			}
 
@@ -68,6 +68,16 @@ namespace lua_tinker
 				if (is_vaild())
 					lua_remove(L, _stack_pos);
 				_stack_pos = 0;
+			}
+
+			void insert_to(int nIdx)
+			{
+				int nTop = lua_gettop(L);
+				if (nTop == _stack_pos)
+				{
+					lua_rotate(L, nIdx, 1);
+					_stack_pos = lua_absindex(L, nIdx);
+				}
 			}
 
 			void pop_up(int nIdx)
@@ -191,6 +201,7 @@ namespace lua_tinker
 				, m_hasNext(false)
 			{
 				lua_pushnil(m_table.L);
+				m_key = lua_gettop(m_table.L);
 				do_next();
 			}
 
@@ -217,16 +228,33 @@ namespace lua_tinker
 			{
 				return stack_obj(m_table.L, m_key);
 			}
+			int key_idx() const
+			{
+				return m_key;
+			}
 
 			stack_obj value() const
 			{
 				return stack_obj(m_table.L, m_key + 1);
 			}
+			int value_idx() const
+			{
+				return  m_key + 1;
+			}
+
+
+
+			void destory()
+			{
+				key().remove();
+				m_table._stack_pos = 0;
+				m_key = 0;
+				m_hasNext = false;
+			}
 		private:
 			void do_next()
 			{
 				m_hasNext = !!lua_next(m_table.L, m_table._stack_pos);
-				m_key = lua_gettop(m_table.L) - 1;
 			}
 			stack_obj m_table;
 			int m_key;
