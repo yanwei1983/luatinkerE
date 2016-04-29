@@ -24,6 +24,7 @@ before_script:
   - cd lua
   - make clean
   - make linux
+  - cd ..
   
 script:
   - mkdir build && cd build && cmake .. -DCMAKE_BUILD_TYPE=${BUILD_TYPE} && make && ${VALGRIND} ./test_runner
