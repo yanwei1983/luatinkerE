@@ -13,4 +13,4 @@ aux_source_directory(tests cur_src)
 link_directories(${CMAKE_CURRENT_SOURCE_DIR}/lua/src)
 
 add_executable(test_runner ${cur_src})
-target_link_libraries(test_runner liblua.a)
+target_link_libraries(test_runner liblua.a dl)
