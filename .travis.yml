@@ -15,15 +15,19 @@ matrix:
   include:
     - os: linux
       compiler: "clang3.8"
-      env: 
-      	-COMPILER=clang++-3.8 BUILD_TYPE=Release
-      	-COMPILER=clang++-3.8 BUILD_TYPE=Debug
+      env: COMPILER=clang++-3.8 BUILD_TYPE=Release
+      addons: *clang38
+    - os: linux
+      compiler: "clang3.8"
+      env: COMPILER=clang++-3.8 BUILD_TYPE=Debug
       addons: *clang38
     - os: linux
       compiler: "gcc5.0"
-      env: 
-      	-COMPILER=g++-5 BUILD_TYPE=Release
-      	-COMPILER=g++-5 BUILD_TYPE=Debug
+      env: COMPILER=g++-5 BUILD_TYPE=Release
+      addons: *gcc50
+    - os: linux
+      compiler: "gcc5.0"
+      env: COMPILER=g++-5 BUILD_TYPE=Debug
       addons: *gcc50
 
 
@@ -38,4 +42,4 @@ before_script:
   - cd ..
   
 script:
-  - mkdir build && cd build && cmake .. -DCMAKE_CXX_COMPILER="${COMPILER:-clang++}" && make && ./test_runner
+  - mkdir build && cd build && cmake .. -DCMAKE_BUILD_TYPE=${BUILD_TYPE} -DCMAKE_CXX_COMPILER="${COMPILER:-clang++}" && make && ./test_runner
