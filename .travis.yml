@@ -26,5 +26,4 @@ before_script:
   - make linux
   
 script:
-	- .travis/build_lua.sh
   - mkdir build && cd build && cmake .. -DCMAKE_BUILD_TYPE=${BUILD_TYPE} && make && ${VALGRIND} ./test_runner
