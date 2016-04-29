@@ -232,16 +232,17 @@ export_lua bool visot_ff_weak(std::weak_ptr<ff> pWeakFF);
 class ff_nodef
 {
 public:
-	ff_nodef(int n = 0) :m_val(n) {}
-	ff_nodef(const ff_nodef& rht) :m_val(rht.m_val) {}
-	ff_nodef(ff_nodef&& rht) :m_val(rht.m_val) {}
+	ff_nodef(int n = 0) :m_val(n) { s_ref++; }
+	ff_nodef(const ff_nodef& rht) :m_val(rht.m_val) { s_ref++; }
+	ff_nodef(ff_nodef&& rht) :m_val(rht.m_val) { s_ref++; }
 
 	~ff_nodef()
 	{
-		std::cout << "ff_nodef::~ff_nodef()" << std::endl;
+		s_ref--;
 	}
 
 	int m_val;
+	static int s_ref;
 };
 
 export_lua ff_nodef* make_ff_nodef();
