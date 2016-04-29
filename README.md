@@ -1,6 +1,6 @@
 # luatinkerE
 
-[![Join the chat at https://gitter.im/yanwei1983/luatinkerE](https://badges.gitter.im/yanwei1983/luatinkerE.svg)](https://gitter.im/yanwei1983/luatinkerE?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)  
+[![Join the chat at https://gitter.im/yanwei1983/luatinkerE](https://badges.gitter.im/yanwei1983/luatinkerE.svg)](https://gitter.im/yanwei1983/luatinkerE?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 [![Build Status](https://travis-ci.org/yanwei1983/luatinkerE.svg?branch=master)](https://travis-ci.org/yanwei1983/luatinkerE)
 
 LUA to C++ Binding Library "lua_tinker" expand for c++14 and lua 5.3
