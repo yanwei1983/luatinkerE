@@ -1737,6 +1737,7 @@ int main()
 		return lua_tinker::call<bool>(L, "test_lua_intoptest7");
 	};
 
+	int nError = 0;
 	for (const auto& v : test_func_set)
 	{
 		const auto& func = v.second;
@@ -1744,10 +1745,12 @@ int main()
 		if (lua_gettop(L) != 0)
 		{
 			printf("unit test stack leak: %s error\n", v.first.c_str());
+			nError++;
 		}
 		if (result == false)
 		{
 			printf("unit test: %s error\n", v.first.c_str());
+			nError++;
 		}
 	}
 
@@ -1758,18 +1761,23 @@ int main()
 
 	//lua_gc(L, LUA_GCSTEP, 1);
 	lua_gc(L, LUA_GCCOLLECT, 0);
-	assert(ff::s_ref == 3); //g_ff,g_ff_shared,in lua:g_ffshared
+	if(ff::s_ref != 3) //g_ff,g_ff_shared,in lua:g_ffshared
+		nError++;
+
 	std::string luabuf =
 		R"( g_ffshared = nil;
 			)";
 	lua_tinker::dostring(L, luabuf.c_str());
 
 	lua_gc(L, LUA_GCCOLLECT, 0);
-	assert(ff::s_ref == 2); //g_ff,g_ff_shared
+	if(ff::s_ref != 2) //g_ff,g_ff_shared
+		nError++;
+
 	lua_close(L);
 
-	assert(g_func_lua == nullptr);
+	if(g_func_lua != nullptr)
+		nError++;
 	//g_func_lua(1); //access lua_State after lua_close will crash
-	return 0;
+	return nError;
 }
 
