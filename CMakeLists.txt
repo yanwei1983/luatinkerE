@@ -4,7 +4,7 @@ project(luatinkerE)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -std=c++14")
 
 
-include_directories(lua luatinkere tests)
+include_directories(lua/src luatinkere tests)
 
 aux_source_directory(luatinkere cur_src)
 aux_source_directory(tests cur_src)
