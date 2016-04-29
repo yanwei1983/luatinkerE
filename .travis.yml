@@ -1,21 +1,30 @@
 sudo: false
 language: c++
-compiler:
-- clang
-- gcc
-addons:
-  apt:
-    sources: [ 'ubuntu-toolchain-r-test', 'llvm-toolchain-precise', 'llvm-toolchain-precise-3.8' ]
-    packages:
-      - gcc-5
-      - g++-5
-      - clang-3.8
-      - libc6-dev
-      - valgrind
+
+addons_shortcuts:
+  addons_clang38: &clang38
+    apt:
+      sources: [ 'ubuntu-toolchain-r-test', 'llvm-toolchain-precise', 'llvm-toolchain-precise-3.8' ]
+      packages: [ 'clang-3.8' ]
+  addons_gcc50: &gcc50
+    apt:
+      sources: [ 'ubuntu-toolchain-r-test' ]
+      packages: [ 'g++-5' ]
+      
+matrix:
+  include:
+    - os: linux
+      compiler: "clang3.8"
+      env: COMPILER=clang++-3.8
+      addons: *clang38
+    - os: linux
+      compiler: "gcc5.0"
+      env: COMPILER=g++-5
+      addons: *gcc50
 
 env:
   - BUILD_TYPE=Release
-  - BUILD_TYPE=Debug VALGRIND='valgrind --leak-check=full --error-exitcode=1'
+  - BUILD_TYPE=Debug
 
 before_script:
   - curl http://www.lua.org/ftp/lua-5.3.2.tar.gz | tar xz
@@ -26,4 +35,4 @@ before_script:
   - cd ..
   
 script:
-  - mkdir build && cd build && cmake .. -DCMAKE_BUILD_TYPE=${BUILD_TYPE} && make && ${VALGRIND} ./test_runner
+  - mkdir build && cd build && cmake .. -DCMAKE_BUILD_TYPE=${BUILD_TYPE} && make && ./test_runner
