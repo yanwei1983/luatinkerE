@@ -173,5 +173,19 @@ void test_function_obj(lua_State* L)
 		return 7 == func(6);
 	};
 
+	g_test_func_set["test_lua_funobj_8"] = [L]()->bool
+	{
+		std::string luabuf =
+			R"(function test_lua_funobj_8()
+					local c_func = get_c_function();
+					local pTest = TestCon();
+					return pTest:TestFuncObj(c_func) == (7+1);
+				end
+			)";
+		lua_tinker::dostring(L, luabuf.c_str());
+
+		return lua_tinker::call<bool>(L, "test_lua_funobj_8");
+	};
+
 
 }
