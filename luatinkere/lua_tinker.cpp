@@ -712,32 +712,45 @@ bool lua_tinker::detail::CheckSameMetaTable(lua_State* L, int nIndex, const char
 }
 
 
-void lua_tinker::detail::push_upval_to_stack(lua_State* L, int nArgsCount, int nArgsNeed)
+bool lua_tinker::detail::push_upval_to_stack(lua_State* L, int nArgsCount, int nArgsNeed, int default_upval_start)
 {
 	if (nArgsCount < nArgsNeed)
 	{
 		//need use upval
 		int nNeedUpval = nArgsNeed - nArgsCount;
-		int nUpvalCount = read<int>(L, lua_upvalueindex(2));
+		int nUpvalCount = read<int>(L, lua_upvalueindex(default_upval_start));
+		if (nUpvalCount < 0)
+		{
+			return false;
+		}
 		for (int i = nUpvalCount - nNeedUpval; i < nUpvalCount; i++)
 		{
-			lua_pushvalue(L, lua_upvalueindex(3 + i));
+			lua_pushvalue(L, lua_upvalueindex(default_upval_start + 1 + i));
 		}
 	}
+
+	return true;
 }
 
 
-void lua_tinker::detail::push_upval_to_stack(lua_State* L, int nArgsCount, int nArgsNeed, int nUpvalCount, int UpvalStart)
+bool lua_tinker::detail::push_upval_to_stack(lua_State* L, int nArgsCount, int nArgsNeed, int nUpvalCount, int UpvalStart)
 {
 	if (nArgsCount < nArgsNeed)
 	{
 		//need use upval
 		int nNeedUpval = nArgsNeed - nArgsCount;
+		if (nUpvalCount < 0)
+		{
+			return false;
+		}
+		static const int default_upval_start = 2;
 		for (int i = nUpvalCount - nNeedUpval; i < nUpvalCount; i++)
 		{
-			lua_pushvalue(L, lua_upvalueindex(2 + UpvalStart + i));
+			lua_pushvalue(L, lua_upvalueindex(default_upval_start + UpvalStart + i));
 		}
 	}
+
+	return true;
 }
 
 void lua_tinker::detail::_set_signature_bit(unsigned long long& sig, size_t idx, unsigned char c)

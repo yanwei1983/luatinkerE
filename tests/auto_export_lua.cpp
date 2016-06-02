@@ -87,6 +87,12 @@ void export_to_lua_auto(lua_State* L)
 	lua_tinker::scope_inner(L, "NS_TEST::NS_INNER::Test", "Iterator", "NS_TEST::NS_INNER::Test::Iterator");
 	lua_tinker::scope_inner(L, "NS_TEST::NS_INNER", "Test", "NS_TEST::NS_INNER::Test");
 	lua_tinker::scope_inner(L, "NS_TEST", "NS_INNER", "NS_TEST::NS_INNER");
+	lua_tinker::class_add<TestCon>(L, "TestCon", true);
+	lua_tinker::class_def<TestCon>(L, "getStr", &TestCon::getStr);
+	lua_tinker::class_con<TestCon>(L, lua_tinker::constructor<TestCon, float, const char *, int>::invoke, - 1.0f, "aa", 7);
+	lua_tinker::class_mem<TestCon>(L, "m_fVal", &TestCon::m_fVal);
+	lua_tinker::class_mem<TestCon>(L, "m_nVal", &TestCon::m_nVal);
+	lua_tinker::class_mem<TestCon>(L, "m_str", &TestCon::m_str);
 	lua_tinker::class_add<ff>(L, "ff", true);
 	lua_tinker::class_def<ff>(L, "add", &ff::add);
 	lua_tinker::class_def<ff>(L, "add_ffcref", &ff::add_ffcref);
@@ -130,6 +136,8 @@ void export_to_lua_auto(lua_State* L)
 	lua_tinker::class_inh<ff_other, ff_other_baseA>(L);
 	lua_tinker::class_inh<ff_other, ff_other_baseB>(L);
 	lua_tinker::class_inh<ff_other_baseB, ff_other_base>(L);
+
+
 
 
 

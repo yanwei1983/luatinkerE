@@ -29,7 +29,18 @@ export_lua int& get_gintref();
 export_lua int* get_gintptr();
 export_lua double get_gdouble();
 
+export_lua class TestCon
+{
+public:
+	export_lua TestCon(float _d = -1.0f, const char* str="aa", int _n=7)
+		:m_nVal(_n),m_fVal(_d),m_str(str)
+	{}
 
+	export_lua const char* getStr() const { return m_str.c_str(); }
+	export_lua int m_nVal;
+	export_lua float m_fVal;
+	export_lua std::string m_str;
+};
 
 export_lua class ff_base
 {

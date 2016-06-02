@@ -1119,8 +1119,8 @@ namespace lua_tinker
 		}
 
 		//upval to stack helper
-		void push_upval_to_stack(lua_State* L,int nArgsCount, int nArgsNeed);
-		void push_upval_to_stack(lua_State* L,int nArgsCount, int nArgsNeed, int nUpvalCount, int UpvalStart);
+		bool push_upval_to_stack(lua_State* L, int nArgsCount, int nArgsNeed, int default_upval_start = 2);
+		bool push_upval_to_stack(lua_State* L, int nArgsCount, int nArgsNeed, int nUpvalCount, int UpvalStart);
 		//functor
 		struct functor_base
 		{
@@ -1469,19 +1469,35 @@ namespace lua_tinker
 		{
 			TRY_LUA_TINKER_INVOKE()
 			{
-				detail::push_upval_to_stack(L, lua_gettop(L), sizeof...(Args), m_nDefaultParamCount, m_nDefaultParamsStart);
-				invoke(L);
+				detail::push_upval_to_stack(L, lua_gettop(L) - 1, sizeof...(Args), m_nDefaultParamCount, m_nDefaultParamsStart);
+				_invoke(L);
 				return 1;
 			}
 			CATCH_LUA_TINKER_INVOKE()
 			{
-				lua_pushfstring(L, "lua fail to invoke functor");
+				lua_pushfstring(L, "lua fail to invoke constructor");
 				lua_error(L);
 			}
 			return 0;
 		}
 
-		static int invoke(lua_State *L)
+		static int invoke(lua_State* L)
+		{
+			TRY_LUA_TINKER_INVOKE()
+			{
+				detail::push_upval_to_stack(L, lua_gettop(L) - 1, sizeof...(Args), 1);
+				_invoke(L);
+				return 1;
+			}
+			CATCH_LUA_TINKER_INVOKE()
+			{
+				lua_pushfstring(L, "lua fail to invoke constructor");
+				lua_error(L);
+			}
+			return 0;
+		}
+
+		static int _invoke(lua_State *L)
 		{
 			new(lua_newuserdata(L, sizeof(detail::val2user<T>))) detail::val2user<T>(L, detail::class_tag<Args...>());
 			detail::push_meta(L, detail::get_class_name<T>());
