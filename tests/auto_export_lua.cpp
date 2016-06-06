@@ -16,6 +16,7 @@ void export_to_lua_auto(lua_State* L)
 	lua_tinker::def(L, "get_gintptr_const", &get_gintptr_const);
 	lua_tinker::def(L, "get_gintref", &get_gintref);
 	lua_tinker::def(L, "get_gintref_const", &get_gintref_const);
+	lua_tinker::def(L, "get_shared_int", &get_shared_int);
 	lua_tinker::def(L, "gint_add1", &gint_add1);
 	lua_tinker::def(L, "gint_add_intref", &gint_add_intref);
 	lua_tinker::def(L, "gint_addint", &gint_addint);
@@ -49,6 +50,8 @@ void export_to_lua_auto(lua_State* L)
 		lua_tinker::make_functor_ptr((void(*)(const char *))(&test_overload_err)),
 		lua_tinker::make_functor_ptr((void(*)(const std::string &))(&test_overload_err))));
 	lua_tinker::def(L, "use_stored_lua_function", &use_stored_lua_function);
+	lua_tinker::def(L, "visit_shared_int", &visit_shared_int);
+	lua_tinker::def(L, "visit_shared_int_constref", &visit_shared_int_constref);
 	lua_tinker::def(L, "visot_ff", &visot_ff);
 	lua_tinker::def(L, "visot_ff_const_ref", &visot_ff_const_ref);
 	lua_tinker::def(L, "visot_ff_nodef", &visot_ff_nodef);

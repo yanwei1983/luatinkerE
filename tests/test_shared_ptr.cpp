@@ -118,6 +118,35 @@ bool visot_ff_nodef_shared(std::shared_ptr<ff_nodef> pFF)
 	return false;
 }
 
+std::shared_ptr<int> g_shared_int;
+
+const std::shared_ptr<int>& get_shared_int()
+{
+	if (!g_shared_int)
+	{
+		g_shared_int = std::shared_ptr<int>(new int(7));
+	}
+	return g_shared_int;
+}
+
+int visit_shared_int(std::shared_ptr<int> shared_int)
+{
+	if (shared_int)
+	{
+		return *shared_int;
+	}
+	return 0;
+}
+
+int visit_shared_int_constref(const std::shared_ptr<int>& shared_int)
+{
+	if (shared_int)
+	{
+		return *shared_int;
+	}
+	return 0;
+}
+
 void test_sharedptr(lua_State* L)
 {
 	g_test_func_set["test_lua_shared_1"] = [L]()->bool
@@ -211,6 +240,32 @@ void test_sharedptr(lua_State* L)
 		lua_tinker::dostring(L, luabuf.c_str());
 		std::shared_ptr<ff> ffshared = lua_tinker::call< std::shared_ptr<ff> >(L, "test_lua_shared_5", std::shared_ptr<ff>(new ff(0)));
 		return ffshared.use_count() == 2;
+	};
+
+	g_test_func_set["test_lua_shared_6"] = [L]()->bool
+	{
+		std::string luabuf =
+			R"(function test_lua_shared_6()
+					local shared_int = get_shared_int();
+					return 7 == visit_shared_int_constref(shared_int);
+				end
+			)";
+
+		lua_tinker::dostring(L, luabuf.c_str());
+		return  lua_tinker::call<bool>(L, "test_lua_shared_6") && g_shared_int.use_count() == 1;
+	};
+
+	g_test_func_set["test_lua_shared_7"] = [L]()->bool
+	{
+		std::string luabuf =
+			R"(function test_lua_shared_7()
+					local shared_int = get_shared_int();
+					return 7 == visit_shared_int(shared_int);
+				end
+			)";
+
+		lua_tinker::dostring(L, luabuf.c_str());
+		return  lua_tinker::call<bool>(L, "test_lua_shared_7") && g_shared_int.use_count() == 1;
 	};
 
 	g_test_func_set["test_lua_weak_1"] = [L]()->bool

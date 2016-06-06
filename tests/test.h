@@ -282,6 +282,9 @@ export_lua bool visot_ff_nodef(ff_nodef* pFF);
 export_lua std::shared_ptr<ff_nodef> make_ff_nodef_shared();
 export_lua bool visot_ff_nodef_shared(std::shared_ptr<ff_nodef> pFF);
 
+export_lua const std::shared_ptr<int>& get_shared_int();
+export_lua int visit_shared_int(std::shared_ptr<int> shared_int);
+export_lua int visit_shared_int_constref(const std::shared_ptr<int>& shared_int);
 
 export_lua unsigned long long addUL(unsigned long long a, unsigned long long b);
 export_lua long long Number2Interger(double v);

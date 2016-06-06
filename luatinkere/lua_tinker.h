@@ -967,10 +967,32 @@ namespace lua_tinker
 				push_meta(L, get_class_name<std::shared_ptr<T>>());
 				lua_setmetatable(L, -2);
 			}
+
+			
 		};
 		template<typename T>
 		struct _stack_help<const std::shared_ptr<T>& > : public _stack_help<std::shared_ptr<T>>
 		{
+			static void _push(lua_State *L, const std::shared_ptr<T>& val)
+			{
+				if (val)
+				{
+					//if (val.use_count() == 1)	//last count,if we didn't hold it, it will lost
+					//{
+					//	new(lua_newuserdata(L, sizeof(sharedptr2user<T>))) sharedptr2user<T>(val);
+					//}
+					//else
+					{
+						new(lua_newuserdata(L, sizeof(weakptr2user<T>))) weakptr2user<T>(val);
+					}
+
+				}
+				else
+					lua_pushnil(L);
+
+				push_meta(L, get_class_name<std::shared_ptr<T>>());
+				lua_setmetatable(L, -2);
+			}
 		};
 
 		//read_weap
