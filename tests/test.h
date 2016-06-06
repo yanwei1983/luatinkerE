@@ -49,8 +49,12 @@ public:
 	typedef std::map<int, int> DataMap;
 	DataMap m_DataMap;
 	export_lua DataMap& getDataMap() { return m_DataMap; }
+	export_lua DataMap* getDataMapPtr() { return &m_DataMap; }
 	export_lua void ChangeDataMap(DataMap dataMap) { m_DataMap = dataMap; }
-	void ChangeDataMap_ref(DataMap& dataMap) { m_DataMap = dataMap; } //plz not export this to lua, stl continer can't read form lua as a ref-obj
+	export_lua void ChangeDataMap_Ref(const DataMap& dataMap) { m_DataMap = dataMap; }
+	//export_lua void ChangeDataMap_Ref(DataMap&& dataMap) { m_DataMap = dataMap; }
+	export_lua void ChangeDataMapPtr(DataMap* pDataMap) { m_DataMap = *pDataMap; }
+
 
 };
 

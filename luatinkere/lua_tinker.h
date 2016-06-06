@@ -740,15 +740,15 @@ namespace lua_tinker
 			}
 		};
 
-		//stl container
+		//stl container if type not ptr, will auto_conv to lua_table
 		template<typename T>
-		struct _stack_help<T, typename std::enable_if<is_container<base_type<T>>::value>::type>
+		struct _stack_help<T, typename std::enable_if<!std::is_pointer<T>::value && is_container<base_type<T>>::value>::type>
 		{
 			static constexpr int cover_to_lua_type() { return CLT_TABLE; }
 
-			static T _read(lua_State *L, int index)
+			static base_type<T> _read(lua_State *L, int index)
 			{
-				return _readfromtable<T>(L, index);
+				return _readfromtable<base_type<T>>(L, index);
 			}
 
 			//support map,multimap,unordered_map,unordered_multimap
@@ -766,7 +766,7 @@ namespace lua_tinker
 				table_iterator it(table_obj);
 				while (it.hasNext())
 				{
-					t.emplace(std::make_pair(read<typename T::key_type>(L, it.key_idx()), read<typename T::mapped_type>(L, it.value_idx())));
+					t.emplace(std::make_pair(read<typename _T::key_type>(L, it.key_idx()), read<typename _T::mapped_type>(L, it.value_idx())));
 					it.moveNext();
 				}
 
@@ -789,7 +789,7 @@ namespace lua_tinker
 				table_iterator it(table_obj);
 				while (it.hasNext())
 				{
-					t.emplace_back(read<typename T::value_type>(L, it.value_idx()));
+					t.emplace_back(read<typename _T::value_type>(L, it.value_idx()));
 					it.moveNext();
 				}
 				
