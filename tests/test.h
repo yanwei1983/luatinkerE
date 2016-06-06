@@ -19,14 +19,17 @@ export_lua extern double g_c_double;
 export_lua void gint_add1();
 export_lua void gint_addint(int n);
 export_lua void gint_addintptr(int* p);
+export_lua void gint_addintptr_const(const int* p);
 export_lua void gint_addintref(const int& ref);
 export_lua void gint_add_intref(int& ref, int n);
 export_lua void g_addint_double(int n1, double n2);
 
 export_lua int get_gint();
 export_lua int& get_gintref();
+export_lua const int& get_gintref_const();
 
 export_lua int* get_gintptr();
+export_lua const int* get_gintptr_const();
 export_lua double get_gdouble();
 
 export_lua class TestCon

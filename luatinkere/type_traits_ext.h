@@ -228,6 +228,8 @@ template< class T > struct remove_r_reference { typedef T type; };
 
 template< class T > struct remove_r_reference<T&&> { typedef T type; };
 
+template<typename T>
+using not_const = std::is_same<typename T, std::remove_const<typename T> >;
 
 
 namespace stdext

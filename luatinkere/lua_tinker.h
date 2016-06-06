@@ -384,6 +384,7 @@ namespace lua_tinker
 		struct ptr2user : UserDataWapper
 		{
 			ptr2user(T* t) : UserDataWapper(t) {}
+			ptr2user(const T* t) : UserDataWapper(t) {}
 
 		};
 
@@ -616,7 +617,7 @@ namespace lua_tinker
 				}
 #endif
 #ifdef LUATINKER_USERDATA_CHECK_CONST
-				if (pWapper->is_const() == true && std::is_class<_T>::value == false)
+				if (pWapper->is_const() == true && not_const<_T>::value == true)
 				{
 					lua_pushfstring(L, "can't convert argument %d from const class %s", index, get_class_name<T>());
 					lua_error(L);

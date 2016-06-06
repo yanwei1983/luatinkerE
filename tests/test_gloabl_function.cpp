@@ -16,6 +16,10 @@ void gint_addintptr(int* p)
 {
 	g_c_int += *p;
 }
+void gint_addintptr_const(const int* p)
+{
+	g_c_int += *p;
+}
 void gint_addintref(const int& ref)
 {
 	g_c_int += ref;
@@ -39,7 +43,15 @@ int& get_gintref()
 {
 	return g_c_int;
 }
+const int& get_gintref_const()
+{
+	return g_c_int;
+}
 int* get_gintptr()
+{
+	return &g_c_int;
+}
+const int* get_gintptr_const()
 {
 	return &g_c_int;
 }
@@ -124,7 +136,31 @@ void test_gloabl_func(lua_State* L)
 		return  lua_tinker::call<bool>(L, "test_lua_cfunc_6");
 	};
 
+	g_test_func_set["test_lua_cfunc_7"] = [L]()->bool
+	{
+		std::string luabuf =
+			R"(function test_lua_cfunc_7()
+					gint_addintptr_const( get_gintptr_const() );
+					return get_gint() == 2;
+				end
+			)";
+		lua_tinker::dostring(L, luabuf.c_str());
+		g_c_int = 1;
+		return  lua_tinker::call<bool>(L, "test_lua_cfunc_7");
+	};
 
+	g_test_func_set["test_lua_cfunc_8"] = [L]()->bool
+	{
+		std::string luabuf =
+			R"(function test_lua_cfunc_8()
+					gint_addintref( get_gintref_const() );
+					return get_gint();
+				end
+			)";
+		lua_tinker::dostring(L, luabuf.c_str());
+		g_c_int = 1;
+		return 2 == lua_tinker::call<int>(L, "test_lua_cfunc_8");
+	};
 
 
 }

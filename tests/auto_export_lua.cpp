@@ -13,11 +13,14 @@ void export_to_lua_auto(lua_State* L)
 	lua_tinker::def(L, "get_gff_ptr", &get_gff_ptr);
 	lua_tinker::def(L, "get_gint", &get_gint);
 	lua_tinker::def(L, "get_gintptr", &get_gintptr);
+	lua_tinker::def(L, "get_gintptr_const", &get_gintptr_const);
 	lua_tinker::def(L, "get_gintref", &get_gintref);
+	lua_tinker::def(L, "get_gintref_const", &get_gintref_const);
 	lua_tinker::def(L, "gint_add1", &gint_add1);
 	lua_tinker::def(L, "gint_add_intref", &gint_add_intref);
 	lua_tinker::def(L, "gint_addint", &gint_addint);
 	lua_tinker::def(L, "gint_addintptr", &gint_addintptr);
+	lua_tinker::def(L, "gint_addintptr_const", &gint_addintptr_const);
 	lua_tinker::def(L, "gint_addintref", &gint_addintref);
 	lua_tinker::def(L, "make_ff", &make_ff);
 	lua_tinker::def(L, "make_ff_nodef", &make_ff_nodef);

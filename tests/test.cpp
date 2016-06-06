@@ -67,6 +67,7 @@ void on_lua_close(lua_State* L)
 
 std::map<std::string, std::function<bool()> > g_test_func_set;
 
+
 int main()
 {
 	lua_State* L = luaL_newstate();
