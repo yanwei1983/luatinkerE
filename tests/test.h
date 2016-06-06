@@ -45,6 +45,13 @@ public:
 	{
 		return func(m_nVal);
 	}
+
+	typedef std::map<int, int> DataMap;
+	DataMap m_DataMap;
+	export_lua DataMap& getDataMap() { return m_DataMap; }
+	export_lua void ChangeDataMap(DataMap dataMap) { m_DataMap = dataMap; }
+	void ChangeDataMap_ref(DataMap& dataMap) { m_DataMap = dataMap; } //plz not export this to lua, stl continer can't read form lua as a ref-obj
+
 };
 
 export_lua class ff_base

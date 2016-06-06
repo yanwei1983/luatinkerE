@@ -52,6 +52,26 @@ void test_stl_container(lua_State* L)
 		return true;
 	};
 
+	g_test_func_set["test_lua_map_2"] = [L]()->bool
+	{
+		std::string luabuf =
+			R"(function test_lua_map_2()
+					local map_table = push_map();
+					local pTest = TestCon();
+					pTest:ChangeDataMap(map_table);
+					return pTest:getDataMap();
+				end
+			)";
+		lua_tinker::dostring(L, luabuf.c_str());
+		std::map<int, int> mapval = lua_tinker::call<decltype(mapval)>(L, "test_lua_map_2");
+		for (const auto& v : g_testmap)
+		{
+			if (mapval[v.first] != v.second)
+				return false;
+		}
+		return true;
+	};
+
 	g_test_func_set["test_lua_hashmap"] = [L]()->bool
 	{
 		std::string luabuf =
@@ -94,7 +114,7 @@ void test_stl_container(lua_State* L)
 	{
 		std::string luabuf =
 			R"(function test_lua_vec()
-					local testSet = push_set();
+					local testSet = push_vector();
 					return testSet;
 				end
 			)";
