@@ -59,6 +59,12 @@ public:
 	export_lua void ChangeDataMapPtr(DataMap* pDataMap) { m_DataMap = *pDataMap; }
 
 
+
+	typedef std::set<int> DataSet;
+	DataSet m_DataSet;
+	export_lua DataSet& getDataSet() { return m_DataSet; }
+	export_lua void ChangeDataSet(DataSet dataSet) { m_DataSet = dataSet; }
+
 };
 
 export_lua class ff_base

@@ -776,7 +776,7 @@ namespace lua_tinker
 
 			//support list,vector,deque
 			template<typename _T>
-			static typename std::enable_if<!is_associative_container<_T>::value, _T>::type _readfromtable(lua_State *L, int index)
+			static typename std::enable_if<!is_associative_container<_T>::value && !has_key_type<_T>::value, _T>::type _readfromtable(lua_State *L, int index)
 			{
 				stack_obj table_obj(L, index);
 				if (table_obj.is_table() == false)
@@ -794,6 +794,28 @@ namespace lua_tinker
 					it.moveNext();
 				}
 				
+				return t;
+			}
+			//support set
+			template<typename _T>
+			static typename std::enable_if<!is_associative_container<_T>::value && has_key_type<_T>::value, _T>::type _readfromtable(lua_State *L, int index)
+			{
+				stack_obj table_obj(L, index);
+				if (table_obj.is_table() == false)
+				{
+					lua_pushfstring(L, "convert set from argument %d must be a table", index);
+					lua_error(L);
+				}
+
+
+				_T t;
+				table_iterator it(table_obj);
+				while (it.hasNext())
+				{
+					t.emplace(read<typename _T::value_type>(L, it.value_idx()));
+					it.moveNext();
+				}
+
 				return t;
 			}
 

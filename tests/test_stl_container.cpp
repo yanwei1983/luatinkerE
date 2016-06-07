@@ -3,6 +3,8 @@
 extern std::map<std::string, std::function<bool()> > g_test_func_set;
 
 
+
+
 std::unordered_map<int, int> g_testhashmap = { { 1,1 },{ 3,2 },{ 5,3 },{ 7,4 } };
 const std::unordered_map<int, int>& push_hashmap()
 {
@@ -130,7 +132,25 @@ void test_stl_container(lua_State* L)
 		return true;
 	};
 
-
+	g_test_func_set["test_lua_set_2"] = [L]()->bool
+	{
+		std::string luabuf =
+			R"(function test_lua_set_2()
+					local testSet = push_set();
+					local pTest = TestCon();
+					pTest:ChangeDataSet(testSet);
+					return pTest:getDataSet();
+				end
+			)";
+		lua_tinker::dostring(L, luabuf.c_str());
+		std::vector<int> val = lua_tinker::call<decltype(val)>(L, "test_lua_set_2");
+		for (const auto& v : val)
+		{
+			if (g_testset.find(v) == g_testset.end())
+				return false;
+		}
+		return true;
+	};
 
 	g_test_func_set["test_lua_vec"] = [L]()->bool
 	{
