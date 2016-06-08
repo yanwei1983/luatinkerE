@@ -2,6 +2,8 @@
 #include"test.h"
 extern std::map<std::string, std::function<bool()> > g_test_func_set;
 
+lua_tinker::lua_function_ref<int> g_lua_func_ref;
+
 void test_luafunction_ref(lua_State* L)
 {
 	g_test_func_set["test_lua_luafunction_ref_1"] = [L]()->bool
@@ -61,5 +63,26 @@ void test_luafunction_ref(lua_State* L)
 	};
 
 
+	std::string luabuf =
+		R"( 	function g_lua_func_test(val)
+					return val + 1;
+				end;
+				
+			)";
+	lua_tinker::dostring(L, luabuf.c_str());
+	g_test_func_set["test_lua_luafunction_ref_4"] = [L]()->bool
+	{
+		if(g_lua_func_ref.empty())
+			g_lua_func_ref = lua_tinker::get<decltype(g_lua_func_ref)>(L,"g_lua_func_test");
 
+		return g_lua_func_ref(6) == 7;
+	};
+
+	g_test_func_set["test_lua_luafunction_ref_5"] = [L]()->bool
+	{
+		if (g_lua_func_ref.empty())
+			g_lua_func_ref = lua_tinker::get<decltype(g_lua_func_ref)>(L, "g_lua_func_test");
+
+		return g_lua_func_ref(8) == 9;
+	};
 }
