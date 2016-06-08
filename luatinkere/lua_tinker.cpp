@@ -891,7 +891,7 @@ lua_tinker::table::~table()
 /*---------------------------------------------------------------------------*/
 
 
-lua_tinker::detail::lua_function_ref_base::lua_function_ref_base(lua_State* L, int regidx)
+lua_tinker::detail::lua_ref_base::lua_ref_base(lua_State* L, int regidx)
 :m_L(L)
 ,m_regidx(regidx)
 ,m_pRef(new int(0))
@@ -899,7 +899,7 @@ lua_tinker::detail::lua_function_ref_base::lua_function_ref_base(lua_State* L, i
 	inc_ref();
 }
 
-lua_tinker::detail::lua_function_ref_base::lua_function_ref_base(const lua_tinker::detail::lua_function_ref_base& rht)
+lua_tinker::detail::lua_ref_base::lua_ref_base(const lua_tinker::detail::lua_ref_base& rht)
 :m_L(rht.m_L)
 ,m_regidx(rht.m_regidx)
 ,m_pRef(rht.m_pRef)
@@ -907,7 +907,7 @@ lua_tinker::detail::lua_function_ref_base::lua_function_ref_base(const lua_tinke
 	inc_ref();
 }
 
-lua_tinker::detail::lua_function_ref_base::lua_function_ref_base(lua_tinker::detail::lua_function_ref_base&& rht)
+lua_tinker::detail::lua_ref_base::lua_ref_base(lua_tinker::detail::lua_ref_base&& rht)
 :m_L(rht.m_L)
 ,m_regidx(rht.m_regidx)
 ,m_pRef(rht.m_pRef)
@@ -916,25 +916,25 @@ lua_tinker::detail::lua_function_ref_base::lua_function_ref_base(lua_tinker::det
 }
 
 
-lua_tinker::detail::lua_function_ref_base::~lua_function_ref_base()
+lua_tinker::detail::lua_ref_base::~lua_ref_base()
 {
 	//if find it, than unref, else maybe lua is closed
 	dec_ref();
 }
 
-void lua_tinker::detail::lua_function_ref_base::destory()
+void lua_tinker::detail::lua_ref_base::destory()
 {
 	luaL_unref(m_L, LUA_REGISTRYINDEX, m_regidx);
 	delete m_pRef;
 }
 
-void lua_tinker::detail::lua_function_ref_base::inc_ref()
+void lua_tinker::detail::lua_ref_base::inc_ref()
 {
 	if(m_pRef)
 		++(*m_pRef);
 }
 
-void lua_tinker::detail::lua_function_ref_base::dec_ref()
+void lua_tinker::detail::lua_ref_base::dec_ref()
 {
 	if (m_pRef)
 	{

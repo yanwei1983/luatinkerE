@@ -45,5 +45,21 @@ void test_luafunction_ref(lua_State* L)
 	};
 
 
+	g_test_func_set["test_lua_luafunction_ref_3"] = [L]()->bool
+	{
+		std::string luabuf =
+			R"( g_test_func_table={test=1,};
+				function g_test_func_table.func1(val)
+					return val + 1;
+				end;
+				
+			)";
+		lua_tinker::dostring(L, luabuf.c_str());
+		lua_tinker::table func_table(L, "g_test_func_table");
+		lua_tinker::lua_function_ref<int> lua_func = func_table.get<decltype(lua_func)>("func1");
+		return 7 == lua_func(6);
+	};
+
+
 
 }

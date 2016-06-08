@@ -2302,7 +2302,7 @@ namespace lua_tinker
 
 	namespace detail
 	{
-		struct lua_function_ref_base
+		struct lua_ref_base
 		{
 			lua_State* m_L = nullptr;
 			int m_regidx = 0;
@@ -2314,20 +2314,20 @@ namespace lua_tinker
 			bool validate() const;
 			void destory();
 
-			lua_function_ref_base() {}
-			lua_function_ref_base(lua_State* L, int regidx);
-			virtual ~lua_function_ref_base();
-			lua_function_ref_base(const lua_function_ref_base& rht);
-			lua_function_ref_base(lua_function_ref_base&& rht);
+			lua_ref_base() {}
+			lua_ref_base(lua_State* L, int regidx);
+			virtual ~lua_ref_base();
+			lua_ref_base(const lua_ref_base& rht);
+			lua_ref_base(lua_ref_base&& rht);
 			
 		};
 	}
 	
 
 	template<typename RVal>
-	struct lua_function_ref : public detail::lua_function_ref_base
+	struct lua_function_ref : public detail::lua_ref_base
 	{
-		using lua_function_ref_base::lua_function_ref_base;
+		using lua_ref_base::lua_ref_base;
 
 		template<typename ...Args>
 		RVal operator()(Args&& ... args) const
