@@ -488,12 +488,12 @@ void lua_tinker::detail::_stack_help<lua_tinker::lua_value*>::_push(lua_State *L
 }
 
 
-lua_tinker::table lua_tinker::detail::_stack_help<lua_tinker::table>::_read(lua_State *L, int index)
+lua_tinker::table_onstack lua_tinker::detail::_stack_help<lua_tinker::table_onstack>::_read(lua_State *L, int index)
 {
-	return lua_tinker::table(L, index);
+	return lua_tinker::table_onstack(L, index);
 }
 
-void lua_tinker::detail::_stack_help<lua_tinker::table>::_push(lua_State *L, const lua_tinker::table& ret)
+void lua_tinker::detail::_stack_help<lua_tinker::table_onstack>::_push(lua_State *L, const lua_tinker::table_onstack& ret)
 {
 	lua_pushvalue(L, ret.m_obj->m_index);
 }
@@ -520,10 +520,10 @@ void lua_tinker::detail::pop<void>::apply(lua_State *L)
 }
 
 
-lua_tinker::table lua_tinker::detail::pop<lua_tinker::table>::apply(lua_State *L)
+lua_tinker::table_onstack lua_tinker::detail::pop<lua_tinker::table_onstack>::apply(lua_State *L)
 {
 	stack_delay_pop  _dealy(L, nresult);
-	return lua_tinker::table(L, lua_gettop(L));
+	return lua_tinker::table_onstack(L, lua_gettop(L));
 }
 
 /*---------------------------------------------------------------------------*/
@@ -839,7 +839,7 @@ bool lua_tinker::table_obj::validate()
 /*---------------------------------------------------------------------------*/
 /* Table Object Holder                                                       */
 /*---------------------------------------------------------------------------*/
-lua_tinker::table::table(lua_State* L)
+lua_tinker::table_onstack::table_onstack(lua_State* L)
 {
 	lua_newtable(L);
 
@@ -848,7 +848,7 @@ lua_tinker::table::table(lua_State* L)
 	m_obj->inc_ref();
 }
 
-lua_tinker::table::table(lua_State* L, const char* name)
+lua_tinker::table_onstack::table_onstack(lua_State* L, const char* name)
 {
 	if (lua_getglobal(L, name) != LUA_TTABLE)
 	{
@@ -864,7 +864,7 @@ lua_tinker::table::table(lua_State* L, const char* name)
 	m_obj->inc_ref();
 }
 
-lua_tinker::table::table(lua_State* L, int index)
+lua_tinker::table_onstack::table_onstack(lua_State* L, int index)
 {
 	if (index < 0)
 	{
@@ -876,14 +876,14 @@ lua_tinker::table::table(lua_State* L, int index)
 	m_obj->inc_ref();
 }
 
-lua_tinker::table::table(const table& input)
+lua_tinker::table_onstack::table_onstack(const table_onstack& input)
 {
 	m_obj = input.m_obj;
 
 	m_obj->inc_ref();
 }
 
-lua_tinker::table::~table()
+lua_tinker::table_onstack::~table_onstack()
 {
 	m_obj->dec_ref();
 }
@@ -891,54 +891,73 @@ lua_tinker::table::~table()
 /*---------------------------------------------------------------------------*/
 
 
-lua_tinker::detail::lua_ref_base::lua_ref_base(lua_State* L, int regidx)
-:m_L(L)
-,m_regidx(regidx)
-,m_pRef(new int(0))
+namespace lua_tinker
 {
-	inc_ref();
-}
-
-lua_tinker::detail::lua_ref_base::lua_ref_base(const lua_tinker::detail::lua_ref_base& rht)
-:m_L(rht.m_L)
-,m_regidx(rht.m_regidx)
-,m_pRef(rht.m_pRef)
-{
-	inc_ref();
-}
-
-lua_tinker::detail::lua_ref_base::lua_ref_base(lua_tinker::detail::lua_ref_base&& rht)
-:m_L(rht.m_L)
-,m_regidx(rht.m_regidx)
-,m_pRef(rht.m_pRef)
-{
-	rht.m_pRef = nullptr;
-}
-
-
-lua_tinker::detail::lua_ref_base::~lua_ref_base()
-{
-	//if find it, than unref, else maybe lua is closed
-	dec_ref();
-}
-
-void lua_tinker::detail::lua_ref_base::destory()
-{
-	luaL_unref(m_L, LUA_REGISTRYINDEX, m_regidx);
-	delete m_pRef;
-}
-
-void lua_tinker::detail::lua_ref_base::inc_ref()
-{
-	if(m_pRef)
-		++(*m_pRef);
-}
-
-void lua_tinker::detail::lua_ref_base::dec_ref()
-{
-	if (m_pRef)
+	namespace detail
 	{
-		if (--(*m_pRef) == 0)
-			destory();
+
+		lua_ref_base::lua_ref_base(lua_State* L, int regidx)
+			:m_L(L)
+			, m_regidx(regidx)
+			, m_pRef(new int(0))
+		{
+			inc_ref();
+		}
+
+		lua_ref_base::lua_ref_base(const lua_ref_base& rht)
+			:m_L(rht.m_L)
+			, m_regidx(rht.m_regidx)
+			, m_pRef(rht.m_pRef)
+		{
+			inc_ref();
+		}
+
+		lua_ref_base::lua_ref_base(lua_ref_base&& rht)
+			:m_L(rht.m_L)
+			, m_regidx(rht.m_regidx)
+			, m_pRef(rht.m_pRef)
+		{
+			rht.m_pRef = nullptr;
+		}
+
+		lua_ref_base& lua_ref_base::operator=(const lua_ref_base& rht)
+		{
+			if (this != &rht)
+			{
+				dec_ref();
+				m_L = rht.m_L;
+				m_regidx = rht.m_regidx;
+				m_pRef = rht.m_pRef;
+				inc_ref();
+			}
+			return *this;
+		}
+
+		lua_ref_base::~lua_ref_base()
+		{
+			//if find it, than unref, else maybe lua is closed
+			dec_ref();
+		}
+
+		void lua_ref_base::destory()
+		{
+			luaL_unref(m_L, LUA_REGISTRYINDEX, m_regidx);
+			delete m_pRef;
+		}
+
+		void lua_ref_base::inc_ref()
+		{
+			if (m_pRef)
+				++(*m_pRef);
+		}
+
+		void lua_ref_base::dec_ref()
+		{
+			if (m_pRef)
+			{
+				if (--(*m_pRef) == 0)
+					destory();
+			}
+		}
 	}
 }

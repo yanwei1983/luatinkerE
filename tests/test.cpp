@@ -114,6 +114,7 @@ int main()
 	extern void test_inner_class(lua_State* L);
 	extern void test_int64(lua_State* L);
 	extern void test_luafunction_ref(lua_State* L);
+	extern void test_lua_table_ref(lua_State* L);
 	extern void test_member_func(lua_State* L);
 	extern void test_multireturn(lua_State* L);
 	extern void test_namespace(lua_State* L);
@@ -136,6 +137,7 @@ int main()
 	test_inner_class(L);
 	test_int64(L);
 	test_luafunction_ref(L);
+	test_lua_table_ref(L);
 	test_member_func(L);
 	test_multireturn(L);
 	test_namespace(L);

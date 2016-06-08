@@ -80,7 +80,7 @@ namespace lua_tinker
 		virtual ~lua_value() {}
 		virtual void to_lua(lua_State *L) = 0;
 	};
-	struct table;
+	struct table_onstack;
 	struct args_type_overload_functor_base;
 
 	template<typename RVal = void>
@@ -475,10 +475,10 @@ namespace lua_tinker
 		};
 
 		template<>
-		struct pop<table>
+		struct pop<table_onstack>
 		{
 			static constexpr const int nresult = 1;
-			static table apply(lua_State *L);
+			static table_onstack apply(lua_State *L);
 		};
 
 
@@ -718,11 +718,11 @@ namespace lua_tinker
 
 
 		template<>
-		struct _stack_help<table>
+		struct _stack_help<table_onstack>
 		{
 			static constexpr int cover_to_lua_type() { return CLT_TABLE; }
-			static table _read(lua_State *L, int index);
-			static void _push(lua_State *L, const table& ret);
+			static table_onstack _read(lua_State *L, int index);
+			static void _push(lua_State *L, const table_onstack& ret);
 		};
 
 		template<>
@@ -2271,13 +2271,13 @@ namespace lua_tinker
 	};
 
 	// Table Object Holder
-	struct table
+	struct table_onstack
 	{
-		table(lua_State* L);
-		table(lua_State* L, int index);
-		table(lua_State* L, const char* name);
-		table(const table& input);
-		~table();
+		table_onstack(lua_State* L);
+		table_onstack(lua_State* L, int index);
+		table_onstack(lua_State* L, const char* name);
+		table_onstack(const table_onstack& input);
+		~table_onstack();
 
 		template<typename T>
 		void set(const char* name, T&& object)
@@ -2297,7 +2297,7 @@ namespace lua_tinker
 			return m_obj->get<T>(num);
 		}
 
-		table_obj*      m_obj;
+		table_obj*      m_obj = nullptr;
 	};
 
 	namespace detail
@@ -2311,7 +2311,7 @@ namespace lua_tinker
 			void inc_ref();
 			void dec_ref();
 
-			bool validate() const;
+			bool empty() const { return m_L == nullptr; }
 			void destory();
 
 			lua_ref_base() {}
@@ -2319,10 +2319,42 @@ namespace lua_tinker
 			virtual ~lua_ref_base();
 			lua_ref_base(const lua_ref_base& rht);
 			lua_ref_base(lua_ref_base&& rht);
-			
+			lua_ref_base& operator=(const lua_ref_base& rht);
 		};
 	}
 	
+	struct table_ref : public detail::lua_ref_base
+	{
+		using lua_ref_base::lua_ref_base;
+				
+		static table_ref make_table_ref(const table_onstack& ref_table)
+		{
+			if (ref_table.m_obj != nullptr)
+			{
+				//copy table to top
+				lua_pushvalue(ref_table.m_obj->m_L, ref_table.m_obj->m_index);
+				//move top to registry
+				int reg_idx = luaL_ref(ref_table.m_obj->m_L, LUA_REGISTRYINDEX);
+				return table_ref(ref_table.m_obj->m_L, reg_idx);
+			}
+			return table_ref();
+		}
+		
+		table_onstack push_table_to_stack()
+		{
+			if (lua_rawgeti(m_L, LUA_REGISTRYINDEX, m_regidx) == LUA_TTABLE)
+			{
+				return table_onstack(m_L, -1);
+			}
+			else
+			{
+				print_error(m_L, "lua_tinker::table_ref attempt to visit(not a table)");
+				return table_onstack(m_L);
+			}
+			
+		}
+
+	};
 
 	template<typename RVal>
 	struct lua_function_ref : public detail::lua_ref_base
@@ -2354,7 +2386,7 @@ namespace lua_tinker
 
 } // namespace lua_tinker
 
-typedef lua_tinker::table LuaTable;
+typedef lua_tinker::table_onstack LuaTable;
 
 
 //overload func 

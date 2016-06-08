@@ -55,7 +55,7 @@ void test_luafunction_ref(lua_State* L)
 				
 			)";
 		lua_tinker::dostring(L, luabuf.c_str());
-		lua_tinker::table func_table(L, "g_test_func_table");
+		lua_tinker::table_onstack func_table(L, "g_test_func_table");
 		lua_tinker::lua_function_ref<int> lua_func = func_table.get<decltype(lua_func)>("func1");
 		return 7 == lua_func(6);
 	};
