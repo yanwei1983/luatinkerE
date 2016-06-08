@@ -96,12 +96,15 @@ void export_to_lua_auto(lua_State* L)
 	lua_tinker::class_add<TestCon>(L, "TestCon", true);
 	lua_tinker::class_def<TestCon>(L, "ChangeDataMap", &TestCon::ChangeDataMap);
 	lua_tinker::class_def<TestCon>(L, "ChangeDataMapPtr", &TestCon::ChangeDataMapPtr);
-	lua_tinker::class_def<TestCon>(L, "ChangeDataMap_Ref", &TestCon::ChangeDataMap_Ref);
+	lua_tinker::class_def<TestCon>(L, "ChangeDataMapRef", &TestCon::ChangeDataMapRef);
 	lua_tinker::class_def<TestCon>(L, "ChangeDataSet", &TestCon::ChangeDataSet);
+	lua_tinker::class_def<TestCon>(L, "ChangeDataSetRef", &TestCon::ChangeDataSetRef);
 	lua_tinker::class_def<TestCon>(L, "TestFuncObj", &TestCon::TestFuncObj);
 	lua_tinker::class_def<TestCon>(L, "getDataMap", &TestCon::getDataMap);
 	lua_tinker::class_def<TestCon>(L, "getDataMapPtr", &TestCon::getDataMapPtr);
+	lua_tinker::class_def<TestCon>(L, "getDataMapRef", &TestCon::getDataMapRef);
 	lua_tinker::class_def<TestCon>(L, "getDataSet", &TestCon::getDataSet);
+	lua_tinker::class_def<TestCon>(L, "getDataSetRef", &TestCon::getDataSetRef);
 	lua_tinker::class_def<TestCon>(L, "getStr", &TestCon::getStr);
 	lua_tinker::class_con<TestCon>(L, lua_tinker::constructor<TestCon, float, const char *, int>::invoke, -1.0f, "aa", 7);
 	lua_tinker::class_mem<TestCon>(L, "m_fVal", &TestCon::m_fVal);
@@ -150,7 +153,6 @@ void export_to_lua_auto(lua_State* L)
 	lua_tinker::class_inh<ff_other, ff_other_baseA>(L);
 	lua_tinker::class_inh<ff_other, ff_other_baseB>(L);
 	lua_tinker::class_inh<ff_other_baseB, ff_other_base>(L);
-
 
 
 

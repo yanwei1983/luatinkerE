@@ -559,6 +559,49 @@ namespace lua_tinker
 			else
 				return CLT_INT;
 		}
+		
+
+		template<typename _T>
+		static _T _lua2type(lua_State *L, int index)
+		{
+			if (!lua_isuserdata(L, index))
+			{
+				lua_pushfstring(L, "can't convert argument %d to class %s", index, get_class_name<_T>());
+				lua_error(L);
+			}
+
+
+			UserDataWapper* pWapper = user2type<UserDataWapper*>(L, index);
+
+#ifdef LUATINKER_USERDATA_CHECK_TYPEINFO
+			if (pWapper->m_type_idx != get_type_idx<base_type<_T>>())
+			{
+				//maybe derived to base
+				if (IsInherit(L, pWapper->m_type_idx, get_type_idx<base_type<_T>>()) == false)
+				{
+					lua_pushfstring(L, "can't convert argument %d to class %s", index, get_class_name<_T>());
+					lua_error(L);
+				}
+			}
+#endif
+#ifdef LUATINKER_USERDATA_CHECK_CONST
+			if (pWapper->is_const() == true && std::is_const<std::remove_reference<std::remove_pointer<_T>::type>::type>::value == false)
+			{
+				lua_pushfstring(L, "can't convert argument %d from const class %s", index, get_class_name<_T>());
+				lua_error(L);
+			}
+#endif
+			return void2type<_T>(pWapper->m_p);
+
+		}
+
+		template<typename _T>
+		static void _type2lua(lua_State *L, _T&& val)
+		{
+			object2lua(L, std::forward<_T>(val));
+			push_meta(L, get_class_name<_T>());
+			lua_setmetatable(L, -2);
+		}
 
 		// lua stack help to read/push
 		template<typename T, typename Enable = void>
@@ -593,48 +636,12 @@ namespace lua_tinker
 				return _lua2type<_T>(L, index);
 			}
 
-			template<typename _T>
-			static _T _lua2type(lua_State *L, int index)
-			{
-				if (!lua_isuserdata(L, index))
-				{
-					lua_pushfstring(L, "can't convert argument %d to class %s", index, get_class_name<_T>());
-					lua_error(L);
-				}
-
-
-				UserDataWapper* pWapper = user2type<UserDataWapper*>(L, index);
-
-#ifdef LUATINKER_USERDATA_CHECK_TYPEINFO
-				if (pWapper->m_type_idx != get_type_idx<base_type<_T>>())
-				{
-					//maybe derived to base
-					if (IsInherit(L, pWapper->m_type_idx, get_type_idx<base_type<_T>>()) == false)
-					{
-						lua_pushfstring(L, "can't convert argument %d to class %s", index, get_class_name<T>());
-						lua_error(L);
-					}
-				}
-#endif
-#ifdef LUATINKER_USERDATA_CHECK_CONST
-				if (pWapper->is_const() == true && std::is_const<std::remove_reference<std::remove_pointer<_T>::type>::type>::value == false)
-				{
-					lua_pushfstring(L, "can't convert argument %d from const class %s", index, get_class_name<T>());
-					lua_error(L);
-				}
-#endif
-				return void2type<T>(pWapper->m_p);
-
-			}
-
-
+			
 			//obj to lua
 			template<typename _T>
 			static void _push(lua_State *L, _T&& val)
 			{
-				object2lua(L, std::forward<_T>(val));
-				push_meta(L, get_class_name<_T>());
-				lua_setmetatable(L, -2);
+				_type2lua(L, std::forward<_T>(val));
 			}
 
 		};
@@ -741,6 +748,100 @@ namespace lua_tinker
 			}
 		};
 
+
+		//support map,multimap,unordered_map,unordered_multimap
+		template<typename _T>
+		static typename std::enable_if<is_associative_container<_T>::value, _T>::type _readfromtable(lua_State *L, int index)
+		{
+			stack_obj table_obj(L, index);
+			if (table_obj.is_table() == false)
+			{
+				lua_pushfstring(L, "convert k-v container from argument %d must be a table", index);
+				lua_error(L);
+			}
+
+			_T t;
+			table_iterator it(table_obj);
+			while (it.hasNext())
+			{
+				t.emplace(std::make_pair(read<typename _T::key_type>(L, it.key_idx()), read<typename _T::mapped_type>(L, it.value_idx())));
+				it.moveNext();
+			}
+
+			return t;
+		}
+
+		//support list,vector,deque
+		template<typename _T>
+		static typename std::enable_if<!is_associative_container<_T>::value && !has_key_type<_T>::value, _T>::type _readfromtable(lua_State *L, int index)
+		{
+			stack_obj table_obj(L, index);
+			if (table_obj.is_table() == false)
+			{
+				lua_pushfstring(L, "convert container from argument %d must be a table", index);
+				lua_error(L);
+			}
+
+
+			_T t;
+			table_iterator it(table_obj);
+			while (it.hasNext())
+			{
+				t.emplace_back(read<typename _T::value_type>(L, it.value_idx()));
+				it.moveNext();
+			}
+
+			return t;
+		}
+		//support set
+		template<typename _T>
+		static typename std::enable_if<!is_associative_container<_T>::value && has_key_type<_T>::value, _T>::type _readfromtable(lua_State *L, int index)
+		{
+			stack_obj table_obj(L, index);
+			if (table_obj.is_table() == false)
+			{
+				lua_pushfstring(L, "convert set from argument %d must be a table", index);
+				lua_error(L);
+			}
+
+
+			_T t;
+			table_iterator it(table_obj);
+			while (it.hasNext())
+			{
+				t.emplace(read<typename _T::value_type>(L, it.value_idx()));
+				it.moveNext();
+			}
+
+			return t;
+		}
+
+		//k,v container to lua
+		template<typename _T>
+		static typename std::enable_if<is_associative_container<_T>::value, void>::type  _pushtotable(lua_State *L, const _T& ret)
+		{
+			stack_obj table_obj = stack_obj::new_table(L, 0, ret.size());
+			for (auto it = ret.begin(); it != ret.end(); it++)
+			{
+				push(L, it->first);
+				push(L, it->second);
+				lua_settable(L, table_obj._stack_pos);
+			}
+		}
+		//t container to lua
+		template<typename _T>
+		static typename std::enable_if<!is_associative_container<_T>::value, void>::type  _pushtotable(lua_State *L, const _T& ret)
+		{
+			stack_obj table_obj = stack_obj::new_table(L, ret.size(), 0);
+			auto it = ret.begin();
+			for (int i = 1; it != ret.end(); it++, i++)
+			{
+				push(L, i);
+				push(L, *it);
+				lua_settable(L, table_obj._stack_pos);
+			}
+		}
+
 		//stl container if type not ptr, will auto_conv to lua_table
 		template<typename T>
 		struct _stack_help<T, typename std::enable_if<!std::is_pointer<T>::value && is_container<base_type<T>>::value>::type>
@@ -749,103 +850,35 @@ namespace lua_tinker
 
 			static base_type<T> _read(lua_State *L, int index)
 			{
-				return _readfromtable<base_type<T>>(L, index);
+				if (lua_istable(L, index))
+					return _readfromtable<base_type<T>>(L, index);
+				else
+				{
+					base_type<T> t;
+					t = _lua2type<T>(L, index);
+					return t;
+				}
 			}
 
-			//support map,multimap,unordered_map,unordered_multimap
+			
 			template<typename _T>
-			static typename std::enable_if<is_associative_container<_T>::value, _T>::type _readfromtable(lua_State *L, int index)
+			static void _push(lua_State *L, _T&& val)
 			{
-				stack_obj table_obj(L, index);
-				if (table_obj.is_table() == false)
-				{
-					lua_pushfstring(L, "convert k-v container from argument %d must be a table", index);
-					lua_error(L);
-				}
-
-				_T t;
-				table_iterator it(table_obj);
-				while (it.hasNext())
-				{
-					t.emplace(std::make_pair(read<typename _T::key_type>(L, it.key_idx()), read<typename _T::mapped_type>(L, it.value_idx())));
-					it.moveNext();
-				}
-
-				return t;
+				return _pushtotable(L, std::forward<_T>(val));
 			}
 
-			//support list,vector,deque
 			template<typename _T>
-			static typename std::enable_if<!is_associative_container<_T>::value && !has_key_type<_T>::value, _T>::type _readfromtable(lua_State *L, int index)
+			static void _push(lua_State *L, const _T& val)
 			{
-				stack_obj table_obj(L, index);
-				if (table_obj.is_table() == false)
-				{
-					lua_pushfstring(L, "convert container from argument %d must be a table", index);
-					lua_error(L);
-				}
-				
-
-				_T t;
-				table_iterator it(table_obj);
-				while (it.hasNext())
-				{
-					t.emplace_back(read<typename _T::value_type>(L, it.value_idx()));
-					it.moveNext();
-				}
-				
-				return t;
+				return _type2lua(L, val);
 			}
-			//support set
 			template<typename _T>
-			static typename std::enable_if<!is_associative_container<_T>::value && has_key_type<_T>::value, _T>::type _readfromtable(lua_State *L, int index)
+			static void _push(lua_State *L, _T& val)
 			{
-				stack_obj table_obj(L, index);
-				if (table_obj.is_table() == false)
-				{
-					lua_pushfstring(L, "convert set from argument %d must be a table", index);
-					lua_error(L);
-				}
-
-
-				_T t;
-				table_iterator it(table_obj);
-				while (it.hasNext())
-				{
-					t.emplace(read<typename _T::value_type>(L, it.value_idx()));
-					it.moveNext();
-				}
-
-				return t;
+				return _type2lua(L, val);
 			}
 
-
-
-			//k,v container to lua
-			template<typename _T>
-			static typename std::enable_if<is_associative_container<_T>::value, void>::type  _push(lua_State *L, const _T& ret)
-			{
-				stack_obj table_obj = stack_obj::new_table(L, 0, ret.size());
-				for (auto it = ret.begin(); it != ret.end(); it++)
-				{
-					push(L, it->first);
-					push(L, it->second);
-					lua_settable(L, table_obj._stack_pos);
-				}
-			}
-			//t container to lua
-			template<typename _T>
-			static typename std::enable_if<!is_associative_container<_T>::value, void>::type  _push(lua_State *L, const _T& ret)
-			{
-				stack_obj table_obj = stack_obj::new_table(L, ret.size(), 0);
-				auto it = ret.begin();
-				for (int i = 1; it != ret.end(); it++, i++)
-				{
-					push(L, i);
-					push(L, *it);
-					lua_settable(L, table_obj._stack_pos);
-				}
-			}
+			
 		};
 
 		template<typename RVal, typename ...Args>

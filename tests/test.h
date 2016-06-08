@@ -51,10 +51,11 @@ public:
 
 	typedef std::map<int, int> DataMap;
 	DataMap m_DataMap;
-	export_lua DataMap& getDataMap() { return m_DataMap; }
+	export_lua DataMap getDataMap() { return m_DataMap; }
+	export_lua const DataMap& getDataMapRef() { return m_DataMap; }
 	export_lua DataMap* getDataMapPtr() { return &m_DataMap; }
 	export_lua void ChangeDataMap(DataMap dataMap) { m_DataMap = dataMap; }
-	export_lua void ChangeDataMap_Ref(const DataMap& dataMap) { m_DataMap = dataMap; }
+	export_lua void ChangeDataMapRef(const DataMap& dataMap) { m_DataMap = dataMap; }
 	//export_lua void ChangeDataMap_Ref(DataMap&& dataMap) { m_DataMap = dataMap; }
 	export_lua void ChangeDataMapPtr(DataMap* pDataMap) { m_DataMap = *pDataMap; }
 
@@ -62,8 +63,10 @@ public:
 
 	typedef std::set<int> DataSet;
 	DataSet m_DataSet;
-	export_lua DataSet& getDataSet() { return m_DataSet; }
+	export_lua DataSet getDataSet() { return m_DataSet; }
 	export_lua void ChangeDataSet(DataSet dataSet) { m_DataSet = dataSet; }
+	export_lua DataSet& getDataSetRef() { return m_DataSet; }
+	export_lua void ChangeDataSetRef(DataSet& dataSet) { m_DataSet = dataSet; }
 
 };
 
@@ -239,13 +242,12 @@ public:
 
 export_lua ff* get_gff_ptr();
 export_lua const ff& get_gff_cref();
-export_lua const std::unordered_map<int, int>& push_hashmap();
-export_lua const std::map<int, int>& push_map();
-export_lua const std::set<int> & push_set();
+export_lua std::unordered_map<int, int> push_hashmap();
+export_lua std::map<int, int> push_map();
+export_lua std::set<int>  push_set();
+export_lua std::vector<int> push_vector();
 
 
-
-export_lua const std::vector<int>& push_vector();
 export_lua std::string push_string();
 export_lua std::string connect_string(std::string str1, const std::string& str2, const std::string& str3);
 export_lua const std::string& push_string_ref();
