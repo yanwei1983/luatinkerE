@@ -58,10 +58,14 @@ void export_to_lua_manual(lua_State* L)
 }
 
 extern std::function<int(int)> g_func_lua;
+extern lua_tinker::table_ref g_table_ref;
+extern lua_tinker::lua_function_ref<int> g_lua_func_ref;
 
 void on_lua_close(lua_State* L)
 {
 	g_func_lua = nullptr;
+	g_table_ref.reset();
+	g_lua_func_ref.reset();
 	std::cout << "on_lua_close" << std::endl;
 }
 

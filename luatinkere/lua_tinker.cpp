@@ -946,6 +946,14 @@ namespace lua_tinker
 			delete m_pRef;
 		}
 
+		void lua_ref_base::reset()
+		{
+			dec_ref();
+			m_L = nullptr;
+			m_regidx = -1;
+			m_pRef = nullptr;
+		}
+
 		void lua_ref_base::inc_ref()
 		{
 			if (m_pRef)

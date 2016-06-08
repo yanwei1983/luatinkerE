@@ -2314,6 +2314,7 @@ namespace lua_tinker
 
 			bool empty() const { return m_L == nullptr; }
 			void destory();
+			void reset();
 
 			lua_ref_base() {}
 			lua_ref_base(lua_State* L, int regidx);
