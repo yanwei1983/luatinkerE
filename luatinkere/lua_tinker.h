@@ -848,7 +848,7 @@ namespace lua_tinker
 		{
 			static constexpr int cover_to_lua_type() { return CLT_TABLE; }
 
-			static base_type<T> _read(lua_State *L, int index)
+			static typename base_type<T> _read(lua_State *L, int index)
 			{
 				if (lua_istable(L, index))
 					return _readfromtable<base_type<T>>(L, index);
