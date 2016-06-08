@@ -105,8 +105,12 @@ void test_luafunction_ref(lua_State* L)
 	lua_tinker::dostring(L, luabuf.c_str());
 	g_test_func_set["test_lua_luafunction_ref_4"] = [L]()->bool
 	{
-		if(g_lua_func_ref.empty())
-			g_lua_func_ref = lua_tinker::get<decltype(g_lua_func_ref)>(L,"g_lua_func_test");
+		if (g_lua_func_ref.empty())
+		{
+			g_lua_func_ref = lua_tinker::get<decltype(g_lua_func_ref)>(L, "g_lua_func_test");
+			lua_tinker::register_lua_close_callback(L, [](lua_State* L)
+															{ g_lua_func_ref.reset(); });
+		}
 
 		return g_lua_func_ref(6) == 7;
 	};
@@ -114,8 +118,11 @@ void test_luafunction_ref(lua_State* L)
 	g_test_func_set["test_lua_luafunction_ref_5"] = [L]()->bool
 	{
 		if (g_lua_func_ref.empty())
+		{
 			g_lua_func_ref = lua_tinker::get<decltype(g_lua_func_ref)>(L, "g_lua_func_test");
-
+			lua_tinker::register_lua_close_callback(L, [](lua_State* L)
+														{ g_lua_func_ref.reset(); });
+		}
 		return g_lua_func_ref(8) == 9;
 	};
 }
