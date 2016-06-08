@@ -81,6 +81,7 @@ namespace lua_tinker
 		virtual void to_lua(lua_State *L) = 0;
 	};
 	struct table_onstack;
+	struct table_ref;
 	struct args_type_overload_functor_base;
 
 	template<typename RVal = void>
@@ -475,10 +476,10 @@ namespace lua_tinker
 		};
 
 		template<>
-		struct pop<table_onstack>
+		struct pop<table_ref>
 		{
 			static constexpr const int nresult = 1;
-			static table_onstack apply(lua_State *L);
+			static table_ref apply(lua_State *L);
 		};
 
 
@@ -2329,7 +2330,7 @@ namespace lua_tinker
 				
 		static table_ref make_table_ref(const table_onstack& ref_table)
 		{
-			if (ref_table.m_obj != nullptr)
+			if (ref_table.m_obj != nullptr && ref_table.m_obj->validate())
 			{
 				//copy table to top
 				lua_pushvalue(ref_table.m_obj->m_L, ref_table.m_obj->m_index);

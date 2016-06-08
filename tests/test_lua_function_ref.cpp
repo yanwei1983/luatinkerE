@@ -63,6 +63,39 @@ void test_luafunction_ref(lua_State* L)
 	};
 
 
+
+		
+
+	g_test_func_set["test_lua_luafunction_ref_6"] = [L]()->bool
+	{
+		std::string luabuf =
+			R"(
+				test_lua_luafunction_ref_6 = {
+					[1]=10, test1=5,
+					testFunc1 = function(param1)
+						return {
+							[1]=3, test2=22,
+							testFunc2 = function()
+								return param1;
+							end,
+						};
+					end,
+				};
+			)";
+
+		lua_tinker::dostring(L, luabuf.c_str());
+		lua_tinker::table_onstack table(L, "test_lua_luafunction_ref_6");
+		lua_tinker::lua_function_ref<lua_tinker::table_ref> my_func_ref = table.get<decltype(my_func_ref)>("testFunc1");
+
+		lua_tinker::table_ref tt_ref = my_func_ref("test_upval");
+		lua_tinker::table_onstack tt = tt_ref.push_table_to_stack();
+
+		lua_tinker::lua_function_ref<std::string> ref = tt.get<decltype(ref)>("testFunc2");
+		return tt.get<int>(1) == 3 && ref() == "test_upval";
+	};
+
+
+
 	std::string luabuf =
 		R"( 	function g_lua_func_test(val)
 					return val + 1;
