@@ -30,6 +30,7 @@ void export_to_lua_auto(lua_State* L)
 	lua_tinker::def(L, "make_ff_weak", &make_ff_weak);
 	lua_tinker::def(L, "push_hashmap", &push_hashmap);
 	lua_tinker::def(L, "push_map", &push_map);
+	lua_tinker::def(L, "push_map_ref", &push_map_ref);
 	lua_tinker::def(L, "push_set", &push_set);
 	lua_tinker::def(L, "push_string", &push_string);
 	lua_tinker::def(L, "push_string_ref", &push_string_ref);
@@ -153,7 +154,6 @@ void export_to_lua_auto(lua_State* L)
 	lua_tinker::class_inh<ff_other, ff_other_baseA>(L);
 	lua_tinker::class_inh<ff_other, ff_other_baseB>(L);
 	lua_tinker::class_inh<ff_other_baseB, ff_other_base>(L);
-
 
 
 }

@@ -16,6 +16,10 @@ std::map<int, int> push_map()
 {
 	return g_testmap;
 }
+const std::map<int, int>& push_map_ref()
+{
+	return g_testmap;
+}
 
 std::set<int> g_testset = { 1,2,3,4,5 };
 std::set<int> push_set()
@@ -60,7 +64,7 @@ void test_stl_container(lua_State* L)
 	{
 		std::string luabuf =
 			R"(function test_lua_map_2()
-					local map_table = push_map();
+					local map_table = push_map_ref();
 					local pTest = TestCon();
 					pTest:ChangeDataMapRef(map_table);
 					return pTest:getDataMap();
@@ -87,16 +91,18 @@ void test_stl_container(lua_State* L)
 					local pTest2 = TestCon();
 					pTest:ChangeDataMap(map_table);	--lua_table to map
 					pTest2:ChangeDataMapPtr(pTest:getDataMapPtr());
-					return pTest2:getDataMap();		--map to lua_table then pop as a map
+					return pTest2:getDataMapRef();		--map to lua_table then pop as a map
 				end
 			)";
 		lua_tinker::dostring(L, luabuf.c_str());
-		std::map<int, int> mapval = lua_tinker::call<decltype(mapval)>(L, "test_lua_map_3");
+		const std::map<int, int>& mapval = lua_tinker::call<decltype(mapval)>(L, "test_lua_map_3");
 		if (mapval.empty())
 			return false;
 		for (const auto& v : g_testmap)
 		{
-			if (mapval[v.first] != v.second)
+			auto itfind = mapval.find(v.first);
+			if(itfind != mapval.end())
+			if (itfind->second != v.second)
 				return false;
 		}
 		return true;
@@ -109,13 +115,17 @@ void test_stl_container(lua_State* L)
 					local map_table = push_map();
 					local pTest = TestCon();
 					local pTest2 = TestCon();
-					pTest:ChangeDataMapRef(map_table);		--lua_table to const map&
-					pTest2:ChangeDataMapRef(pTest:getDataMapRef()); --raw ref to raw ref
-					return pTest2:getDataMapRef();		--raw ref to lua then pop as a map pointer
+					pTest:ChangeDataMap(map_table);
+					pTest2:ChangeDataMap(pTest:getDataMapRef());
+					return pTest2:getDataMapRef();		
 				end
 			)";
 		lua_tinker::dostring(L, luabuf.c_str());
-		std::map<int, int> mapval = *(lua_tinker::call< const std::map<int, int>* >(L, "test_lua_map_4"));
+		const std::map<int, int>* pMap = lua_tinker::call<decltype(pMap) >(L, "test_lua_map_4");
+		if (pMap == nullptr)
+			return false;
+
+		std::map<int, int> mapval = *pMap;
 		if (mapval.empty())
 			return false;
 		for (const auto& v : g_testmap)

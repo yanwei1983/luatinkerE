@@ -585,7 +585,8 @@ namespace lua_tinker
 			}
 #endif
 #ifdef LUATINKER_USERDATA_CHECK_CONST
-			if (pWapper->is_const() == true && std::is_const<std::remove_reference<std::remove_pointer<_T>::type>::type>::value == false)
+			if( (std::is_reference<_T>::value || std::is_pointer<_T>::value) &&
+				pWapper->is_const() == true && std::is_const<std::remove_reference<std::remove_pointer<_T>::type>::type>::value == false)
 			{
 				lua_pushfstring(L, "can't convert argument %d from const class %s", index, get_class_name<_T>());
 				lua_error(L);
@@ -842,25 +843,22 @@ namespace lua_tinker
 			}
 		}
 
-		//stl container if type not ptr, will auto_conv to lua_table
+		//stl container T
 		template<typename T>
-		struct _stack_help<T, typename std::enable_if<!std::is_pointer<T>::value && is_container<base_type<T>>::value>::type>
+		struct _stack_help<T, typename std::enable_if<!std::is_reference<T>::value && !std::is_pointer<T>::value && is_container<base_type<T>>::value>::type>
 		{
 			static constexpr int cover_to_lua_type() { return CLT_TABLE; }
 
-			static base_type<T> _read(lua_State *L, int index)
+			static T _read(lua_State *L, int index)
 			{
 				if (lua_istable(L, index))
-					return _readfromtable<base_type<T>>(L, index);
+					return _readfromtable<T>(L, index);
 				else
 				{
-					base_type<T> t;
-					t = _lua2type<T>(L, index);
-					return t;
+					return _lua2type<T>(L, index);
 				}
 			}
 
-			
 			template<typename _T>
 			static void _push(lua_State *L, _T&& val)
 			{
@@ -878,7 +876,6 @@ namespace lua_tinker
 				return _type2lua(L, val);
 			}
 
-			
 		};
 
 		template<typename RVal, typename ...Args>
@@ -1633,9 +1630,6 @@ namespace lua_tinker
 			{
 				//remove error info
 				lua_pop(L, 1);
-				//remove error_callback func
-				lua_remove(L, errfunc);
-				return RVal();
 			}
 		}
 		else
@@ -2295,6 +2289,12 @@ namespace lua_tinker
 		T get(int num)
 		{
 			return m_obj->get<T>(num);
+		}
+
+		template<typename T>
+		T convertto()
+		{
+			return detail::_readfromtable<T>(m_obj->m_L, m_obj->m_index);
 		}
 
 		table_obj*      m_obj = nullptr;

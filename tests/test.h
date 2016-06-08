@@ -55,6 +55,7 @@ public:
 	export_lua const DataMap& getDataMapRef() { return m_DataMap; }
 	export_lua DataMap* getDataMapPtr() { return &m_DataMap; }
 	export_lua void ChangeDataMap(DataMap dataMap) { m_DataMap = dataMap; }
+	
 	export_lua void ChangeDataMapRef(const DataMap& dataMap) { m_DataMap = dataMap; }
 	//export_lua void ChangeDataMap_Ref(DataMap&& dataMap) { m_DataMap = dataMap; }
 	export_lua void ChangeDataMapPtr(DataMap* pDataMap) { m_DataMap = *pDataMap; }
@@ -66,7 +67,7 @@ public:
 	export_lua DataSet getDataSet() { return m_DataSet; }
 	export_lua void ChangeDataSet(DataSet dataSet) { m_DataSet = dataSet; }
 	export_lua DataSet& getDataSetRef() { return m_DataSet; }
-	export_lua void ChangeDataSetRef(DataSet& dataSet) { m_DataSet = dataSet; }
+	export_lua void ChangeDataSetRef(const DataSet& dataSet) { m_DataSet = dataSet; }
 
 };
 
@@ -244,6 +245,7 @@ export_lua ff* get_gff_ptr();
 export_lua const ff& get_gff_cref();
 export_lua std::unordered_map<int, int> push_hashmap();
 export_lua std::map<int, int> push_map();
+export_lua const std::map<int, int>& push_map_ref();
 export_lua std::set<int>  push_set();
 export_lua std::vector<int> push_vector();
 
