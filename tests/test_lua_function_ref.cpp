@@ -95,6 +95,43 @@ void test_luafunction_ref(lua_State* L)
 	};
 
 
+	g_test_func_set["test_lua_luafunction_ref_7"] = [L]()->bool
+	{
+		std::string luabuf =
+			R"(
+				test_lua_luafunction_ref_7 = {
+					[1]=10, test1=5,
+					testFunc1 = function(param1)
+						return {
+							[1]=3, test2=22,
+							testFunc2 = function()
+								return {
+									{key1="key1_1", key2="key1_2", key3="key1_3"},
+									{key1="key2_1", key2="key2_2", key3="key2_3"},
+								};
+							end,
+						};
+					end,
+				};
+			)";
+
+		lua_tinker::dostring(L, luabuf.c_str());
+		lua_tinker::table_onstack table(L, "test_lua_luafunction_ref_7");
+		lua_tinker::lua_function_ref<lua_tinker::table_ref> my_func_ref = table.get<decltype(my_func_ref)>("testFunc1");
+
+		lua_tinker::table_ref tt_ref = my_func_ref("test_upval");
+		lua_tinker::table_onstack tt = tt_ref.push_table_to_stack();
+
+		lua_tinker::lua_function_ref<lua_tinker::table_ref> fun2 = tt.get<decltype(fun2)>("testFunc2");
+		lua_tinker::table_ref tt_ref2 = fun2();
+		lua_tinker::table_onstack tt2 = tt_ref2.push_table_to_stack();
+		std::vector<std::map<std::string, std::string>> datamap = tt2.convertto<decltype(datamap)>();
+		
+
+		return datamap[0]["key2"] == "key1_2" && datamap[1]["key3"] == "key2_3";
+	};
+
+
 
 	std::string luabuf =
 		R"( 	function g_lua_func_test(val)
