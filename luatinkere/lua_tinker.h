@@ -478,7 +478,7 @@ namespace lua_tinker
 		template<>
 		struct pop<table_ref>
 		{
-			static constexpr const int nresult = 1;
+			static constexpr const int nresult = 0;
 			static table_ref apply(lua_State *L);
 		};
 
