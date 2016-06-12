@@ -87,8 +87,14 @@ void test_luafunction_ref(lua_State* L)
 		lua_tinker::table_onstack table(L, "test_lua_luafunction_ref_6");
 		lua_tinker::lua_function_ref<lua_tinker::table_ref> my_func_ref = table.get<decltype(my_func_ref)>("testFunc1");
 
-		lua_tinker::table_ref tt_ref = my_func_ref("test_upval");
-		lua_tinker::table_onstack tt = tt_ref.push_table_to_stack();
+		//not a good idea, just for test
+		lua_tinker::table_ref tt_ref = my_func_ref("test_upval");		//add table to register, erase table on stack
+		lua_tinker::table_onstack tt = tt_ref.push_table_to_stack();	//push table from register to stack
+
+		//should be use this way
+		//lua_tinker::lua_function_ref<lua_tinker::table_onstack> my_func_ref = table.get<decltype(my_func_ref)>("testFunc1");
+		//lua_tinker::table_onstack tt = my_func_ref("test_upval");
+		//lua_tinker::table_ref tt_ref = lua_tinker::table_ref::make_table_ref(tt);
 
 		lua_tinker::lua_function_ref<std::string> ref = tt.get<decltype(ref)>("testFunc2");
 		return tt.get<int>(1) == 3 && ref() == "test_upval";
