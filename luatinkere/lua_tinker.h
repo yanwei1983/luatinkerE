@@ -482,6 +482,12 @@ namespace lua_tinker
 			static table_ref apply(lua_State *L);
 		};
 
+		template<>
+		struct pop<table_onstack>
+		{
+			static constexpr const int nresult = 1;
+			static table_onstack apply(lua_State *L);
+		};
 
 		// push value_list to lua stack //here need a T/T*/T& not a T&&
 		void push_args(lua_State *L);

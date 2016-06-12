@@ -527,6 +527,14 @@ lua_tinker::table_ref lua_tinker::detail::pop<lua_tinker::table_ref>::apply(lua_
 	return lua_tinker::table_ref::make_table_ref(table);
 }
 
+lua_tinker::table_onstack lua_tinker::detail::pop<lua_tinker::table_onstack>::apply(lua_State *L)
+{
+	//didn't need pop it
+	//stack_delay_pop  _dealy(L, nresult);
+	return table_onstack(L, lua_gettop(L));
+}
+
+
 /*---------------------------------------------------------------------------*/
 /* Tinker Class Helper                                                       */
 /*---------------------------------------------------------------------------*/
