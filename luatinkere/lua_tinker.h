@@ -478,7 +478,7 @@ namespace lua_tinker
 		template<>
 		struct pop<table_ref>
 		{
-			static constexpr const int nresult = 0;
+			static constexpr const int nresult = 1;
 			static table_ref apply(lua_State *L);
 		};
 
@@ -2335,7 +2335,7 @@ namespace lua_tinker
 	{
 		using lua_ref_base::lua_ref_base;
 				
-		static table_ref make_table_ref(const table_onstack& ref_table)
+		static table_ref make_table_ref(table_onstack& ref_table)
 		{
 			if (ref_table.m_obj != nullptr && ref_table.m_obj->validate())
 			{
@@ -2343,7 +2343,21 @@ namespace lua_tinker
 				lua_pushvalue(ref_table.m_obj->m_L, ref_table.m_obj->m_index);
 				//move top to registry
 				int reg_idx = luaL_ref(ref_table.m_obj->m_L, LUA_REGISTRYINDEX);
+				
 				return table_ref(ref_table.m_obj->m_L, reg_idx);
+			}
+			return table_ref();
+		}
+		static table_ref make_table_ref(lua_State* L, int index)
+		{
+			if (lua_istable(L,index) == true)
+			{
+				//copy table to top
+				lua_pushvalue(L, index);
+				//move top to registry
+				int reg_idx = luaL_ref(L, LUA_REGISTRYINDEX);
+
+				return table_ref(L, reg_idx);
 			}
 			return table_ref();
 		}

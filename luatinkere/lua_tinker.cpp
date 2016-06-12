@@ -523,8 +523,7 @@ void lua_tinker::detail::pop<void>::apply(lua_State *L)
 lua_tinker::table_ref lua_tinker::detail::pop<lua_tinker::table_ref>::apply(lua_State *L)
 {
 	stack_delay_pop  _dealy(L, nresult);
-	table_onstack table(L, lua_gettop(L));
-	return lua_tinker::table_ref::make_table_ref(table);
+	return lua_tinker::table_ref::make_table_ref(L, lua_gettop(L));
 }
 
 lua_tinker::table_onstack lua_tinker::detail::pop<lua_tinker::table_onstack>::apply(lua_State *L)
