@@ -15,11 +15,11 @@ matrix:
   include:
     - os: linux
       compiler: "clang3.4"
-      env: COMPILER=clang++-3.4 BUILD_TYPE=Release
+      env: COMPILER=clang++ BUILD_TYPE=Release
       addons: *clang34
     - os: linux
       compiler: "clang3.4"
-      env: COMPILER=clang++-3.4 BUILD_TYPE=Debug
+      env: COMPILER=clang++ BUILD_TYPE=Debug
       addons: *clang34
     - os: linux
       compiler: "gcc5.0"
