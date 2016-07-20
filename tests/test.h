@@ -44,7 +44,7 @@ public:
 	export_lua float m_fVal;
 	export_lua std::string m_str;
 
-	export_lua int TestFuncObj(std::function<int(int)> func)
+	export_lua int TestFuncObj(std::function<int(int)> func, int k)
 	{
 		return func(m_nVal);
 	}

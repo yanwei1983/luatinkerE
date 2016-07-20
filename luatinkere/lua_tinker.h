@@ -899,9 +899,10 @@ namespace lua_tinker
 					lua_error(L);
 				}
 				
+				//copy idx to top
+				lua_pushvalue(L, index);
+				//make ref
 				int lua_callback = luaL_ref(L, LUA_REGISTRYINDEX);
-				lua_pushnil(L);//we push a nil for pop
-
 				lua_function_ref<RVal> callback_ref(L, lua_callback);
 
 				return std::function<RVal(Args...)>(callback_ref);
@@ -936,8 +937,10 @@ namespace lua_tinker
 					lua_error(L);
 				}
 
+				//copy to top
+				lua_pushvalue(L, index);
+				//move top to ref
 				int lua_callback = luaL_ref(L, LUA_REGISTRYINDEX);
-				lua_pushnil(L);//we push a nil for pop
 
 				lua_function_ref<RVal> callback_ref(L, lua_callback);
 
