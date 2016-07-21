@@ -4,7 +4,7 @@ language: c++
 addons_shortcuts:
   addons_clang36: &clang36
     apt:
-      sources: [ 'ubuntu-toolchain-r-test' ]
+      sources: [ 'ubuntu-toolchain-r-test', 'llvm-toolchain-precise']
       packages: [ 'clang-3.6' ]
   addons_gcc50: &gcc50
     apt:
