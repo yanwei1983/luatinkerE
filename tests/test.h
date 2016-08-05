@@ -258,6 +258,7 @@ export_lua const std::string& push_string_ref();
 export_lua std::shared_ptr<ff> make_ff();
 export_lua std::shared_ptr<ff> make_ff_to_lua();
 export_lua std::weak_ptr<ff> make_ff_weak();
+export_lua std::shared_ptr<ff> pass_shared_from_lua(std::shared_ptr<ff> val);
 
 
 export_lua bool visot_ff(ff* pFF);

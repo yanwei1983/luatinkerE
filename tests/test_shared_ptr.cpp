@@ -20,6 +20,12 @@ std::shared_ptr<ff> make_ff_to_lua()
 	return std::shared_ptr<ff>(new ff);
 }
 
+std::shared_ptr<ff> pass_shared_from_lua(std::shared_ptr<ff> val)
+{
+	return val;
+}
+
+
 std::weak_ptr<ff> make_ff_weak()
 {
 	return std::weak_ptr<ff>(g_ff_shared);
@@ -147,6 +153,7 @@ int visit_shared_int_constref(const std::shared_ptr<int>& shared_int)
 	return 0;
 }
 
+
 void test_sharedptr(lua_State* L)
 {
 	g_test_func_set["test_lua_shared_1"] = [L]()->bool
@@ -266,6 +273,21 @@ void test_sharedptr(lua_State* L)
 
 		lua_tinker::dostring(L, luabuf.c_str());
 		return  lua_tinker::call<bool>(L, "test_lua_shared_7") && g_shared_int.use_count() == 1;
+	};
+
+	g_test_func_set["test_lua_shared_8"] = [L]()->bool
+	{
+		std::string luabuf =
+			R"(function test_lua_shared_8()
+					local shared_ff = make_ff_to_lua();
+					shared_ff.m_val = 77;
+					local shared_ff_copy = pass_shared_from_lua(shared_ff);
+					return nil ~= shared_ff_copy:_get_raw_ptr() and shared_ff:_get_raw_ptr().m_val == shared_ff_copy:_get_raw_ptr().m_val and shared_ff_copy:_get_raw_ptr().m_val == 77;
+				end
+			)";
+
+		lua_tinker::dostring(L, luabuf.c_str());
+		return  lua_tinker::call<bool>(L, "test_lua_shared_8");
 	};
 
 	g_test_func_set["test_lua_weak_1"] = [L]()->bool

@@ -28,6 +28,7 @@ void export_to_lua_auto(lua_State* L)
 	lua_tinker::def(L, "make_ff_nodef_shared", &make_ff_nodef_shared);
 	lua_tinker::def(L, "make_ff_to_lua", &make_ff_to_lua);
 	lua_tinker::def(L, "make_ff_weak", &make_ff_weak);
+	lua_tinker::def(L, "pass_shared_from_lua", &pass_shared_from_lua);
 	lua_tinker::def(L, "push_hashmap", &push_hashmap);
 	lua_tinker::def(L, "push_map", &push_map);
 	lua_tinker::def(L, "push_map_ref", &push_map_ref);
