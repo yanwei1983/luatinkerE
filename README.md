@@ -15,7 +15,7 @@ we use Variadic Template and index_sequence, SFINAE enable_if and type_traits, t
 
 complied with vc2015,gcc5.0,clang3.6
 
-
+QQ群:518398988
 ##new feature 新特性一览
 
 * 导入lua的函数，现在支持任意多的参数
