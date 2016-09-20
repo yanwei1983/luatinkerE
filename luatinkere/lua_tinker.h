@@ -593,7 +593,7 @@ namespace lua_tinker
 #endif
 #ifdef LUATINKER_USERDATA_CHECK_CONST
 			if( (std::is_reference<_T>::value || std::is_pointer<_T>::value) &&
-				pWapper->is_const() == true && std::is_const<std::remove_reference<std::remove_pointer<_T>::type>::type>::value == false)
+				pWapper->is_const() == true && std::is_const<typename std::remove_reference<typename std::remove_pointer<_T>::type>::type>::value == false)
 			{
 				lua_pushfstring(L, "can't convert argument %d from const class %s", index, get_class_name<_T>());
 				lua_error(L);
