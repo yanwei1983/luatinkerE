@@ -10,6 +10,10 @@ addons_shortcuts:
     apt:
       sources: [ 'ubuntu-toolchain-r-test' ]
       packages: [ 'g++-5' ]
+  addons_gcc48: &gcc48
+    apt:
+      sources: [ 'ubuntu-toolchain-r-test' ]
+      packages: [ 'g++-4.8' ]
       
 matrix:
   include:
@@ -29,6 +33,10 @@ matrix:
       compiler: "gcc5.0"
       env: COMPILER=g++-5 BUILD_TYPE=Debug
       addons: *gcc50
+    - os: linux
+      compiler: "gcc4.8.4"
+      env: COMPILER=g++ BUILD_TYPE=Debug
+      addons: *gcc48
 
 
 
