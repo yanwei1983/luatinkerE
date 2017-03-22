@@ -1,8 +1,18 @@
 cmake_minimum_required(VERSION 2.8)
 project(luatinkerE)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -std=c++11")
 
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g ")
+
+include(CheckCXXCompilerFlag)
+CHECK_CXX_COMPILER_FLAG("-std=c++14" COMPILER_SUPPORTS_CXX14)
+
+if(COMPILER_SUPPORTS_CXX14)
+add_compile_options(-std=c++14)
+else()
+add_compile_options(-std=c++11)
+end
 
 include_directories(lua/src luatinkere tests)
 
