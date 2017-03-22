@@ -18,23 +18,23 @@ addons_shortcuts:
 matrix:
   include:
     - os: linux
-      compiler: "clang3.6"
+      compiler: "clang++-3.6"
       env: COMPILER=clang++-3.6 BUILD_TYPE=Release
       addons: *clang36
     - os: linux
-      compiler: "clang3.6"
+      compiler: "clang++-3.6"
       env: COMPILER=clang++-3.6 BUILD_TYPE=Debug
       addons: *clang36
     - os: linux
-      compiler: "gcc5.0"
+      compiler: "g++5.0"
       env: COMPILER=g++-5 BUILD_TYPE=Release
       addons: *gcc50
     - os: linux
-      compiler: "gcc5.0"
+      compiler: "g++5.0"
       env: COMPILER=g++-5 BUILD_TYPE=Debug
       addons: *gcc50
     - os: linux
-      compiler: "gcc4.8"
+      compiler: "g++4.8"
       env: COMPILER=g++-4.8 BUILD_TYPE=Debug
       addons: *gcc48
 
