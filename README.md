@@ -12,8 +12,9 @@ E=Expand，we add a lot of feature to luatinker
 
 we use Variadic Template and index_sequence, SFINAE enable_if and type_traits, tuple, function, forward_ref, decltype(auto), and more in c++11/14
 
+add support when use c++11
 
-complied with vc2015,gcc5.0,clang3.6
+complied with vc2015,g++4.8,g++5.0,clang3.6
 
 QQ群:518398988
 ##new feature 新特性一览
