@@ -240,12 +240,17 @@ namespace lua_tinker
 		// type trait
 		template<typename T> struct class_name;
 
+		template<typename T, typename Enable = void>
+		struct _stack_help;
 
 		//forward delcare
 		template<typename T>
-		decltype(auto) read(lua_State *L, int index);
+		auto read(lua_State *L, int index)
+						->decltype(_stack_help<T>::_read(L, index));
 		template<typename T>
-		decltype(auto) read_nocheck(lua_State *L, int index);
+		auto read_nocheck(lua_State *L, int index)
+						->decltype(_stack_help<T>::_read(L, index));
+
 		template<typename T>
 		void push(lua_State *L, T ret);	//here need a T/T*/T& not a T&&
 
@@ -612,7 +617,7 @@ namespace lua_tinker
 		}
 
 		// lua stack help to read/push
-		template<typename T, typename Enable = void>
+		template<typename T, typename Enable>
 		struct _stack_help
 		{
 			static constexpr int cover_to_lua_type() { return CLT_USERDATA; }
@@ -1059,7 +1064,8 @@ namespace lua_tinker
 
 		//read_weap
 		template<typename T>
-		decltype(auto) read(lua_State *L, int index)
+		auto read(lua_State *L, int index)
+			->decltype(_stack_help<T>::_read(L, index))
 		{
 #ifdef LUA_CALL_CFUNC_NEED_ALL_PARAM
 			if (std::is_pointer<T>)
@@ -1076,7 +1082,8 @@ namespace lua_tinker
 
 		//read_weap
 		template<typename T>
-		decltype(auto) read_nocheck(lua_State *L, int index)
+		auto read_nocheck(lua_State *L, int index)
+			->decltype(_stack_help<T>::_read(L, index))
 		{
 			return _stack_help<T>::_read(L, index);
 		}
@@ -2643,18 +2650,18 @@ namespace lua_tinker
 	};
 
 	template <typename RVal, typename ... Args, typename ... ExtArgs>
-	decltype(auto) make_functor_ptr(RVal(func)(Args...), ExtArgs...exArgs)
+	detail::functor<RVal, Args...>* make_functor_ptr(RVal(func)(Args...), ExtArgs...exArgs)
 	{
 		return new detail::functor<RVal, Args...>(func, exArgs...);
 	}
 
 	template<typename CT, typename RVal, typename ... Args, typename ... ExtArgs>
-	decltype(auto) make_member_functor_ptr(RVal(CT::*func)(Args...), ExtArgs...exArgs)
+	detail::member_functor<false, CT, RVal, Args...>* make_member_functor_ptr(RVal(CT::*func)(Args...), ExtArgs...exArgs)
 	{
 		return new detail::member_functor<false, CT, RVal, Args...>(func, exArgs...);
 	}
 	template<typename CT, typename RVal, typename ... Args, typename ... ExtArgs>
-	decltype(auto) make_member_functor_ptr(RVal(CT::*func)(Args...)const, ExtArgs...exArgs)
+	detail::member_functor<true, CT, RVal, Args...>* make_member_functor_ptr(RVal(CT::*func)(Args...)const, ExtArgs...exArgs)
 	{
 		return new detail::member_functor<true, CT, RVal, Args...>(func, exArgs...);
 	}
