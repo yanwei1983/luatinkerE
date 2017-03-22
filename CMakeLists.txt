@@ -12,7 +12,7 @@ if(COMPILER_SUPPORTS_CXX14)
 add_compile_options(-std=c++14)
 else()
 add_compile_options(-std=c++11)
-end
+end()
 
 include_directories(lua/src luatinkere tests)
 
