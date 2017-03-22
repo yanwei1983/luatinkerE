@@ -228,6 +228,7 @@ template< class T > struct remove_r_reference { typedef T type; };
 
 template< class T > struct remove_r_reference<T&&> { typedef T type; };
 
+#if __cplusplus != 201402L
 namespace std
 {
 	template< bool B, class T = void >
@@ -283,7 +284,7 @@ namespace std
 	{	// determine whether _Ty is nullptr_t
 	};
 }
-
+#endif //#if __cplusplus != 201402L
 
 namespace stdext
 {
