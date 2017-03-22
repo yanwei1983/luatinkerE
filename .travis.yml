@@ -35,6 +35,10 @@ matrix:
       addons: *gcc50
     - os: linux
       compiler: "g++4.8"
+      env: COMPILER=g++-4.8 BUILD_TYPE=Release
+      addons: *gcc48
+    - os: linux
+      compiler: "g++4.8"
       env: COMPILER=g++-4.8 BUILD_TYPE=Debug
       addons: *gcc48
 
