@@ -5,7 +5,7 @@
 
 LUA to C++ Binding Library "lua_tinker" expand for c++14 and lua 5.3
 
-##why luatinker"E"?
+## why luatinker"E"?
 
 0xE=14, ^_^  
 E=Expand，we add a lot of feature to luatinker
@@ -17,7 +17,7 @@ add support when use c++11
 complied with vc2015,g++4.8,g++5.0,clang3.6
 
 QQ群:518398988
-##new feature 新特性一览
+## new feature 新特性一览
 
 * 导入lua的函数，现在支持任意多的参数
 * 支持的read/push的元素类型增加std::string,std::function,lua_function_ref,stl容器,std::shared_ptr对象
@@ -45,7 +45,7 @@ QQ群:518398988
 
 
 
-###detail info 详细功能说明
+### detail info 详细功能说明
 * 将内部实现移动到detail名字空间
 * 使用变参模板重写 functor/memberfunctor/constructor/call 函数来支持多参数  
 * 使用enable_if机制实现 函数条件重载  
