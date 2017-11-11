@@ -178,25 +178,25 @@ namespace lua_tinker
 		using base_type = typename std::remove_cv<typename std::remove_reference<typename std::remove_pointer<T>::type>::type>::type;
 
 		template<typename T>
-		constexpr typename std::enable_if<!is_shared_ptr<T>::value, const char*>::type get_class_name()
+		constexpr const char* get_class_name()
 		{
-			return class_name< base_type<T> >::name();
-		}
-
-		template<typename T>
-		typename std::enable_if<is_shared_ptr<T>::value, const char*>::type get_class_name()
-		{
-			const std::string& strSharedName = class_name<T>::name_str();
-			if (strSharedName.empty())
+			if constexpr (!is_shared_ptr<T>::value)
 			{
-				return S_SHARED_PTR_NAME;
+				return class_name< base_type<T> >::name();
 			}
 			else
 			{
-				return strSharedName.c_str();
+				const std::string& strSharedName = class_name<T>::name_str();
+				if (strSharedName.empty())
+				{
+					return S_SHARED_PTR_NAME;
+				}
+				else
+				{
+					return strSharedName.c_str();
+				}
 			}
-
-
+			
 		}
 
 		template<typename T>
@@ -269,23 +269,16 @@ namespace lua_tinker
 		// from lua
 		// param to pointer
 		template<typename T>
-		typename std::enable_if<std::is_pointer<T>::value, T>::type void2type(void* ptr)
+		T void2type(void* ptr)
 		{
-			return (base_type<T>*)ptr;
-		}
-		//to reference
-		template<typename T>
-		typename std::enable_if<std::is_reference<T>::value, base_type<T>&>::type void2type(void* ptr)
-		{
-			return *(base_type<T>*)ptr;
+			if constexpr (std::is_pointer<T>::value)
+				return (base_type<T>*)ptr;
+			else if constexpr (std::is_reference<T>::value)
+				return *(base_type<T>*)ptr;
+			else
+				return *(base_type<T>*)ptr;
 		}
 
-		//to val
-		template<typename T>
-		typename std::enable_if<!std::is_pointer<T>::value && !std::is_reference<T>::value, base_type<T>>::type void2type(void* ptr)
-		{
-			return *(base_type<T>*)ptr;
-		}
 
 		//userdata to T，T*，T&
 		template<typename T>
@@ -505,23 +498,24 @@ namespace lua_tinker
 		// to lua
 		// userdata pointer to lua 
 		template<typename T>
-		typename std::enable_if<std::is_pointer<T>::value, void>::type object2lua(lua_State *L, T&& input)
+		void object2lua(lua_State *L, T&& input)
 		{
-			if (input) new(lua_newuserdata(L, sizeof(ptr2user<base_type<T>>))) ptr2user<base_type<T>>(std::forward<T>(input)); else lua_pushnil(L);
+			if constexpr(std::is_pointer<T>::value)
+			{
+				if (input) 
+					new(lua_newuserdata(L, sizeof(ptr2user<base_type<T>>))) ptr2user<base_type<T>>(std::forward<T>(input)); 
+				else 
+					lua_pushnil(L);
+			}
+			else if constexpr(std::is_reference<T>::value)
+			{
+				new(lua_newuserdata(L, sizeof(ref2user<T>))) ref2user<T>(std::forward<T>(input));
+			}
+			else
+			{
+				new(lua_newuserdata(L, sizeof(val2user<T>))) val2user<T>(std::forward<T>(input));
+			}
 		}
-		// userdata reference to lua
-		template<typename T>
-		typename std::enable_if<std::is_reference<T>::value, void>::type object2lua(lua_State *L, T&& input)
-		{
-			new(lua_newuserdata(L, sizeof(ref2user<T>))) ref2user<T>(std::forward<T>(input));
-		}
-		// userdata val to lua
-		template<typename T>
-		typename std::enable_if<!std::is_pointer<T>::value && !std::is_reference<T>::value, void>::type object2lua(lua_State *L, T&& input)
-		{
-			new(lua_newuserdata(L, sizeof(val2user<T>))) val2user<T>(std::forward<T>(input));
-		}
-
 
 		// get value from cclosure
 		template<typename T>
@@ -629,27 +623,26 @@ namespace lua_tinker
 
 			//get userdata ptr from lua, can handle nil an 0
 			template<typename _T>
-			static typename std::enable_if<std::is_pointer<_T>::value, _T>::type lua2type(lua_State *L, int index)
+			static _T lua2type(lua_State *L, int index)
 			{
-				if (lua_isnoneornil(L, index))
+				if constexpr(std::is_pointer<_T>::value)
 				{
-					return nullptr;
+					if (lua_isnoneornil(L, index))
+					{
+						return nullptr;
+					}
+					else if (lua_isnumber(L, index) && lua_tonumber(L, index) == 0)
+					{
+						return nullptr;
+					}
+					return _lua2type<_T>(L, index);
 				}
-				else if (lua_isnumber(L, index) && lua_tonumber(L, index) == 0)
+				else
 				{
-					return nullptr;
+					return _lua2type<_T>(L, index);
 				}
-				return _lua2type<_T>(L, index);
 			}
 
-			//get userdata from lua 
-			template<typename _T>
-			static typename std::enable_if<!std::is_pointer<_T>::value, _T>::type lua2type(lua_State *L, int index)
-			{
-				return _lua2type<_T>(L, index);
-			}
-
-			
 			//obj to lua
 			template<typename _T>
 			static void _push(lua_State *L, _T&& val)
@@ -762,9 +755,9 @@ namespace lua_tinker
 		};
 
 
-		//support map,multimap,unordered_map,unordered_multimap
+		//support container
 		template<typename _T>
-		static typename std::enable_if<is_associative_container<_T>::value, _T>::type _readfromtable(lua_State *L, int index)
+		static _T _readfromtable(lua_State *L, int index)
 		{
 			stack_obj table_obj(L, index);
 			if (table_obj.is_table() == false)
@@ -777,84 +770,52 @@ namespace lua_tinker
 			table_iterator it(table_obj);
 			while (it.hasNext())
 			{
-				t.emplace(std::make_pair(read<typename _T::key_type>(L, it.key_idx()), read<typename _T::mapped_type>(L, it.value_idx())));
+				if constexpr (is_associative_container<_T>::value)
+				{
+					t.emplace(std::make_pair(read<typename _T::key_type>(L, it.key_idx()), read<typename _T::mapped_type>(L, it.value_idx())));
+				}
+				else if constexpr (!is_associative_container<_T>::value && !has_key_type<_T>::value)
+				{
+					t.emplace_back(read<typename _T::value_type>(L, it.value_idx()));
+				}
+				else
+				{
+					t.emplace(read<typename _T::value_type>(L, it.value_idx()));
+				}
 				it.moveNext();
 			}
 
 			return t;
 		}
 
-		//support list,vector,deque
+		//container to lua
 		template<typename _T>
-		static typename std::enable_if<!is_associative_container<_T>::value && !has_key_type<_T>::value, _T>::type _readfromtable(lua_State *L, int index)
+		static void  _pushtotable(lua_State *L, const _T& ret)
 		{
-			stack_obj table_obj(L, index);
-			if (table_obj.is_table() == false)
+			
+			if constexpr(is_associative_container<_T>::value)
 			{
-				lua_pushfstring(L, "convert container from argument %d must be a table", index);
-				lua_error(L);
+				stack_obj table_obj = stack_obj::new_table(L, 0, ret.size());
+				for (auto it = ret.begin(); it != ret.end(); it++)
+				{
+					push(L, it->first);
+					push(L, it->second);
+					lua_settable(L, table_obj._stack_pos);
+				}
 			}
-
-
-			_T t;
-			table_iterator it(table_obj);
-			while (it.hasNext())
+			else
 			{
-				t.emplace_back(read<typename _T::value_type>(L, it.value_idx()));
-				it.moveNext();
-			}
-
-			return t;
-		}
-		//support set
-		template<typename _T>
-		static typename std::enable_if<!is_associative_container<_T>::value && has_key_type<_T>::value, _T>::type _readfromtable(lua_State *L, int index)
-		{
-			stack_obj table_obj(L, index);
-			if (table_obj.is_table() == false)
-			{
-				lua_pushfstring(L, "convert set from argument %d must be a table", index);
-				lua_error(L);
-			}
-
-
-			_T t;
-			table_iterator it(table_obj);
-			while (it.hasNext())
-			{
-				t.emplace(read<typename _T::value_type>(L, it.value_idx()));
-				it.moveNext();
-			}
-
-			return t;
-		}
-
-		//k,v container to lua
-		template<typename _T>
-		static typename std::enable_if<is_associative_container<_T>::value, void>::type  _pushtotable(lua_State *L, const _T& ret)
-		{
-			stack_obj table_obj = stack_obj::new_table(L, 0, ret.size());
-			for (auto it = ret.begin(); it != ret.end(); it++)
-			{
-				push(L, it->first);
-				push(L, it->second);
-				lua_settable(L, table_obj._stack_pos);
+				stack_obj table_obj = stack_obj::new_table(L, ret.size(), 0);
+				auto it = ret.begin();
+				for (int i = 1; it != ret.end(); it++, i++)
+				{
+					push(L, i);
+					push(L, *it);
+					lua_settable(L, table_obj._stack_pos);
+				}
 			}
 		}
-		//t container to lua
-		template<typename _T>
-		static typename std::enable_if<!is_associative_container<_T>::value, void>::type  _pushtotable(lua_State *L, const _T& ret)
-		{
-			stack_obj table_obj = stack_obj::new_table(L, ret.size(), 0);
-			auto it = ret.begin();
-			for (int i = 1; it != ret.end(); it++, i++)
-			{
-				push(L, i);
-				push(L, *it);
-				lua_settable(L, table_obj._stack_pos);
-			}
-		}
-
+		
 		//stl container T
 		template<typename T>
 		struct _stack_help<T, typename std::enable_if<!std::is_reference<T>::value && !std::is_pointer<T>::value && is_container<base_type<T>>::value>::type>
@@ -1283,21 +1244,13 @@ namespace lua_tinker
 			}
 
 			template<typename T>
-			static auto _invoke(lua_State *L, FuncType&& func, CT* pClassPtr)
-				->typename std::enable_if<!std::is_void<T>::value, void>::type
+			static void _invoke(lua_State *L, FuncType&& func, CT* pClassPtr)
 			{
-				push_rv<RVal>(L, direct_invoke_member_func<2, RVal, FuncType, CT, Args...>(std::forward<FuncType>(func), L, pClassPtr));
+				if constexpr(!std::is_void<T>::value)
+					push_rv<RVal>(L, direct_invoke_member_func<2, RVal, FuncType, CT, Args...>(std::forward<FuncType>(func), L, pClassPtr));
+				else
+					direct_invoke_member_func<2, RVal, FuncType, CT, Args...>(std::forward<FuncType>(func), L, pClassPtr);
 			}
-
-			template<typename T>
-			static auto _invoke(lua_State *L, FuncType&& func, CT* pClassPtr)
-				->typename std::enable_if<std::is_void<T>::value, void>::type
-			{
-				direct_invoke_member_func<2, RVal, FuncType, CT, Args...>(std::forward<FuncType>(func), L, pClassPtr);
-			}
-
-
-
 
 			static int invoke_function(lua_State *L)
 			{
@@ -1319,19 +1272,14 @@ namespace lua_tinker
 			}
 
 			template<typename T, typename F>
-			static auto _invoke_function(lua_State *L, F&& func, CT* pClassPtr)
-				->typename std::enable_if<!std::is_void<T>::value, void>::type
+			static void _invoke_function(lua_State *L, F&& func, CT* pClassPtr)
 			{
-				push_rv<RVal>(L, direct_invoke_member_func<2, RVal, FunctionType, CT, Args...>(std::forward<FunctionType>(func), L, pClassPtr));
+				if constexpr(!std::is_void<T>::value)
+					push_rv<RVal>(L, direct_invoke_member_func<2, RVal, FunctionType, CT, Args...>(std::forward<FunctionType>(func), L, pClassPtr));
+				else
+					direct_invoke_member_func<2, RVal, FunctionType, CT, Args...>(std::forward<FunctionType>(func), L, pClassPtr);
 			}
 
-			template<typename T, typename F>
-			static auto _invoke_function(lua_State *L, F&& func, CT* pClassPtr)
-				->typename std::enable_if<std::is_void<T>::value, void>::type
-			{
-				direct_invoke_member_func<2, RVal, FunctionType, CT, Args...>(std::forward<FunctionType>(func), L, pClassPtr);
-
-			}
 		};
 
 
@@ -1400,17 +1348,13 @@ namespace lua_tinker
 			}
 
 			template<typename T>
-			static typename std::enable_if<!std::is_void<T>::value, void>::type _invoke(lua_State *L)
+			static void _invoke(lua_State *L)
 			{
-				push_rv<RVal>(L, direct_invoke_func<1, RVal, FuncType, Args...>(std::forward<FuncType>(upvalue_<FuncType>(L)), L));
+				if constexpr(!std::is_void<T>::value)
+					push_rv<RVal>(L, direct_invoke_func<1, RVal, FuncType, Args...>(std::forward<FuncType>(upvalue_<FuncType>(L)), L));
+				else
+					direct_invoke_func<1, RVal, FuncType, Args...>(std::forward<FuncType>(upvalue_<FuncType>(L)), L);
 			}
-
-			template<typename T>
-			static typename std::enable_if<std::is_void<T>::value, void>::type _invoke(lua_State *L)
-			{
-				direct_invoke_func<1, RVal, FuncType, Args...>(std::forward<FuncType>(upvalue_<FuncType>(L)), L);
-			}
-
 
 			static int invoke_function(lua_State *L)
 			{
@@ -1431,16 +1375,13 @@ namespace lua_tinker
 			}
 
 			template<typename T, typename F>
-			static typename std::enable_if<!std::is_void<T>::value, void>::type _invoke_function(lua_State *L, F&& func)
+			static void _invoke_function(lua_State *L, F&& func)
 			{
-				push_rv<RVal>(L, direct_invoke_func<1, RVal, FunctionType, Args...>(std::forward<FunctionType>(func), L));
-			}
-
-			template<typename T, typename F>
-			static typename std::enable_if<std::is_void<T>::value, void>::type _invoke_function(lua_State *L, F&& func)
-			{
-				direct_invoke_func<1, RVal, FunctionType, Args...>(std::forward<FunctionType>(func), L);
-			}
+				if constexpr(!std::is_void<T>::value)
+					push_rv<RVal>(L, direct_invoke_func<1, RVal, FunctionType, Args...>(std::forward<FunctionType>(func), L));
+				else
+					direct_invoke_func<1, RVal, FunctionType, Args...>(std::forward<FunctionType>(func), L);
+			}		
 		};
 
 		// destroyer
@@ -1526,18 +1467,15 @@ namespace lua_tinker
 		}
 
 		template<typename F, typename ... DefaultArgs>
-		auto _push_constructor(lua_State* L, F&& f, DefaultArgs&& ... default_args)
-			-> typename std::enable_if<!std::is_base_of<args_type_overload_functor_base, F>::value, void>::type
+		void _push_constructor(lua_State* L, F&& f, DefaultArgs&& ... default_args)
 		{
-			_push_functor_invoke(L, 0, std::forward<F>(f), std::forward<DefaultArgs>(default_args)...);
+			if constexpr(!std::is_base_of<args_type_overload_functor_base, F>::value)
+				_push_functor_invoke(L, 0, std::forward<F>(f), std::forward<DefaultArgs>(default_args)...);
+			else
+				_push_functor(L, std::forward<F>(f), std::forward<DefaultArgs>(default_args)...);
 		}
 
-		template<typename F, typename ... DefaultArgs>
-		auto _push_constructor(lua_State* L, F&& f, DefaultArgs&& ... default_args)
-			-> typename std::enable_if<std::is_base_of<args_type_overload_functor_base, F>::value, void>::type
-		{
-			_push_functor(L, std::forward<F>(f), std::forward<DefaultArgs>(default_args)...);
-		}
+
 
 	}
 
@@ -2109,32 +2047,36 @@ namespace lua_tinker
 			}
 
 			template<typename FUNC>
-			typename std::enable_if<!std::is_null_pointer<FUNC>::value, void>::type _get(lua_State *L)
+			void _get(lua_State *L)
 			{
-				CHECK_CLASS_PTR(T);
-				push(L, (_read_classptr_from_index1<T, true>(L)->*m_get_func)());
+				if constexpr(!std::is_null_pointer<FUNC>::value)
+				{
+					CHECK_CLASS_PTR(T);
+					push(L, (_read_classptr_from_index1<T, true>(L)->*m_get_func)());
+				}
+				else
+				{
+					lua_pushfstring(L, "property didn't have get_func");
+					lua_error(L);
+				}
 			}
 
 			template<typename FUNC>
-			typename std::enable_if<std::is_null_pointer<FUNC>::value, void>::type _get(lua_State *L)
+			void _set(lua_State *L)
 			{
-				lua_pushfstring(L, "property didn't have get_func");
-				lua_error(L);
+				if constexpr(!std::is_null_pointer<FUNC>::value)
+				{
+					CHECK_CLASS_PTR(T);
+					(_read_classptr_from_index1<T, false>(L)->*m_set_func)(read<typename function_traits<SET_FUNC>::template argv<0>::type>(L, 3));
+				}
+				else
+				{
+					lua_pushfstring(L, "property didn't have set_func");
+					lua_error(L);
+				}
 			}
 
-			template<typename FUNC>
-			typename std::enable_if<!std::is_null_pointer<FUNC>::value, void>::type _set(lua_State *L)
-			{
-				CHECK_CLASS_PTR(T);
-				(_read_classptr_from_index1<T, false>(L)->*m_set_func)(read<typename function_traits<SET_FUNC>::template argv<0>::type>(L, 3));
-			}
 
-			template<typename FUNC>
-			typename std::enable_if<std::is_null_pointer<FUNC>::value, void>::type _set(lua_State *L)
-			{
-				lua_pushfstring(L, "property didn't have set_func");
-				lua_error(L);
-			}
 		};
 	}
 
