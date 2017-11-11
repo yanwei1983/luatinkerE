@@ -15,7 +15,7 @@ matrix:
   include:
     - os: linux
       compiler: "clang++-3.9"
-      env: COMPILER=clang++-3.69 BUILD_TYPE=Release
+      env: COMPILER=clang++-3.9 BUILD_TYPE=Release
       addons: *clang39
     - os: linux
       compiler: "clang++-3.9"
