@@ -156,6 +156,8 @@ int main()
 		if (lua_gettop(L) != 0)
 		{
 			printf("unit test stack leak: %s error\n", v.first.c_str());
+			lua_tinker::enum_stack(L);
+			lua_tinker::clear_stack(L);
 			nError++;
 		}
 		if (result == false)

@@ -71,6 +71,7 @@ namespace lua_tinker
 
 	// debug helpers
 	void    enum_stack(lua_State *L);
+	void	clear_stack(lua_State *L);
 	int     on_error(lua_State *L);
 	void    print_error(lua_State *L, const char* fmt, ...);
 
@@ -1575,17 +1576,36 @@ namespace lua_tinker
 	{
 		lua_pushcclosure(L, get_error_callback(), 0);
 		int errfunc = lua_gettop(L);
-
 		lua_getglobal(L, name);
 		if (lua_isfunction(L, -1))
 		{
 			detail::push_args(L, std::forward<Args>(arg)...);
-
+			
 			if (lua_pcall(L, sizeof...(Args), detail::pop<RVal>::nresult, errfunc) != LUA_OK)
 			{
-				//remove error info
-				lua_pop(L, 1);
+				//stack have a nil string from on_error
+				if(detail::pop<RVal>::nresult == 0)
+				{
+					//not need it, pop
+					lua_pop(L,1);
+				}
+				else if(detail::pop<RVal>::nresult > 1)
+				{
+					//push nil to pop result
+					for(int i = 0; i < detail::pop<RVal>::nresult-1; i++)
+					{
+						lua_pushnil(L);
+					};
+				}
+				else
+				{
+					//==1, leave it for pop resuslt
+				}
 			}
+			else
+			{
+			}
+
 		}
 		else
 		{
@@ -2346,6 +2366,24 @@ namespace lua_tinker
 				detail::push_args(m_L, std::forward<Args>(args)...);
 				if (lua_pcall(m_L, sizeof...(Args), detail::pop<RVal>::nresult, errfunc) != 0)
 				{
+					//stack have a nil string from on_error
+					if(detail::pop<RVal>::nresult == 0)
+					{
+						//not need it, pop
+						lua_pop(m_L,1);
+					}
+					else if(detail::pop<RVal>::nresult > 1)
+					{
+						//push nil to pop result
+						for(int i = 0; i < detail::pop<RVal>::nresult-1; i++)
+						{
+							lua_pushnil(m_L);
+						};
+					}
+					else
+					{
+						//==1, leave it for pop resuslt
+					}
 				}
 			}
 			else

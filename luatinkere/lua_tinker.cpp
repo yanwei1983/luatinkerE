@@ -446,6 +446,13 @@ void lua_tinker::enum_stack(lua_State *L)
 	print_error(L, "%s", "-------------------------");
 }
 
+void lua_tinker::clear_stack(lua_State *L)
+{
+	lua_settop(L, 0);
+}
+
+
+
 char* lua_tinker::detail::_stack_help<char*>::_read(lua_State *L, int index)
 {
 	return (char*)lua_tostring(L, index);
