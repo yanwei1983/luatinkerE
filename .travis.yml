@@ -2,47 +2,33 @@ sudo: false
 language: c++
 
 addons_shortcuts:
-  addons_clang36: &clang36
+  addons_clang39: &clang39
     apt:
-      sources: [ 'ubuntu-toolchain-r-test', 'llvm-toolchain-precise-3.6']
-      packages: [ 'clang-3.6' ]
-  addons_gcc50: &gcc50
-    apt:
-      sources: [ 'ubuntu-toolchain-r-test' ]
-      packages: [ 'g++-5' ]
-  addons_gcc48: &gcc48
+      sources: [ 'ubuntu-toolchain-r-test', 'llvm-toolchain-precise-3.9']
+      packages: [ 'clang-3.9' ]
+  addons_gcc70: &gcc70
     apt:
       sources: [ 'ubuntu-toolchain-r-test' ]
-      packages: [ 'g++-4.8' ]
+      packages: [ 'g++-7' ]
       
 matrix:
   include:
     - os: linux
-      compiler: "clang++-3.6"
-      env: COMPILER=clang++-3.6 BUILD_TYPE=Release
-      addons: *clang36
+      compiler: "clang++-3.9"
+      env: COMPILER=clang++-3.69 BUILD_TYPE=Release
+      addons: *clang39
     - os: linux
-      compiler: "clang++-3.6"
-      env: COMPILER=clang++-3.6 BUILD_TYPE=Debug
-      addons: *clang36
+      compiler: "clang++-3.9"
+      env: COMPILER=clang++-3.9 BUILD_TYPE=Debug
+      addons: *clang39
     - os: linux
-      compiler: "g++5.0"
-      env: COMPILER=g++-5 BUILD_TYPE=Release
-      addons: *gcc50
+      compiler: "g++7"
+      env: COMPILER=g++-7 BUILD_TYPE=Release
+      addons: *gcc70
     - os: linux
-      compiler: "g++5.0"
-      env: COMPILER=g++-5 BUILD_TYPE=Debug
-      addons: *gcc50
-    - os: linux
-      compiler: "g++4.8"
-      env: COMPILER=g++-4.8 BUILD_TYPE=Release
-      addons: *gcc48
-    - os: linux
-      compiler: "g++4.8"
-      env: COMPILER=g++-4.8 BUILD_TYPE=Debug
-      addons: *gcc48
-
-
+      compiler: "g++7"
+      env: COMPILER=g++-7 BUILD_TYPE=Debug
+      addons: *gcc70
 
 
 before_script:
