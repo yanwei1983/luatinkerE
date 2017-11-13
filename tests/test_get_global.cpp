@@ -15,6 +15,12 @@ void test_get_gloabl(lua_State* L)
 
 	};
 
+	g_test_func_set["test_lua_getval_err"] = [L]()->bool
+	{
+		return 0 == lua_tinker::get<int>(L, "g_int_notdefine");
+
+	};
+
 
 	g_test_func_set["test_lua_gettable_1"] = [L]()->bool
 	{
