@@ -35,4 +35,10 @@ void test_lua_table_ref(lua_State* L)
 		lua_tinker::table_onstack refTable = g_table_ref.push_table_to_stack();
 		return refTable.get<int>("test1") == 5;
 	};
+
+	g_test_func_set["test_lua_table_add_new"] = [L]()->bool
+	{
+		lua_tinker::table_onstack table(L, "test_lua_table_add_new");
+		return true;
+	};
 }
