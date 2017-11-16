@@ -1681,6 +1681,11 @@ namespace lua_tinker
 
 	namespace detail
 	{
+		//allow register a lua_CFuntion to control class
+		inline void _push_class_functor(lua_State* L, lua_CFunction func)
+		{
+			lua_pushcclosure(L, func, 0);
+		}
 		
 		template<typename T, typename R, typename ...ARGS, typename ... DEFAULT_ARGS>
 		void _push_class_functor(lua_State* L, R(T::*func)(ARGS...), DEFAULT_ARGS&& ... default_args)
