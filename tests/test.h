@@ -248,6 +248,8 @@ export_lua std::map<int, int> push_map();
 export_lua const std::map<int, int>& push_map_ref();
 export_lua std::set<int>  push_set();
 export_lua std::vector<int> push_vector();
+export_lua const std::vector<int>& push_vector_const();
+export_lua std::string vector_join_const(const std::vector<int>& vec, const std::string& sep);
 
 
 export_lua std::string push_string();

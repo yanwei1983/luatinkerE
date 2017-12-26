@@ -34,6 +34,23 @@ std::vector<int> push_vector()
 	return g_testvec;
 }
 
+const std::vector<int>& push_vector_const()
+{
+	return g_testvec;
+}
+
+std::string vector_join_const(const std::vector<int>& vec, const std::string& sep)
+{
+	std::string result;
+	for(auto v : vec)
+	{
+		if(result.empty() == false)
+			result+=sep;
+		result += std::to_string(v);
+	}
+	return result;
+}
+
 
 void test_stl_container(lua_State* L)
 {
@@ -237,6 +254,21 @@ void test_stl_container(lua_State* L)
 				return false;
 		}
 		return true;
+	};
+	
+	g_test_func_set["test_lua_vec1"] = [L]()->bool
+	{
+		std::string luabuf =
+			R"(function test_lua_vec1()
+					local testSet = push_vector_const();
+					local str = vector_join_const(testSet,",");
+					return str;
+				end
+			)";
+		lua_tinker::dostring(L, luabuf.c_str());
+		std::string val = lua_tinker::call<decltype(val)>(L, "test_lua_vec1");
+		
+		return val == "1,2,3,4,5";
 	};
 
 }
