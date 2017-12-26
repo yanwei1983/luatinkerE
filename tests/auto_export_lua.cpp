@@ -36,6 +36,8 @@ void export_to_lua_auto(lua_State* L)
 	lua_tinker::def(L, "push_string", &push_string);
 	lua_tinker::def(L, "push_string_ref", &push_string_ref);
 	lua_tinker::def(L, "push_vector", &push_vector);
+	lua_tinker::def(L, "push_vector_const", &push_vector_const);
+	lua_tinker::def(L, "vector_join_const", &vector_join_const);
 	lua_tinker::def(L, "store_lua_function", &store_lua_function);
 	lua_tinker::def(L, "test_default_params", &test_default_params, 5, 8);
 	lua_tinker::def(L, "test_lua_function", &test_lua_function);
