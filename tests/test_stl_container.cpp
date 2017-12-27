@@ -103,12 +103,12 @@ void test_stl_container(lua_State* L)
 	{
 		std::string luabuf =
 			R"(function test_lua_map_3()
-					local map_table = push_map(); --map to lua_table
+					local map_table = push_map(); 
 					local pTest = TestCon();
 					local pTest2 = TestCon();
-					pTest:ChangeDataMap(map_table);	--lua_table to map
+					pTest:ChangeDataMap(map_table);	
 					pTest2:ChangeDataMapPtr(pTest:getDataMapPtr());
-					return pTest2:getDataMapRef();		--map to lua_table then pop as a map
+					return pTest2:getDataMapRef();		
 				end
 			)";
 		lua_tinker::dostring(L, luabuf.c_str());
@@ -129,12 +129,12 @@ void test_stl_container(lua_State* L)
 	{
 		std::string luabuf =
 			R"(function test_lua_map_4()
-					local map_table = push_map():to_table();
+					local map_table = push_map():to_table(); --map to lua_table
 					local pTest = TestCon();
 					local pTest2 = TestCon();
-					pTest:ChangeDataMap(map_table);
+					pTest:ChangeDataMap(map_table); --lua_table to map
 					pTest2:ChangeDataMap(pTest:getDataMapRef());
-					return pTest2:getDataMapRef();		
+					return pTest2:getDataMapRef();
 				end
 			)";
 		lua_tinker::dostring(L, luabuf.c_str());
@@ -198,6 +198,20 @@ void test_stl_container(lua_State* L)
 		
 		lua_tinker::dostring(L, luabuf.c_str());
 		return lua_tinker::call<bool>(L, "test_lua_map_6");
+	};
+	
+	g_test_func_set["test_lua_map_7"] = [L]()->bool
+	{
+		std::string luabuf =
+			R"(function test_lua_map_7()
+					local map_ref = push_map_ref();
+					map_ref:push(10,15);
+					return map_ref[10] == 15;
+				end
+			)";
+		
+		lua_tinker::dostring(L, luabuf.c_str());
+		return lua_tinker::call<bool>(L, "test_lua_map_7");
 	};
 
 	g_test_func_set["test_lua_hashmap"] = [L]()->bool
@@ -331,6 +345,37 @@ void test_stl_container(lua_State* L)
 		return lua_tinker::call<bool>(L, "test_lua_set_4",nTotalK,nTotalV);
 	};
 
+	g_test_func_set["test_lua_set_5"] = [L]()->bool
+	{
+		std::string luabuf =
+			R"(function test_lua_set_5()
+					local map_copy = push_set();
+					map_copy:push(15);
+					return map_copy;
+				end
+			)";
+		
+		lua_tinker::dostring(L, luabuf.c_str());
+		const std::set<int>& val =  lua_tinker::call<decltype(val)>(L, "test_lua_set_5");
+		return val.find(15) != val.end();
+	};
+
+	g_test_func_set["test_lua_set_6"] = [L]()->bool
+	{
+		std::string luabuf =
+			R"(function test_lua_set_6()
+					local map_copy = push_set();
+					map_copy:push(15);
+					map_copy:erase(15);
+					return map_copy;
+				end
+			)";
+		
+		lua_tinker::dostring(L, luabuf.c_str());
+		const std::set<int>& val =  lua_tinker::call<decltype(val)>(L, "test_lua_set_6");
+		return val.find(15) == val.end();
+	};
+
 	g_test_func_set["test_lua_vec"] = [L]()->bool
 	{
 		std::string luabuf =
@@ -402,4 +447,35 @@ void test_stl_container(lua_State* L)
 		return lua_tinker::call<bool>(L, "test_lua_vec_2", nTotalK, nTotalV);
 	};
 
+
+	g_test_func_set["test_lua_vec_3"] = [L]()->bool
+	{
+		std::string luabuf =
+			R"(function test_lua_vec_3()
+					local container_copy = push_vector();
+					container_copy:push(15);
+					return container_copy;
+				end
+			)";
+		
+		lua_tinker::dostring(L, luabuf.c_str());
+		const std::vector<int>& val =  lua_tinker::call<decltype(val)>(L, "test_lua_vec_3");
+		return std::find(val.begin(), val.end(), 15) != val.end();
+	};
+
+	g_test_func_set["test_lua_vec_4"] = [L]()->bool
+	{
+		std::string luabuf =
+			R"(function test_lua_vec_4()
+					local container_copy = push_vector();
+					container_copy:push(15);
+					container_copy:erase(15);
+					return container_copy;
+				end
+			)";
+		
+		lua_tinker::dostring(L, luabuf.c_str());
+		const std::vector<int>& val =  lua_tinker::call<decltype(val)>(L, "test_lua_vec_4");
+		return std::find(val.begin(), val.end(), 15) == val.end();
+	};
 }

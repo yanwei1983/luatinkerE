@@ -1612,6 +1612,7 @@ namespace lua_tinker
 	template<typename RVal, typename ...Args>
 	RVal call(lua_State* L, const char* name, Args&&... arg)
 	{
+		detail::stack_scope_exit scope_exit(L);
 		lua_pushcclosure(L, get_error_callback(), 0);
 		int errfunc = lua_gettop(L);
 		lua_getglobal(L, name);
@@ -1650,7 +1651,7 @@ namespace lua_tinker
 			print_error(L, "lua_tinker::call() attempt to call global `%s' (not a function)", name);
 		}
 		
-		lua_remove(L, errfunc);
+		//lua_remove(L, errfunc);
 		return detail::pop<RVal>::apply(L);
 	}
 	
@@ -2480,7 +2481,7 @@ namespace lua_tinker
 
 					int key = detail::read<int>(L, 2);
 					key -= 1;
-					if(key > pContainer->size())
+					if(key > (int)pContainer->size())
 					{
 						lua_pushnil(L);
 					}
@@ -2493,6 +2494,7 @@ namespace lua_tinker
 			return 1;
 
 		}
+
 		template<typename T>
 		int meta_container_set(lua_State* L)
 		{
@@ -2521,7 +2523,7 @@ namespace lua_tinker
 				//vector
 				int key = detail::read<int>(L, 2);
 				key -= 1;
-				if(key > pContainer->size())
+				if(key > (int)pContainer->size())
 				{
 					lua_pushfstring(L, "set to vector : %d out of range", key);
 					lua_error(L);
@@ -2530,6 +2532,70 @@ namespace lua_tinker
 				{
 					(*pContainer)[key] = detail::read<typename T::value_type>(L, 3);
 				}
+			}
+
+			return 0;
+		}
+
+		template<typename T>
+		int meta_container_push(lua_State* L)
+		{
+			//list[key] = val;
+			UserDataWapper* pWapper = user2type<UserDataWapper*>(L, 1);
+			T* pContainer = (T*)(pWapper->m_p);
+#ifdef LUATINKER_USERDATA_CHECK_CONST
+			if(pWapper->is_const())
+			{
+				lua_pushfstring(L, "container is const");
+				lua_error(L);
+			}
+#endif
+			if constexpr(is_associative_container<T>::value)
+			{
+				//k,v
+				pContainer->emplace(detail::read<typename T::key_type>(L, 2), detail::read<typename T::mapped_type>(L, 3));
+			}
+			else if constexpr(!is_associative_container<T>::value && has_key_type<T>::value)
+			{
+				//set
+				pContainer->emplace(detail::read<typename T::value_type>(L, 2));
+			}
+			else
+			{
+				//vector
+				pContainer->emplace_back(detail::read<typename T::value_type>(L, 2));
+			}
+
+			return 0;
+		}
+
+		template<typename T>
+		int meta_container_erase(lua_State* L)
+		{
+			//list[key] = val;
+			UserDataWapper* pWapper = user2type<UserDataWapper*>(L, 1);
+			T* pContainer = (T*)(pWapper->m_p);
+#ifdef LUATINKER_USERDATA_CHECK_CONST
+			if(pWapper->is_const())
+			{
+				lua_pushfstring(L, "container is const");
+				lua_error(L);
+			}
+#endif
+			if constexpr(is_associative_container<T>::value)
+			{
+				//k,v
+				pContainer->erase(detail::read<typename T::key_type>(L, 2));
+			}
+			else if constexpr(!is_associative_container<T>::value && has_key_type<T>::value)
+			{
+				//set
+				pContainer->erase(detail::read<typename T::value_type>(L, 2));
+			}
+			else
+			{
+				//vector
+				pContainer->erase(std::find(pContainer->begin(), pContainer->end(), detail::read<typename T::value_type>(L, 2)));
 			}
 
 			return 0;
@@ -2616,7 +2682,7 @@ namespace lua_tinker
 		{
 			std::string name = std::string("container_") + std::to_string(get_type_idx<base_type<T>>());
 			detail::class_name<base_type<T>>::name(name.c_str());
-			lua_createtable(L, 0, 5);
+			lua_createtable(L, 0, 8);
 
 			lua_pushstring(L, "__name");
 			lua_pushstring(L, name.c_str());
@@ -2641,7 +2707,14 @@ namespace lua_tinker
 			lua_pushstring(L, "to_table");
 			lua_pushcclosure(L, detail::meta_container_to_table<base_type<T>>, 0);
 			lua_rawset(L, -3);
+						
+			lua_pushstring(L, "push");
+			lua_pushcclosure(L, detail::meta_container_push<base_type<T>>, 0);
+			lua_rawset(L, -3);
 
+			lua_pushstring(L, "erase");
+			lua_pushcclosure(L, detail::meta_container_erase<base_type<T>>, 0);
+			lua_rawset(L, -3);
 
 			lua_pushstring(L, "__gc");
 			lua_pushcclosure(L, detail::destroyer<detail::UserDataWapper>, 0);
