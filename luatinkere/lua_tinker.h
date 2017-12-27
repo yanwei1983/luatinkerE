@@ -51,7 +51,7 @@
 namespace lua_tinker
 {
 	extern const char* S_SHARED_PTR_NAME;
-
+	extern const std::string S_EMPTY;
 	// init LuaTinker
 	void    init(lua_State *L);
 	
@@ -157,7 +157,8 @@ namespace lua_tinker
 		int meta_get(lua_State *L);
 		int meta_set(lua_State *L);
 		int push_meta(lua_State *L, const char* name);
-	
+		void add_gc_mate(lua_State* L);
+
 
 		template<typename T>
 		struct class_name
@@ -169,7 +170,7 @@ namespace lua_tinker
 			}
 			static const std::string& name_str(const char* name = NULL)
 			{
-				static std::string s_name;
+				static std::string s_name = S_EMPTY;
 				if (name != NULL) s_name.assign(name);
 				return s_name;
 			}
@@ -181,13 +182,9 @@ namespace lua_tinker
 		template<typename T>
 		constexpr const char* get_class_name()
 		{
-			if constexpr (!is_shared_ptr<T>::value)
+			if constexpr (is_shared_ptr<T>::value)
 			{
-				return class_name< base_type<T> >::name();
-			}
-			else
-			{
-				const std::string& strSharedName = class_name<T>::name_str();
+				const std::string& strSharedName = class_name<base_type<T>>::name_str();
 				if (strSharedName.empty())
 				{
 					return S_SHARED_PTR_NAME;
@@ -196,6 +193,10 @@ namespace lua_tinker
 				{
 					return strSharedName.c_str();
 				}
+			}
+			else
+			{
+				return class_name< base_type<T> >::name();
 			}
 			
 		}
@@ -508,6 +509,10 @@ namespace lua_tinker
 				else 
 					lua_pushnil(L);
 			}
+			else if constexpr(std::is_rvalue_reference<T>::value)
+			{
+				new(lua_newuserdata(L, sizeof(val2user<T>))) val2user<T>(std::forward<T>(input));
+			}
 			else if constexpr(std::is_reference<T>::value)
 			{
 				new(lua_newuserdata(L, sizeof(ref2user<T>))) ref2user<T>(std::forward<T>(input));
@@ -603,12 +608,35 @@ namespace lua_tinker
 
 		}
 
+		template<typename T>
+		void add_container_mate(lua_State* L);
+
+
 		template<typename _T>
-		static void _type2lua(lua_State *L, _T&& val)
+		void _type2lua(lua_State *L, _T&& val)
 		{
 			object2lua(L, std::forward<_T>(val));
-			push_meta(L, get_class_name<_T>());
-			lua_setmetatable(L, -2);
+			if(get_class_name<_T>() == std::string(""))
+			{
+				if constexpr(is_container<base_type<_T>>::value)
+				{
+					//container warp
+					add_container_mate<base_type<_T>>(L);
+					push_meta(L, get_class_name<_T>());
+					lua_setmetatable(L, -2);
+				}
+				else if(!std::is_reference<_T>::value && !std::is_pointer<_T>::value)
+				{
+					//val2usr must add _gc
+					push_meta(L, "__onlygc_meta");
+					lua_setmetatable(L, -2);
+				}
+			}
+			else
+			{
+				push_meta(L, get_class_name<_T>());
+				lua_setmetatable(L, -2);
+			}
 		}
 
 		// lua stack help to read/push
@@ -758,7 +786,7 @@ namespace lua_tinker
 
 		//support container
 		template<typename _T>
-		static _T _readfromtable(lua_State *L, int index)
+		_T _readfromtable(lua_State *L, int index)
 		{
 			stack_obj table_obj(L, index);
 			if (table_obj.is_table() == false)
@@ -775,13 +803,13 @@ namespace lua_tinker
 				{
 					t.emplace(std::make_pair(read<typename _T::key_type>(L, it.key_idx()), read<typename _T::mapped_type>(L, it.value_idx())));
 				}
-				else if constexpr (!is_associative_container<_T>::value && !has_key_type<_T>::value)
+				else if constexpr (!is_associative_container<_T>::value && has_key_type<_T>::value)
 				{
-					t.emplace_back(read<typename _T::value_type>(L, it.value_idx()));
+					t.emplace(read<typename _T::value_type>(L, it.value_idx()));
 				}
 				else
 				{
-					t.emplace(read<typename _T::value_type>(L, it.value_idx()));
+					t.emplace_back(read<typename _T::value_type>(L, it.value_idx()));
 				}
 				it.moveNext();
 			}
@@ -791,7 +819,7 @@ namespace lua_tinker
 
 		//container to lua
 		template<typename _T>
-		static void  _pushtotable(lua_State *L, const _T& ret)
+		void  _pushtotable(lua_State *L, const _T& ret)
 		{
 			
 			if constexpr(is_associative_container<_T>::value)
@@ -833,12 +861,22 @@ namespace lua_tinker
 				}
 			}
 
+			//template<typename _T>
+			//static void _push(lua_State *L, _T&& val)
+			//{
+			//	return _pushtotable(L, std::forward<_T>(val));
+			//}
+
+			//static T _read(lua_State *L, int index)
+			//{
+			//	return _lua2type<T>(L, index);
+			//}
+
 			template<typename _T>
 			static void _push(lua_State *L, _T&& val)
 			{
-				return _pushtotable(L, std::forward<_T>(val));
+				return _type2lua(L, std::forward<T>(val));
 			}
-
 			template<typename _T>
 			static void _push(lua_State *L, const _T& val)
 			{
@@ -2271,7 +2309,7 @@ namespace lua_tinker
 		}
 
 		template<typename T>
-		T convertto()
+		T to_container()
 		{
 			return detail::_readfromtable<T>(m_obj->m_L, m_obj->m_index);
 		}
@@ -2395,6 +2433,223 @@ namespace lua_tinker
 			return detail::pop<RVal>::apply(m_L);
 		}
 	};
+
+	namespace detail
+	{
+		template<typename T>
+		int meta_container_get(lua_State* L)
+		{
+			stack_obj class_obj(L, 1);
+			stack_obj key_obj(L, 2);
+			stack_obj class_meta = class_obj.get_metatable();
+			stack_obj val_obj = class_meta.rawget(key_obj);
+			if(val_obj.is_nil())
+			{
+				//val = list[key] 
+				UserDataWapper* pWapper = user2type<UserDataWapper*>(L, 1);
+				T* pContainer = (T*)(pWapper->m_p);
+				if constexpr(is_associative_container<T>::value)
+				{
+					//k,v
+					auto it = pContainer->find(detail::read<typename T::key_type>(L, 2));
+					if(it == pContainer->end())
+					{
+						lua_pushnil(L);
+					}
+					else
+					{
+						detail::push(L, it->second);
+					}
+				}
+				else if constexpr(!is_associative_container<T>::value && has_key_type<T>::value)
+				{
+					//set
+					auto it = pContainer->find(detail::read<typename T::value_type>(L, 2));
+					if(it == pContainer->end())
+					{
+						lua_pushnil(L);
+					}
+					else
+					{
+						detail::push(L, *it);
+					}
+				}
+				else
+				{
+					//vector
+
+					int key = detail::read<int>(L, 2);
+					key -= 1;
+					if(key > pContainer->size())
+					{
+						lua_pushnil(L);
+					}
+					else
+					{
+						detail::push(L, pContainer->at(key));
+					}
+				}
+			}
+			return 1;
+
+		}
+		template<typename T>
+		int meta_container_set(lua_State* L)
+		{
+			//list[key] = val;
+			UserDataWapper* pWapper = user2type<UserDataWapper*>(L, 1);
+			T* pContainer = (T*)(pWapper->m_p);
+#ifdef LUATINKER_USERDATA_CHECK_CONST
+			if(pWapper->is_const())
+			{
+				lua_pushfstring(L, "container is const");
+				lua_error(L);
+			}
+#endif
+			if constexpr(is_associative_container<T>::value)
+			{
+				//k,v
+				(*pContainer)[detail::read<typename T::key_type>(L, 2)] = detail::read<typename T::mapped_type>(L, 3);
+			}
+			else if constexpr(!is_associative_container<T>::value && has_key_type<T>::value)
+			{
+				//set
+				pContainer->insert(detail::read<typename T::value_type>(L, 2));
+			}
+			else
+			{
+				//vector
+				int key = detail::read<int>(L, 2);
+				key -= 1;
+				if(key > pContainer->size())
+				{
+					lua_pushfstring(L, "set to vector : %d out of range", key);
+					lua_error(L);
+				}
+				else
+				{
+					(*pContainer)[key] = detail::read<typename T::value_type>(L, 3);
+				}
+			}
+
+			return 0;
+		}
+
+		template<typename T>
+		struct lua_iterator
+		{
+			using Iter = typename base_type<T>::iterator;
+
+			lua_iterator(Iter beg, Iter end)
+				:m_Iter(std::move(beg)), m_End(std::move(end))
+			{}
+			bool HasMore() const
+			{
+				return m_Iter != m_End;
+			}
+			void MoveNext()
+			{
+				m_Iter++;
+				m_nMoveDistance++;
+			}
+			static int Next(lua_State* L)
+			{
+				UserDataWapper* pWapper = user2type<UserDataWapper*>(L, 1);
+				lua_iterator<T>* pIter = (lua_iterator<T>*)(pWapper->m_p);
+				if(pIter->HasMore() == false)
+				{
+					lua_pushnil(L);
+					return 1;
+				}
+				if constexpr(is_associative_container<T>::value)
+				{
+					detail::push(L, pIter->m_Iter->first);
+					detail::push(L, pIter->m_Iter->second);
+					pIter->MoveNext();
+					return 2;
+				}
+				else
+				{
+					detail::push(L, pIter->m_nMoveDistance);
+					detail::push(L, *(pIter->m_Iter));
+					pIter->MoveNext();
+					return 2;
+				}
+			}
+			size_t m_nMoveDistance = 1;
+			Iter m_Iter;
+			Iter m_End;
+		};
+
+		template<typename T>
+		int meta_container_make_range(lua_State* L)
+		{
+			UserDataWapper* pWapper = user2type<UserDataWapper*>(L, 1);
+			T* pContainer = (T*)(pWapper->m_p);
+			lua_pushcfunction(L, &lua_iterator<base_type<T>>::Next);
+			detail::push(L, lua_iterator<decltype(*pContainer)>(pContainer->begin(), pContainer->end()));
+			lua_pushnil(L);
+			return 3;
+		}
+
+		template<typename T>
+		int meta_container_get_len(lua_State* L)
+		{
+			UserDataWapper* pWapper = user2type<UserDataWapper*>(L, 1);
+			T* pContainer = (T*)(pWapper->m_p);
+			detail::push(L, pContainer->size());
+			return 1;
+		}
+
+		template<typename T>
+		int meta_container_to_table(lua_State* L)
+		{
+			UserDataWapper* pWapper = user2type<UserDataWapper*>(L, 1);
+			T* pContainer = (T*)(pWapper->m_p);
+
+			_pushtotable(L, *pContainer);
+			return 1;
+		}
+
+		template<typename T>
+		void add_container_mate(lua_State* L)
+		{
+			std::string name = std::string("container_") + std::to_string(get_type_idx<base_type<T>>());
+			detail::class_name<base_type<T>>::name(name.c_str());
+			lua_createtable(L, 0, 5);
+
+			lua_pushstring(L, "__name");
+			lua_pushstring(L, name.c_str());
+			lua_rawset(L, -3);
+
+			lua_pushstring(L, "__index");
+			lua_pushcclosure(L, detail::meta_container_get<base_type<T>>, 0);
+			lua_rawset(L, -3);
+
+			lua_pushstring(L, "__newindex");
+			lua_pushcclosure(L, detail::meta_container_set<base_type<T>>, 0);
+			lua_rawset(L, -3);
+
+			lua_pushstring(L, "__pairs");
+			lua_pushcclosure(L, detail::meta_container_make_range<base_type<T>>, 0);
+			lua_rawset(L, -3);
+
+			lua_pushstring(L, "__len");
+			lua_pushcclosure(L, detail::meta_container_get_len<base_type<T>>, 0);
+			lua_rawset(L, -3);
+
+			lua_pushstring(L, "to_table");
+			lua_pushcclosure(L, detail::meta_container_to_table<base_type<T>>, 0);
+			lua_rawset(L, -3);
+
+
+			lua_pushstring(L, "__gc");
+			lua_pushcclosure(L, detail::destroyer<detail::UserDataWapper>, 0);
+			lua_rawset(L, -3);
+
+			lua_setglobal(L, name.c_str());
+		}
+	}
 
 } // namespace lua_tinker
 
