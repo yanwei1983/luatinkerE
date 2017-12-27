@@ -18,9 +18,9 @@
 #include<memory>
 #include<typeindex>
 #include<functional>
-#include<set>
+//#include<set>
 #include<map>
-#include<vector>
+//#include<vector>
 
 #include"lua.hpp"
 #include"type_traits_ext.h" 
@@ -618,7 +618,7 @@ namespace lua_tinker
 			object2lua(L, std::forward<_T>(val));
 			if(get_class_name<_T>() == std::string(""))
 			{
-				if constexpr(is_container<base_type<_T>>::value)
+				if constexpr(!std::is_same<base_type<_T>, std::string>::value && is_container<base_type<_T>>::value)
 				{
 					//container warp
 					add_container_mate<base_type<_T>>(L);
