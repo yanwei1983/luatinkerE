@@ -228,54 +228,6 @@ void lua_tinker::init(lua_State *L)
 }
 
 
-
-/*---------------------------------------------------------------------------*/
-/* excution                                                                  */
-/*---------------------------------------------------------------------------*/
-void lua_tinker::dofile(lua_State *L, const char *filename)
-{
-	lua_pushcclosure(L, get_error_callback(), 0);
-	int errfunc = lua_gettop(L);
-
-	if (luaL_loadfile(L, filename) == 0)
-	{
-		lua_pcall(L, 0, 1, errfunc);
-	}
-	else
-	{
-		print_error(L, "%s", lua_tostring(L, -1));
-	}
-
-	lua_remove(L, errfunc);
-	lua_pop(L, 1);
-}
-
-/*---------------------------------------------------------------------------*/
-void lua_tinker::dostring(lua_State *L, const char* buff)
-{
-	lua_tinker::dobuffer(L, buff, strlen(buff));
-}
-
-/*---------------------------------------------------------------------------*/
-void lua_tinker::dobuffer(lua_State *L, const char* buff, size_t len)
-{
-	lua_pushcclosure(L, get_error_callback(), 0);
-	int errfunc = lua_gettop(L);
-
-	if (luaL_loadbuffer(L, buff, len, "lua_tinker::dobuffer()") == 0)
-	{
-		lua_pcall(L, 0, 1, errfunc);
-	}
-	else
-	{
-		print_error(L, "%s", lua_tostring(L, -1));
-	}
-
-	lua_remove(L, errfunc);
-	lua_pop(L, 1);
-}
-
-
 #ifdef LUATINKER_USERDATA_CHECK_TYPEINFO
 
 bool find_inherit(size_t idThisType, size_t idTypeBase, lua_tinker::detail::InheritMap& refMap)
@@ -801,7 +753,7 @@ unsigned char lua_tinker::detail::_get_signature_bit(const unsigned long long& s
 /*---------------------------------------------------------------------------*/
 /* table object on stack                                                     */
 /*---------------------------------------------------------------------------*/
-lua_tinker::table_obj::table_obj(lua_State* L, int index)
+lua_tinker::detail::table_obj::table_obj(lua_State* L, int index)
 	:m_L(L)
 	, m_index(index)
 	, m_ref(0)
@@ -817,7 +769,7 @@ lua_tinker::table_obj::table_obj(lua_State* L, int index)
 	}
 }
 
-lua_tinker::table_obj::~table_obj()
+lua_tinker::detail::table_obj::~table_obj()
 {
 	if (validate())
 	{
@@ -825,18 +777,18 @@ lua_tinker::table_obj::~table_obj()
 	}
 }
 
-void lua_tinker::table_obj::inc_ref()
+void lua_tinker::detail::table_obj::inc_ref()
 {
 	++m_ref;
 }
 
-void lua_tinker::table_obj::dec_ref()
+void lua_tinker::detail::table_obj::dec_ref()
 {
 	if (--m_ref == 0)
 		delete this;
 }
 
-bool lua_tinker::table_obj::validate()
+bool lua_tinker::detail::table_obj::validate()
 {
 	if (m_pointer != NULL)
 	{
@@ -874,7 +826,7 @@ lua_tinker::table_onstack::table_onstack(lua_State* L)
 {
 	lua_newtable(L);
 
-	m_obj = new table_obj(L, lua_gettop(L));
+	m_obj = new detail::table_obj(L, lua_gettop(L));
 
 	m_obj->inc_ref();
 }
@@ -890,7 +842,7 @@ lua_tinker::table_onstack::table_onstack(lua_State* L, const char* name)
 		lua_getglobal(L, name);
 	}
 
-	m_obj = new table_obj(L, lua_gettop(L));
+	m_obj = new detail::table_obj(L, lua_gettop(L));
 
 	m_obj->inc_ref();
 }
@@ -902,7 +854,7 @@ lua_tinker::table_onstack::table_onstack(lua_State* L, int index)
 		index = lua_gettop(L) + index + 1;
 	}
 
-	m_obj = new table_obj(L, index);
+	m_obj = new detail::table_obj(L, index);
 
 	m_obj->inc_ref();
 }
