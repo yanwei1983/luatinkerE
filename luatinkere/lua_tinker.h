@@ -2348,7 +2348,7 @@ namespace lua_tinker
 			{
 				if (validate())
 				{
-					lua_pushstring(m_L, key);
+					lua_pushinteger(m_L, key);
 					detail::push(m_L, std::forward<T>(object));
 					lua_settable(m_L, m_index);
 				}
