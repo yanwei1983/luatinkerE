@@ -123,7 +123,7 @@ int main()
 	extern void test_sharedptr(lua_State* L);
 	extern void test_stl_container(lua_State* L);
 	extern void test_string(lua_State* L);
-
+	extern void test_return_from_loadbuff(lua_State* L);
 
 	test_lua_intoptest(L);
 
@@ -146,6 +146,7 @@ int main()
 	test_sharedptr(L);
 	test_stl_container(L);
 	test_string(L);
+	test_return_from_loadbuff(L);
 
 
 	int nError = 0;
