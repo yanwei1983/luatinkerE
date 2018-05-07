@@ -576,7 +576,38 @@ namespace lua_tinker
 				return CLT_INT;
 		}
 		
+		template<typename _T>
+		static typename std::enable_if<!std::is_same<void*, base_type<_T> >::value, void>::type UserDataCheckType(UserDataWapper* pWapper,lua_State *L, int index)
+		{
+		#ifdef LUATINKER_USERDATA_CHECK_TYPEINFO
+				if (pWapper->m_type_idx != get_type_idx<base_type<_T>>())
+				{
+					//maybe derived to base
+					if (IsInherit(L, pWapper->m_type_idx, get_type_idx<base_type<_T>>()) == false)
+					{
+						lua_pushfstring(L, "can't convert argument %d to class %s", index, get_class_name<_T>());
+						lua_error(L);
+					}
+				}
+		#endif
+		#ifdef LUATINKER_USERDATA_CHECK_CONST
+				if( (std::is_reference<_T>::value || std::is_pointer<_T>::value) &&
+					pWapper->is_const() == true && std::is_const<typename std::remove_reference<typename std::remove_pointer<_T>::type>::type>::value == false)
+				{
+					lua_pushfstring(L, "can't convert argument %d from const class %s", index, get_class_name<_T>());
+					lua_error(L);			
+				}
+		#endif
+			
+		}
+		
+		template<typename _T>
+		static typename std::enable_if<std::is_same<void*, base_type<_T> >::value, void>::type UserDataCheckType(UserDataWapper* pWapper,lua_State *L, int index)
+		{
+			return;
+		}
 
+		
 		template<typename _T>
 		static _T _lua2type(lua_State *L, int index)
 		{
@@ -584,30 +615,12 @@ namespace lua_tinker
 			{
 				lua_pushfstring(L, "can't convert argument %d to class %s", index, get_class_name<_T>());
 				lua_error(L);
+				
 			}
 
 
 			UserDataWapper* pWapper = user2type<UserDataWapper*>(L, index);
-
-#ifdef LUATINKER_USERDATA_CHECK_TYPEINFO
-			if (pWapper->m_type_idx != get_type_idx<base_type<_T>>())
-			{
-				//maybe derived to base
-				if (IsInherit(L, pWapper->m_type_idx, get_type_idx<base_type<_T>>()) == false)
-				{
-					lua_pushfstring(L, "can't convert argument %d to class %s", index, get_class_name<_T>());
-					lua_error(L);
-				}
-			}
-#endif
-#ifdef LUATINKER_USERDATA_CHECK_CONST
-			if( (std::is_reference<_T>::value || std::is_pointer<_T>::value) &&
-				pWapper->is_const() == true && std::is_const<typename std::remove_reference<typename std::remove_pointer<_T>::type>::type>::value == false)
-			{
-				lua_pushfstring(L, "can't convert argument %d from const class %s", index, get_class_name<_T>());
-				lua_error(L);
-			}
-#endif
+			UserDataCheckType<_T>(pWapper,L,index);
 			return void2type<_T>(pWapper->m_p);
 
 		}
