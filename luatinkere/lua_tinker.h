@@ -587,7 +587,10 @@ namespace lua_tinker
 
 
 			UserDataWapper* pWapper = user2type<UserDataWapper*>(L, index);
-
+			if constexpr(!std::is_same<base_type<_T>, void*>::value)
+			{
+				return void2type<_T>(pWapper->m_p);
+			}
 #ifdef LUATINKER_USERDATA_CHECK_TYPEINFO
 			if (pWapper->m_type_idx != get_type_idx<base_type<_T>>())
 			{
