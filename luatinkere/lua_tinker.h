@@ -2389,6 +2389,24 @@ namespace lua_tinker
 				return detail::pop<T>::apply(m_L);
 			}
 
+			size_t len() const
+			{
+				lua_len(m_L, m_index);
+				stack_delay_pop _delay(m_L, 1);
+				return lua_tointeger(m_L, -1);
+			}
+
+			stack_obj get_stack_obj()
+			{
+				return stack_obj(m_L, m_index);
+			}
+
+			void release_owner()
+			{
+				m_pointer = nullptr;
+				m_index = 0;
+			}
+
 			lua_State*      m_L;
 			int             m_index;
 			const void*     m_pointer;
@@ -2430,10 +2448,33 @@ namespace lua_tinker
 			return m_obj->get<T>(key);
 		}
 
+		size_t len() const
+		{
+			return m_obj->len();
+		}
+
 		template<typename T>
 		T to_container()
 		{
 			return detail::_readfromtable<T>(m_obj->m_L, m_obj->m_index);
+		}
+
+		void for_each(std::function<bool(int key_idx, int value_idx)> func)
+		{
+			
+			detail::stack_obj table = m_obj->get_stack_obj();
+			detail::table_iterator it(table);
+			while(it.hasNext())
+			{
+				if( func(it.key_idx(), it.value_idx()) == false)
+					return;
+				it.moveNext();
+			}
+		}
+
+		void release_owner()
+		{
+			m_obj->release_owner();
 		}
 
 		detail::table_obj*      m_obj = nullptr;
