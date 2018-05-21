@@ -1708,7 +1708,6 @@ namespace lua_tinker
 	template<typename RVal, typename ...Args>
 	RVal call(lua_State* L, const char* name, Args&&... arg)
 	{
-		detail::stack_scope_exit scope_exit(L);
 		lua_pushcclosure(L, get_error_callback(), 0);
 		int errfunc = lua_gettop(L);
 		lua_getglobal(L, name);
@@ -1747,7 +1746,7 @@ namespace lua_tinker
 			print_error(L, "lua_tinker::call() attempt to call global `%s' (not a function)", name);
 		}
 		
-		//lua_remove(L, errfunc);
+		lua_remove(L, errfunc);
 		return detail::pop<RVal>::apply(L);
 	}
 	
