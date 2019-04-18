@@ -71,6 +71,7 @@ void lua_tinker::register_lua_close_callback(lua_State* L, Lua_Close_CallBack_Fu
 	detail::stack_scope_exit scope_exit(L);
 	if (lua_getglobal(L, s_lua_ext_value_name) != LUA_TUSERDATA)
 	{
+		lua_pop(L,1); //pop getglobal
 		print_error(L, "can't find lua_ext_value");
 		return;
 	}
@@ -248,6 +249,7 @@ bool lua_tinker::detail::IsInherit(lua_State* L, size_t idTypeDerived, size_t id
 	lua_stack_scope_exit scope_exit(L);
 	if (lua_getglobal(L, s_lua_ext_value_name) != LUA_TUSERDATA)
 	{
+		lua_pop(L,1); //pop getglobal
 		print_error(L, "can't find lua_ext_value");
 		return false;
 	}
@@ -268,6 +270,7 @@ void lua_tinker::detail::_addInheritMap(lua_State* L, size_t idTypeDerived, size
 	lua_stack_scope_exit scope_exit(L);
 	if (lua_getglobal(L, s_lua_ext_value_name) != LUA_TUSERDATA)
 	{
+		lua_pop(L,1); //pop getglobal
 		print_error(L, "can't find lua_ext_value");
 		return;
 	}
@@ -337,8 +340,8 @@ void lua_tinker::print_error(lua_State *L, const char* fmt, ...)
 	}
 	else
 	{
+		lua_pop(L,1); //pop getglobal
 		printf("%s\n", text);
-		lua_pop(L, 1);
 	}
 }
 
