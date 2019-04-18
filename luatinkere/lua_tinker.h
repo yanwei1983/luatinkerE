@@ -1743,6 +1743,7 @@ namespace lua_tinker
 		}
 		else
 		{
+			lua_pop(L,1); //pop getglobal
 			print_error(L, "lua_tinker::call() attempt to call global `%s' (not a function)", name);
 		}
 		
