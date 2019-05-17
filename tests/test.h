@@ -271,6 +271,9 @@ export_lua void visot_ff_const_ref(const ff& refFF);
 export_lua bool visot_ff_shared(std::shared_ptr<ff> pFF);
 export_lua bool visot_ff_weak(std::weak_ptr<ff> pWeakFF);
 
+export_lua std::tuple<int, int> push_tuple();
+export_lua void print_tuple(std::tuple<int, int> tuple);
+
 
 class ff_nodef
 {
