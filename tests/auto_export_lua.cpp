@@ -65,6 +65,9 @@ void export_to_lua_auto(lua_State* L)
 	lua_tinker::def(L, "visot_ff_shared", &visot_ff_shared);
 	lua_tinker::def(L, "visot_ff_weak", &visot_ff_weak);
 	lua_tinker::def(L, "visot_ffbase", &visot_ffbase);
+	lua_tinker::def(L, "push_tuple", &push_tuple);
+	lua_tinker::def(L, "test_tuple", &test_tuple);
+	
 	lua_tinker::set(L, "g_c_double", g_c_double);
 	lua_tinker::set(L, "g_c_int", g_c_int);
 	lua_tinker::class_add<IntOpTest>(L, "IntOpTest", true);
