@@ -913,22 +913,21 @@ namespace lua_tinker
 			using TupleType = std::tuple<Args...>;
 			static constexpr int cover_to_lua_type() { return CLT_TABLE; }
 
-			template<typename T, std::size_t... I>
-			static T _read_tuple_element_fromtable_helper(lua_State *L, table_iterator& it)
+			template<typename T, std::size_t I>
+			static T _read_tuple_element_fromtable_helper(lua_State *L, int table_stack_pos)
 			{
 				T t;
-				if (it.hasNext())
-				{
-					t = read<T>(L, it.value_idx());
-					it.moveNext();
-				}
+				push(L, I);
+				lua_gettable(L, table_stack_pos);
+				t = read<T>(L, -1);
+				
 				return t;
 			}
 
 			template<typename Tuple, std::size_t... index>
-			static Tuple _read_tuple_element_fromtable(lua_State *L, table_iterator& it, std::index_sequence<index...>)
+			static Tuple _read_tuple_fromtable(lua_State *L, int table_stack_pos, std::index_sequence<index...>)
 			{
-				return std::make_tuple(_read_tuple_element_fromtable_helper< typename std::tuple_element<index,Tuple>::type >(L, it)...);
+				return std::make_tuple(_read_tuple_element_fromtable_helper<typename std::tuple_element<index,Tuple>::type, index+1>(L, table_stack_pos)...);
 			}
 
 			template<typename Tuple>
@@ -941,8 +940,7 @@ namespace lua_tinker
 					lua_error(L);
 				}
 
-				table_iterator it(table_obj);
-				return _read_tuple_element_fromtable<Tuple>(L, it, std::make_index_sequence<std::tuple_size<Tuple>::value >{});
+				return _read_tuple_fromtable<Tuple>(L, table_obj._stack_pos, std::make_index_sequence<std::tuple_size<Tuple>::value >{});
 			}
 
 			static TupleType _read(lua_State *L, int index)
@@ -963,7 +961,7 @@ namespace lua_tinker
 			template<typename Tuple, std::size_t first, std::size_t... is>
 			static void _push_tuple_totable_helper(lua_State *L, int table_stack_pos, Tuple&& tuple, std::index_sequence<first,is...>)
 			{
-				push(L, first);
+				push(L, first+1);	//lua table index from 1~x
 				push(L, std::get<first>(std::forward<Tuple>(tuple)));
 				lua_settable(L, table_stack_pos);
 				_push_tuple_totable_helper(L, table_stack_pos, std::forward<Tuple>(tuple),  std::index_sequence<is...>{});
