@@ -895,7 +895,87 @@ namespace lua_tinker
 			}
 
 		};
+		
+		template<typename ...Args>
+		struct _stack_help< std::tuple<Args...> >
+		{
+			using TupleType = std::tuple<Args...>;
+			static constexpr int cover_to_lua_type() { return CLT_TABLE; }
 
+			template<typename T, std::size_t I>
+			static T _read_tuple_element_fromtable_helper(lua_State *L, int table_stack_pos)
+			{
+				T t;
+				push(L, I);
+				lua_gettable(L, table_stack_pos);
+				t = read<T>(L, -1);
+				
+				return t;
+			}
+
+			template<typename Tuple, std::size_t... index>
+			static Tuple _read_tuple_fromtable(lua_State *L, int table_stack_pos, std::index_sequence<index...>)
+			{
+				return std::make_tuple(_read_tuple_element_fromtable_helper<typename std::tuple_element<index,Tuple>::type, index+1>(L, table_stack_pos)...);
+			}
+
+			template<typename Tuple>
+			static Tuple _read_tuple_fromtable(lua_State *L, int index)
+			{
+				stack_obj table_obj(L, index);
+				if (table_obj.is_table() == false)
+				{
+					lua_pushfstring(L, "convert set from argument %d must be a table", index);
+					lua_error(L);
+				}
+
+				return _read_tuple_fromtable<Tuple>(L, table_obj._stack_pos, std::make_index_sequence<std::tuple_size<Tuple>::value >{});
+			}
+
+			static TupleType _read(lua_State *L, int index)
+			{
+				if (lua_istable(L, index))
+					return _read_tuple_fromtable<TupleType>(L, index);
+				else
+				{
+					return _lua2type<TupleType>(L, index);
+				}
+			}
+
+			template<typename Tuple>
+			static void _push_tuple_totable_helper(lua_State *L, int table_stack_pos, Tuple&& tuple, std::index_sequence<>)
+			{
+			}
+
+			template<typename Tuple, std::size_t first, std::size_t... is>
+			static void _push_tuple_totable_helper(lua_State *L, int table_stack_pos, Tuple&& tuple, std::index_sequence<first,is...>)
+			{
+				push(L, first+1);	//lua table index from 1~x
+				push(L, std::get<first>(std::forward<Tuple>(tuple)));
+				lua_settable(L, table_stack_pos);
+				_push_tuple_totable_helper(L, table_stack_pos, std::forward<Tuple>(tuple),  std::index_sequence<is...>{});
+			}
+		
+			static void _push(lua_State *L, TupleType&& tuple)
+			{
+				stack_obj table_obj = stack_obj::new_table(L, std::tuple_size<TupleType>(), 0);
+				constexpr const size_t tuple_size = std::tuple_size<TupleType>::value;
+				_push_tuple_totable_helper(L, table_obj._stack_pos, std::forward<TupleType>(tuple), std::make_index_sequence<tuple_size >());
+			}
+
+			
+			static void _push(lua_State *L, const TupleType& val)
+			{
+				return _type2lua(L, val);
+			}
+			
+			static void _push(lua_State *L, TupleType& val)
+			{
+				return _type2lua(L, val);
+			}
+
+		};
+		
 		template<typename RVal, typename ...Args>
 		struct _stack_help< std::function<RVal(Args...)> >
 		{
@@ -2393,7 +2473,7 @@ namespace lua_tinker
 			{
 				lua_len(m_L, m_index);
 				stack_delay_pop _delay(m_L, 1);
-				return lua_tointeger(m_L, -1);
+				return (size_t)lua_tointeger(m_L, -1);
 			}
 
 			stack_obj get_stack_obj()
