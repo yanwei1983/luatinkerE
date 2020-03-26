@@ -1,8 +1,8 @@
 #include "lua_tinker.h"
+#include "test.h"
 
-extern std::map<std::string, std::function<bool()> > g_test_func_set;
 
-void test_inherit(lua_State* L)
+LUA_TEST(inherit)
 {
 	g_test_func_set["test_lua_inherit_1"] = [L]()->bool
 	{

@@ -1,6 +1,6 @@
 #include "lua_tinker.h"
 #include"test.h"
-extern std::map<std::string, std::function<bool()> > g_test_func_set;
+
 
 
 
@@ -51,8 +51,7 @@ std::string vector_join_const(const std::vector<int>& vec, const std::string& se
 	return result;
 }
 
-
-void test_stl_container(lua_State* L)
+LUA_TEST(stl_container)
 {
 
 

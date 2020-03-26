@@ -1,14 +1,14 @@
 #include "lua_tinker.h"
+#include "test.h"
 
-extern std::map<std::string, std::function<bool()> > g_test_func_set;
+
 
 int test_default_params(int a, int b, int c)
 {
 	return a + b - c;
 }
 
-
-void test_default_params(lua_State* L)
+LUA_TEST(default_param)
 {
 	g_test_func_set["lua_test_default_params1"] = [L]()->bool
 	{

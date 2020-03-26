@@ -1,7 +1,7 @@
 #include "lua_tinker.h"
 #include"test.h"
 
-extern std::map<std::string, std::function<bool()> > g_test_func_set;
+
 
 
 
@@ -15,8 +15,7 @@ long long Number2Interger(double v)
 	return (long long)(v);
 }
 
-
-void test_int64(lua_State* L)
+LUA_TEST(int64)
 {
 
 

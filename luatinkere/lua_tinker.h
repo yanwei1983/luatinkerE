@@ -9,22 +9,23 @@
 #if !defined(_LUA_TINKER_H_)
 #define _LUA_TINKER_H_
 
+#include <functional>
+#include <memory>
 #include <new>
+#include <string>
+#include <type_traits>
+#include <typeindex>
+#include <typeinfo>
+
 #include <stdint.h>
 #include <stdio.h>
-#include <string>
-#include <typeinfo>
-#include <type_traits>
-#include<memory>
-#include<typeindex>
-#include<functional>
 //#include<set>
-#include<map>
+#include <map>
 //#include<vector>
 
-#include"lua.hpp"
-#include"type_traits_ext.h" 
-#include"lua_tinker_stackobj.h" 
+#include "lua.hpp"
+#include "lua_tinker_stackobj.h"
+#include "type_traits_ext.h"
 
 #ifdef  _DEBUG
 #define LUATINKER_USERDATA_CHECK_TYPEINFO
@@ -450,7 +451,7 @@ namespace lua_tinker
 		struct pop
 		{
 			static constexpr const int nresult = 1;
-			static T apply(lua_State *L) { stack_delay_pop  _dealy(L, nresult); return read_nocheck<T>(L, -1);; }
+			static T apply(lua_State *L) { stack_delay_pop  _dealy(L, nresult); return read_nocheck<T>(L, -1); }
 		};
 
 		template<typename ...TS>
@@ -2802,10 +2803,14 @@ namespace lua_tinker
 				//set
 				pContainer->emplace(detail::read<typename T::value_type>(L, 2));
 			}
+			else if constexpr(has_allocator_type<T>::value)
+			{
+				//vector or string
+				pContainer->emplace_back(detail::read<typename T::value_type>(L, 2));
+			}
 			else
 			{
-				//vector
-				pContainer->emplace_back(detail::read<typename T::value_type>(L, 2));
+				//maybe std::array
 			}
 
 			return 0;
@@ -2834,10 +2839,14 @@ namespace lua_tinker
 				//set
 				pContainer->erase(detail::read<typename T::value_type>(L, 2));
 			}
+			else if constexpr(has_allocator_type<T>::value)
+			{
+				//vector or string
+				pContainer->erase(std::find(pContainer->begin(), pContainer->end(), detail::read<typename T::value_type>(L, 2)));
+			}
 			else
 			{
-				//vector
-				pContainer->erase(std::find(pContainer->begin(), pContainer->end(), detail::read<typename T::value_type>(L, 2)));
+				//maybe std::array
 			}
 
 			return 0;

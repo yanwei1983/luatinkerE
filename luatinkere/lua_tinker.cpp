@@ -6,11 +6,12 @@
 // 
 // please check Licence.txt file for licence and legal issues. 
 
-#include <iostream>
 #include "lua_tinker.h"
-#include<string>
-#include<cstring>
-#include<algorithm>
+
+#include <algorithm>
+#include <cstring>
+#include <iostream>
+#include <string>
 #if defined(_MSC_VER)
 #define I64_FMT "I64"
 #elif defined(__APPLE__) 

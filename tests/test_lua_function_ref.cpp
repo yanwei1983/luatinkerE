@@ -1,10 +1,9 @@
 #include "lua_tinker.h"
 #include"test.h"
-extern std::map<std::string, std::function<bool()> > g_test_func_set;
+
 
 lua_tinker::lua_function_ref<int> g_lua_func_ref;
-
-void test_luafunction_ref(lua_State* L)
+LUA_TEST(luafunction_ref)
 {
 	g_test_func_set["test_lua_luafunction_ref_1"] = [L]()->bool
 	{

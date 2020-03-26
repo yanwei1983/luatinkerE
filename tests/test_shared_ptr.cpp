@@ -1,6 +1,6 @@
 #include "lua_tinker.h"
 #include"test.h"
-extern std::map<std::string, std::function<bool()> > g_test_func_set;
+
 
 
 
@@ -153,8 +153,7 @@ int visit_shared_int_constref(const std::shared_ptr<int>& shared_int)
 	return 0;
 }
 
-
-void test_sharedptr(lua_State* L)
+LUA_TEST(sharedptr)
 {
 	g_test_func_set["test_lua_shared_1"] = [L]()->bool
 	{
