@@ -1725,12 +1725,12 @@ namespace lua_tinker
 				if (lua_pcall(L, 0, detail::pop<RVal>::nresult, errfunc) != LUA_OK)
 				{
 					//stack have a nil string from on_error
-					if(detail::pop<RVal>::nresult == 0)
+                	if constexpr(detail::pop<RVal>::nresult == 0)
 					{
 						//not need it, pop
 						lua_pop(L,1);
 					}
-					else if(detail::pop<RVal>::nresult > 1)
+                	else if constexpr(detail::pop<RVal>::nresult > 1)
 					{
 						//push nil to pop result
 						for(int i = 0; i < detail::pop<RVal>::nresult-1; i++)
@@ -1773,12 +1773,12 @@ namespace lua_tinker
 				if (lua_pcall(L, 0, detail::pop<RVal>::nresult, errfunc) != LUA_OK)
 				{
 					//stack have a nil string from on_error
-					if(detail::pop<RVal>::nresult == 0)
+                	if constexpr(detail::pop<RVal>::nresult == 0)
 					{
 						//not need it, pop
 						lua_pop(L,1);
 					}
-					else if(detail::pop<RVal>::nresult > 1)
+                	else if constexpr(detail::pop<RVal>::nresult > 1)
 					{
 						//push nil to pop result
 						for(int i = 0; i < detail::pop<RVal>::nresult-1; i++)
@@ -1819,12 +1819,12 @@ namespace lua_tinker
 			if (lua_pcall(L, sizeof...(Args), detail::pop<RVal>::nresult, errfunc) != LUA_OK)
 			{
 				//stack have a nil string from on_error
-				if(detail::pop<RVal>::nresult == 0)
+				if constexpr(detail::pop<RVal>::nresult == 0)
 				{
 					//not need it, pop
 					lua_pop(L,1);
 				}
-				else if(detail::pop<RVal>::nresult > 1)
+				else if constexpr(detail::pop<RVal>::nresult > 1)
 				{
 					//push nil to pop result
 					for(int i = 0; i < detail::pop<RVal>::nresult-1; i++)
