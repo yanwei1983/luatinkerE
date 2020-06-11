@@ -23,19 +23,11 @@
 
 namespace lua_tinker
 {
-	const char* S_SHARED_PTR_NAME = "__shared_ptr";
-	const std::string S_EMPTY = "";
-
-
-	error_call_back_fn g_error_call_back;
-	error_call_back_fn get_error_callback()
-	{
-		return g_error_call_back;
-	}
-	void set_error_callback(error_call_back_fn fn)
-	{
-		g_error_call_back = fn;
-	}
+    void set_error_callback(lua_State* L, error_call_back_fn fn) 
+    {
+        lua_pushcclosure(L, fn, 0);
+        lua_setglobal(L, ERROR_CALLBACK_NAME);
+    }
 
 }
 
@@ -66,7 +58,7 @@ struct lua_ext_value
 		}
 	}
 };
-static const char* s_lua_ext_value_name = "___lua_ext_value";
+constexpr const char* s_lua_ext_value_name = "___lua_ext_value";
 
 void lua_tinker::register_lua_close_callback(lua_State* L, Lua_Close_CallBack_Func&& callback_func)
 {
@@ -225,8 +217,8 @@ void lua_tinker::init(lua_State *L)
 	detail::add_gc_mate(L);
 	init_close_callback(L);
 
-	lua_register(L, "lua_create_class", create_class);
-	set_error_callback(&on_error);
+    lua_register(L, "lua_create_class", create_class);
+    set_error_callback(L, &on_error);
 }
 
 
@@ -449,7 +441,10 @@ void lua_tinker::detail::_stack_help<bool>::_push(lua_State *L, bool ret)
 
 void lua_tinker::detail::_stack_help<lua_tinker::lua_value*>::_push(lua_State *L, lua_value* ret)
 {
-	if (ret) ret->to_lua(L); else lua_pushnil(L);
+    if(ret)
+        ret->to_lua(L);
+    else
+        lua_pushnil(L);
 }
 
 
@@ -477,6 +472,31 @@ void lua_tinker::detail::_stack_help<std::string>::_push(lua_State *L, const std
 {
 	lua_pushlstring(L, ret.data(), ret.size());
 }
+
+std::string_view lua_tinker::detail::_stack_help<std::string_view>::_read(lua_State* L, int32_t index)
+{
+    const char* strLua = lua_tostring(L, index);
+    if(strLua)
+        return std::string_view{strLua, strlen(strLua)};
+    else
+        return std::string_view();
+}
+
+// void lua_tinker::detail::_stack_help<std::string_view>::_push(lua_State* L, const std::string_view& ret)
+// {
+//     lua_pushlstring(L, ret.data(), ret.size());
+// }
+
+// void lua_tinker::detail::_stack_help<std::string_view>::_push(lua_State* L, std::string_view&& ret)
+// {
+//     lua_pushlstring(L, ret.data(), ret.size());
+// }
+
+void lua_tinker::detail::_stack_help<std::string_view>::_push(lua_State* L, std::string_view ret)
+{
+    lua_pushlstring(L, ret.data(), ret.size());
+}
+
 
 
 /*---------------------------------------------------------------------------*/

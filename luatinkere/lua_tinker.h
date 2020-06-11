@@ -13,6 +13,7 @@
 #include <memory>
 #include <new>
 #include <string>
+#include <string_view>
 #include <type_traits>
 #include <typeindex>
 #include <typeinfo>
@@ -51,19 +52,19 @@
 
 namespace lua_tinker
 {
-	extern const char* S_SHARED_PTR_NAME;
-	extern const std::string S_EMPTY;
-	// init LuaTinker
-	void    init(lua_State *L);
-	
-	// close callback func
-	typedef std::function<void(lua_State*)> Lua_Close_CallBack_Func;
-	void	register_lua_close_callback(lua_State* L, Lua_Close_CallBack_Func&& callback_func);
+    constexpr const char* S_SHARED_PTR_NAME = "__shared_ptr";
+    constexpr const char* ERROR_CALLBACK_NAME = "__on_error";
+    constexpr const char* S_EMPTY = "";
+    // init LuaTinker
+    void init(lua_State* L);
+
+    // close callback func
+    typedef std::function<void(lua_State*)> Lua_Close_CallBack_Func;
+    void register_lua_close_callback(lua_State* L, Lua_Close_CallBack_Func&& callback_func);
 
 	//error callback
 	typedef int(*error_call_back_fn)(lua_State *L);
-	error_call_back_fn get_error_callback();
-	void set_error_callback(error_call_back_fn fn);
+	void set_error_callback(lua_State* L, error_call_back_fn fn);
 
 	// string-buffer excution
 	template<typename RVal = void>
@@ -125,12 +126,18 @@ namespace lua_tinker
 	// class init
 	template<typename T>
 	void class_add(lua_State* L, const char* name, bool bInitShared = false);
+    // reg shared_ptr<T>
+    template<typename T>
+    void class_add_shared(lua_State* L, const char* name);
 	// Tinker Class Constructor
 	template<typename T, typename F, typename ... DefaultArgs>
 	void class_con(lua_State* L, F&& func, DefaultArgs&& ... default_args);
 	// Tinker Class Inheritance
 	template<typename T, typename P>
 	void class_inh(lua_State* L);
+    // Tinker Class alias
+    template<typename T, typename Alias>
+    void class_alias(lua_State* L, const char* name);
 
 	// Tinker Class Functions
 	template<typename T, typename Func, typename ... DefaultArgs>
@@ -758,7 +765,20 @@ namespace lua_tinker
 		{
 		};
 
+        template<>
+        struct _stack_help<std::string_view>
+        {
+            static constexpr int32_t cover_to_lua_type() { return CLT_STRING; }
 
+            static std::string_view _read(lua_State* L, int32_t index);
+            //static void             _push(lua_State* L, const std::string_view& ret);
+            //static void             _push(lua_State* L, std::string_view&& ret);
+            static void             _push(lua_State* L, std::string_view ret);
+        };
+        template<>
+        struct _stack_help<const std::string_view&> : public _stack_help<std::string_view>
+        {
+        };
 		template<>
 		struct _stack_help<table_onstack>
 		{
@@ -1697,7 +1717,7 @@ namespace lua_tinker
 	template<typename RVal>
 	RVal dofile(lua_State *L, const char *filename)
 	{
-			lua_pushcclosure(L, get_error_callback(), 0);
+        lua_getglobal(L, ERROR_CALLBACK_NAME);
 			int errfunc = lua_gettop(L);
 
 			if (luaL_loadfile(L, filename) == 0)
@@ -1745,7 +1765,7 @@ namespace lua_tinker
 	template<typename RVal>
 	RVal dobuffer(lua_State *L, const char* buff, size_t sz)
 	{
-			lua_pushcclosure(L, get_error_callback(), 0);
+        lua_getglobal(L, ERROR_CALLBACK_NAME);
 			int errfunc = lua_gettop(L);
 
 			if (luaL_loadbuffer(L, buff, sz, "lua_tinker::dobuffer()") == 0)
@@ -1789,7 +1809,7 @@ namespace lua_tinker
 	template<typename RVal, typename ...Args>
 	RVal call(lua_State* L, const char* name, Args&&... arg)
 	{
-		lua_pushcclosure(L, get_error_callback(), 0);
+        lua_getglobal(L, ERROR_CALLBACK_NAME);
 		int errfunc = lua_gettop(L);
 		lua_getglobal(L, name);
 		if (lua_isfunction(L, -1))
@@ -2010,12 +2030,34 @@ namespace lua_tinker
 		return pop<T>::apply(L);
 	}
 
-	// class init
-	template<typename T>
-	void class_add(lua_State* L, const char* name, bool bInitShared)
-	{
-		detail::class_name<T>::name(name);
-		lua_createtable(L, 0, 4);
+    // class alias
+    template<typename T, typename Alias>
+    void class_alias(lua_State* L, const char* name)
+    {
+        using namespace detail;
+        stack_scope_exit scope_exit(L);
+        if(push_meta(L, get_class_name<T>()) != LUA_TTABLE)
+        {
+            return;
+        }
+
+        class_name<Alias>::name(name);
+        lua_setglobal(L, name);
+
+        if(push_meta(L, get_class_name<std::shared_ptr<T>>()) == LUA_TTABLE)
+        {
+            std::string strSharedName = (std::string(name) + S_SHARED_PTR_NAME);
+            class_name<std::shared_ptr<Alias>>::name(strSharedName.c_str());
+            lua_setglobal(L, strSharedName.c_str());
+        }
+    }
+
+    // class init
+    template<typename T>
+    void class_add(lua_State* L, const char* name, bool bInitShared)
+    {
+        detail::class_name<T>::name(name);
+        lua_createtable(L, 0, 4);
 
 		lua_pushstring(L, "__name");
 		lua_pushstring(L, name);
@@ -2037,14 +2079,21 @@ namespace lua_tinker
 
 		if (bInitShared)
 		{
-			std::string strSharedName = (std::string(name) + S_SHARED_PTR_NAME);
-			detail::class_name< std::shared_ptr<T> >::name(strSharedName.c_str());
+            class_add_shared<T>(L, name);
+        }
+    }
+
+    // class init
+    template<typename T>
+    void class_add_shared(lua_State* L, const char* name)
+    {
+        std::string strSharedName = (std::string(name) + S_SHARED_PTR_NAME);
+        detail::class_name<std::shared_ptr<T>>::name(strSharedName.c_str());
 			int nReserveSize = 3;
 
 #ifdef _ALLOW_SHAREDPTR_INVOKE
-			nReserveSize = 6;
+        nReserveSize = 6;
 #endif
-
 
 			lua_createtable(L, 0, nReserveSize);
 			lua_pushstring(L, "__name");
