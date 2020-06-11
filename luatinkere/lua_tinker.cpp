@@ -414,7 +414,6 @@ void lua_tinker::scope_inner(lua_State* L, const char* scope_global_name, const 
     }
 }
 
-// namespace
 void lua_tinker::namespace_add(lua_State* L, const char* namespace_name)
 {
     lua_createtable(L, 0, 3);
@@ -434,7 +433,9 @@ void lua_tinker::namespace_add(lua_State* L, const char* namespace_name)
     lua_setglobal(L, namespace_name);
 }
 
+
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 
 char* lua_tinker::detail::_stack_help<char*>::_read(lua_State* L, int index)
 {

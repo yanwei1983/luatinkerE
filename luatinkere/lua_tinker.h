@@ -1323,7 +1323,6 @@ namespace lua_tinker
             if(pWapper == nullptr)
             {
                 lua_pushfstring(L,
-                                "call member func must need a class_ptr, plz use %s:func instead %s.func",
                                 get_class_name<T>(),
                                 get_class_name<T>());
                 lua_error(L);
