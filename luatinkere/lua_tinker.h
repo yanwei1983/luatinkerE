@@ -108,9 +108,9 @@ namespace lua_tinker
 	RVal call(lua_State* L, const char* name, Args&&... arg);
 
 	//getmetatable(scope_global_name)[name] = getmetatable(global_name)
-	static void scope_inner(lua_State* L, const char* scope_global_name, const char* name, const char* global_name);
+	void scope_inner(lua_State* L, const char* scope_global_name, const char* name, const char* global_name);
 	//namespace
-	static void namespace_add(lua_State* L, const char* namespace_name);
+	void namespace_add(lua_State* L, const char* namespace_name);
 	template<typename T>
 	void namespace_set(lua_State* L, const char* namespace_name, const char* name, T&& object);
 	template<typename T>
@@ -1267,6 +1267,13 @@ namespace lua_tinker
 		{
 			//index 1 must be userdata
 			UserDataWapper* pWapper = user2type<UserDataWapper*>(L, 1);
+			if(pWapper == nullptr)
+			{
+				lua_pushfstring(L, "call member func must need a class_ptr, plz use %s:func instead %s.func", get_class_name<T>(), get_class_name<T>());
+				lua_error(L);
+				return nullptr;
+			}
+
 #ifdef _ALLOW_SHAREDPTR_INVOKE
 			if (pWapper->isSharedPtr())
 			{
@@ -1931,39 +1938,6 @@ namespace lua_tinker
 		}
 	};
 
-
-	//getmetatable(scope_global_name)[name] = getmetatable(global_name)
-	static void scope_inner(lua_State* L, const char* scope_global_name, const char* name, const char* global_name)
-	{
-		using namespace detail;
-		stack_scope_exit scope_exit(L);
-		if (push_meta(L, scope_global_name) == LUA_TTABLE)
-		{
-			lua_pushstring(L, name);
-			push_meta(L, global_name);
-			lua_rawset(L, -3);
-		}
-	}
-
-	//namespace
-	static void namespace_add(lua_State* L, const char* namespace_name)
-	{
-		lua_createtable(L, 0, 3);
-
-		lua_pushstring(L, "__name");
-		lua_pushstring(L, namespace_name);
-		lua_rawset(L, -3);
-
-		lua_pushstring(L, "__index");
-		lua_pushcclosure(L, detail::meta_get, 0);
-		lua_rawset(L, -3);
-
-		lua_pushstring(L, "__newindex");
-		lua_pushcclosure(L, detail::meta_set, 0);
-		lua_rawset(L, -3);
-
-		lua_setglobal(L, namespace_name);
-	}
 
 	//namespace func
 	template<typename Func, typename ... DefaultArgs>
@@ -3044,8 +3018,8 @@ namespace lua_tinker
 			m_overload_funcmap.clear();
 		}
 		args_type_overload_functor_base(args_type_overload_functor_base&& rht)
-			:m_nParamsOffset(rht.m_nParamsOffset)
-			, m_overload_funcmap(rht.m_overload_funcmap)
+			:m_overload_funcmap(rht.m_overload_funcmap)
+			,m_nParamsOffset(rht.m_nParamsOffset) 
 		{
 			rht.m_overload_funcmap.clear();
 		}

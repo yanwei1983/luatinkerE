@@ -410,6 +410,42 @@ void lua_tinker::clear_stack(lua_State *L)
 }
 
 
+//getmetatable(scope_global_name)[name] = getmetatable(global_name)
+void lua_tinker::scope_inner(lua_State* L, const char* scope_global_name, const char* name, const char* global_name)
+{
+	using namespace detail;
+	stack_scope_exit scope_exit(L);
+	if (push_meta(L, scope_global_name) == LUA_TTABLE)
+	{
+		lua_pushstring(L, name);
+		push_meta(L, global_name);
+		lua_rawset(L, -3);
+	}
+}
+
+//namespace
+void lua_tinker::namespace_add(lua_State* L, const char* namespace_name)
+{
+	lua_createtable(L, 0, 3);
+
+	lua_pushstring(L, "__name");
+	lua_pushstring(L, namespace_name);
+	lua_rawset(L, -3);
+
+	lua_pushstring(L, "__index");
+	lua_pushcclosure(L, detail::meta_get, 0);
+	lua_rawset(L, -3);
+
+	lua_pushstring(L, "__newindex");
+	lua_pushcclosure(L, detail::meta_set, 0);
+	lua_rawset(L, -3);
+
+	lua_setglobal(L, namespace_name);
+}
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 
 char* lua_tinker::detail::_stack_help<char*>::_read(lua_State *L, int index)
 {
