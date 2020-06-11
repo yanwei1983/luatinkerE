@@ -6,13 +6,9 @@ project(luatinkerE)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g ")
 
 include(CheckCXXCompilerFlag)
-CHECK_CXX_COMPILER_FLAG("-std=c++14" COMPILER_SUPPORTS_CXX14)
 
-if(COMPILER_SUPPORTS_CXX14)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 ")
-else()
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 ")
-endif()
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++1z")
+
 
 include_directories(lua/src luatinkere tests)
 

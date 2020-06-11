@@ -73,6 +73,8 @@ namespace details
 	CAT_CLASS_HAS_TYPEDEF(function_type);
 	CAT_CLASS_HAS_TYPEDEF(return_type);
 	CAT_CLASS_HAS_MEMBER(arity_value);
+
+	CAT_CLASS_HAS_MEMBER(allocator_type);
 }
 
 
@@ -146,6 +148,10 @@ struct has_difference_type
 	: bool_type<details::has_difference_type<T>::value>
 { };
 
+template <typename t>
+struct has_allocator_type
+	: bool_type<details::has_allocator_type<t>::value>
+{ };
 
 //////////////////////////////////////////////////////////////////////////////////
 //

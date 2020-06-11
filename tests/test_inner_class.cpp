@@ -1,8 +1,8 @@
 #include "lua_tinker.h"
 #include"test.h"
-extern std::map<std::string, std::function<bool()> > g_test_func_set;
 
-void test_inner_class(lua_State* L)
+
+LUA_TEST(inner_class)
 {
 	g_test_func_set["test_lua_inner_class1"] = [L]()->bool
 	{

@@ -6,11 +6,12 @@
 // 
 // please check Licence.txt file for licence and legal issues. 
 
-#include <iostream>
 #include "lua_tinker.h"
-#include<string>
-#include<cstring>
-#include<algorithm>
+
+#include <algorithm>
+#include <cstring>
+#include <iostream>
+#include <string>
 #if defined(_MSC_VER)
 #define I64_FMT "I64"
 #elif defined(__APPLE__) 
@@ -23,6 +24,7 @@
 namespace lua_tinker
 {
 	const char* S_SHARED_PTR_NAME = "__shared_ptr";
+	const std::string S_EMPTY = "";
 
 
 	error_call_back_fn g_error_call_back;
@@ -220,6 +222,7 @@ int create_class(lua_State*L)
 void lua_tinker::init(lua_State *L)
 {
 	init_shared_ptr(L);
+	detail::add_gc_mate(L);
 	init_close_callback(L);
 
 	lua_register(L, "lua_create_class", create_class);
@@ -702,6 +705,16 @@ int lua_tinker::detail::push_meta(lua_State *L, const char* name)
 
 void lua_tinker::detail::push_args(lua_State *L)
 {}
+
+
+void lua_tinker::detail::add_gc_mate(lua_State* L)
+{
+	lua_createtable(L, 0, 1);
+	lua_pushstring(L, "__gc");
+	lua_pushcclosure(L, detail::destroyer<detail::UserDataWapper>, 0);
+	lua_rawset(L, -3);
+	lua_setglobal(L, "__onlygc_meta");
+}
 
 bool lua_tinker::detail::CheckSameMetaTable(lua_State* L, int nIndex, const char* tname)
 {
