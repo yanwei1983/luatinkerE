@@ -1,0 +1,63 @@
+---
+BasedOnStyle: Microsoft
+AccessModifierOffset: '-4'
+AlignAfterOpenBracket: 'Align'
+AlignConsecutiveMacros: true
+AlignConsecutiveAssignments: true
+AlignConsecutiveDeclarations: true
+AlignEscapedNewlines: Left
+AlignOperands: true
+AlignTrailingComments: true
+AllowAllArgumentsOnNextLine: false
+AllowAllConstructorInitializersOnNextLine: false
+AllowAllParametersOfDeclarationOnNextLine: false
+#AllowShortBlocksOnASingleLine: 'Empty'
+AllowShortCaseLabelsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: 'Inline'
+AllowShortIfStatementsOnASingleLine: 'Never'
+AllowShortLambdasOnASingleLine: 'Inline'
+AllowShortLoopsOnASingleLine: false
+AlwaysBreakAfterReturnType: 'None'
+AlwaysBreakBeforeMultilineStrings: false
+AlwaysBreakTemplateDeclarations: 'Yes'
+BinPackArguments: false
+BinPackParameters: false
+BreakBeforeBraces: Allman
+BreakConstructorInitializers: BeforeComma
+#ColumnLimit: '1'
+IncludeBlocks: Regroup
+IncludeCategories:
+  - Regex: "^<.*[.]h"
+    Priority: 2
+  - Regex: "^<.*"
+    Priority: 1
+  - Regex: "^\".*[.]h"
+    Priority: 3
+  - Regex: "^\".*"
+    Priority: 4
+    
+IndentCaseLabels: true
+#IndentCaseBlocks: true
+#Language: Cpp
+NamespaceIndentation: All
+PointerAlignment: Left
+SortIncludes: true
+SpaceAfterCStyleCast: false
+SpaceAfterLogicalNot: false
+SpaceAfterTemplateKeyword: false
+SpaceBeforeAssignmentOperators: true
+SpaceBeforeCtorInitializerColon: false
+SpaceBeforeInheritanceColon: true
+SpaceBeforeParens: Never
+SpaceBeforeRangeBasedForLoopColon: false
+SpaceInEmptyParentheses: false
+SpacesInAngles: false
+SpacesInCStyleCastParentheses: false
+SpacesInContainerLiterals: false
+SpacesInParentheses: false
+SpacesInSquareBrackets: false
+Standard: Auto
+TabWidth: '4'
+UseTab: 'Never'
+
+...
