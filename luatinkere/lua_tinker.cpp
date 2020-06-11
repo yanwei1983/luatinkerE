@@ -501,24 +501,6 @@ void lua_tinker::detail::_stack_help<std::string>::_push(lua_State* L, const std
     lua_pushlstring(L, ret.data(), ret.size());
 }
 
-std::string_view lua_tinker::detail::_stack_help<std::string_view>::_read(lua_State* L, int32_t index)
-{
-    const char* strLua = lua_tostring(L, index);
-    if(strLua)
-        return std::string_view{strLua, strlen(strLua)};
-    else
-        return std::string_view();
-}
-
-// void lua_tinker::detail::_stack_help<std::string_view>::_push(lua_State* L, const std::string_view& ret)
-// {
-//     lua_pushlstring(L, ret.data(), ret.size());
-// }
-
-// void lua_tinker::detail::_stack_help<std::string_view>::_push(lua_State* L, std::string_view&& ret)
-// {
-//     lua_pushlstring(L, ret.data(), ret.size());
-// }
 
 void lua_tinker::detail::_stack_help<std::string_view>::_push(lua_State* L, std::string_view ret)
 {
