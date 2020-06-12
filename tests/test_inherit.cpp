@@ -64,7 +64,7 @@ void test_inherit(lua_State* L)
 				end
 			)";
 		lua_tinker::dostring(L, luabuf.c_str());
-		lua_tinker::set_error_callback([](lua_State *L) -> int
+		lua_tinker::set_error_callback(L, [](lua_State *L) -> int
 		{
 			std::string errinfo(lua_tostring(L, -1));
 			if (errinfo != "can't find 'no_name' class variable. (forgot registering class variable ?)")
@@ -75,7 +75,7 @@ void test_inherit(lua_State* L)
 		});
 
 		lua_tinker::call<void>(L, "test_lua_inherit_5");
-		lua_tinker::set_error_callback(&lua_tinker::on_error);
+		lua_tinker::set_error_callback(L, &lua_tinker::on_error);
 		return true;
 	};
 

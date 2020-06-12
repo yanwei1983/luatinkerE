@@ -40,7 +40,7 @@ void test_multireturn(lua_State* L)
 				end
 			)";
 		lua_tinker::dostring(L, luabuf.c_str());
-		lua_tinker::set_error_callback([](lua_State *L) -> int
+		lua_tinker::set_error_callback(L, [](lua_State *L) -> int
 		{
 			std::string errinfo(lua_tostring(L, -1));
 			if (errinfo != "[string \"lua_tinker::dobuffer()\"]:2: this is my test error")
@@ -57,7 +57,7 @@ void test_multireturn(lua_State* L)
 		float f = 0.0;
 		std::string g;
 		std::tie(c, d, e, f, g) = lua_tinker::call< std::tuple<int, double, char, float, std::string> >(L, "test_lua_multireturn_err");
-		lua_tinker::set_error_callback(&lua_tinker::on_error);
+		lua_tinker::set_error_callback(L, &lua_tinker::on_error);
 
 		return true;
 	};

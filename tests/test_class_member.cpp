@@ -38,7 +38,7 @@ void test_class_member(lua_State* L)
 				end
 			)";
 		lua_tinker::dostring(L, luabuf.c_str());
-		lua_tinker::set_error_callback([](lua_State *L) -> int
+		lua_tinker::set_error_callback(L, [](lua_State *L) -> int
 		{
 			std::string errinfo(lua_tostring(L, -1));
 			if (errinfo != "property didn't have set_func")
@@ -48,7 +48,7 @@ void test_class_member(lua_State* L)
 			return 0;
 		});
 		lua_tinker::call<void>(L, "test_lua_member_readonly_2");
-		lua_tinker::set_error_callback(&lua_tinker::on_error);
+		lua_tinker::set_error_callback(L, &lua_tinker::on_error);
 
 		return true;
 
