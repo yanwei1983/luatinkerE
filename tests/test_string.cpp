@@ -1,6 +1,6 @@
 #include "lua_tinker.h"
 #include"test.h"
-extern std::map<std::string, std::function<bool()> > g_test_func_set;
+
 
 std::string g_teststring = "test";
 std::string push_string()
@@ -18,7 +18,7 @@ const std::string& push_string_ref()
 	return g_teststring;
 }
 
-void test_string(lua_State* L)
+LUA_TEST(string)
 {
 
 

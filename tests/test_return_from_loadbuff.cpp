@@ -1,9 +1,8 @@
 #include "lua_tinker.h"
 #include"test.h"
-extern std::map<std::string, std::function<bool()> > g_test_func_set;
 
 
-void test_return_from_loadbuff(lua_State* L)
+LUA_TEST(return_from_loadbuff)
 {
 
 

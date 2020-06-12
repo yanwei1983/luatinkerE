@@ -1,10 +1,9 @@
 #include "lua_tinker.h"
 #include"test.h"
-extern std::map<std::string, std::function<bool()> > g_test_func_set;
+
 
 lua_tinker::lua_function_ref<int> g_lua_func_ref;
-
-void test_luafunction_ref(lua_State* L)
+LUA_TEST(luafunction_ref)
 {
 	g_test_func_set["test_lua_luafunction_ref_1"] = [L]()->bool
 	{
@@ -132,7 +131,7 @@ void test_luafunction_ref(lua_State* L)
 		lua_tinker::table_onstack tt2_1 = tt2.get<decltype(tt2_1)>(1);
 		std::string key1_1 = tt2_1.get<std::string>("key1");
 
-		std::vector<std::map<std::string, std::string>> datamap = tt2.convertto<decltype(datamap)>();
+		std::vector<std::map<std::string, std::string>> datamap = tt2.to_container<decltype(datamap)>();
 		
 
 		return key1_1 == "key1_1" && datamap[0]["key2"] == "key1_2" && datamap[1]["key3"] == "key2_3";

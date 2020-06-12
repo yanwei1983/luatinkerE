@@ -1,6 +1,6 @@
 #include "lua_tinker.h"
 #include"test.h"
-extern std::map<std::string, std::function<bool()> > g_test_func_set;
+
 std::tuple<int, int> push_tuple()
 {
 	return std::make_tuple(7,10);
@@ -11,7 +11,7 @@ bool test_tuple(std::tuple<int, int> tuple)
 	return std::get<0>(tuple) == 8 && std::get<1>(tuple) == 9;
 }
 
-void test_multireturn(lua_State* L)
+LUA_TEST(multireturn)
 {
 	g_test_func_set["test_lua_multireturn"] = [L]()->bool
 	{

@@ -1,9 +1,9 @@
 #include "lua_tinker.h"
 #include"test.h"
-extern std::map<std::string, std::function<bool()> > g_test_func_set;
+
 
 lua_tinker::table_ref g_table_ref;
-void test_lua_table_ref(lua_State* L)
+LUA_TEST(lua_table_ref)
 {
 
 	std::string luabuf =

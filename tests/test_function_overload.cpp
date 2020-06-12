@@ -1,6 +1,6 @@
 #include "lua_tinker.h"
 #include"test.h"
-extern std::map<std::string, std::function<bool()> > g_test_func_set;
+
 
 
 
@@ -53,8 +53,7 @@ int test_overload_default(int n1, int n2, int n3, double d1/*=1.0*/, double d2 /
 	return n1 + n2;
 }
 
-
-void test_overloadfunc(lua_State* L)
+LUA_TEST(overloadfunc)
 {
 
 	g_test_func_set["test_lua_coverloadfunc_1"] = [L]()->bool

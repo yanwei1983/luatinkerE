@@ -1,6 +1,6 @@
 #include "lua_tinker.h"
 #include"test.h"
-extern std::map<std::string, std::function<bool()> > g_test_func_set;
+
 
 int g_c_int = 0;
 double g_c_double = 0.0;
@@ -60,7 +60,7 @@ double get_gdouble()
 	return g_c_double;
 }
 
-void test_gloabl_func(lua_State* L)
+LUA_TEST(gloabl_func)
 {
 	g_test_func_set["test_lua_cfunc_1"] = [L]()->bool
 	{

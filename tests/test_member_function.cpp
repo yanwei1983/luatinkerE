@@ -1,8 +1,7 @@
 #include "lua_tinker.h"
 #include"test.h"
-extern std::map<std::string, std::function<bool()> > g_test_func_set;
 
-void test_member_func(lua_State* L)
+LUA_TEST(member_func)
 {
 
 
