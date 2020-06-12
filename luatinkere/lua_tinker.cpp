@@ -12,6 +12,8 @@
 #include <cstring>
 #include <iostream>
 #include <string>
+#include <vector>
+
 #if defined(_MSC_VER)
 #define I64_FMT "I64"
 #elif defined(__APPLE__)

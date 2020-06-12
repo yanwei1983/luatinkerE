@@ -9,6 +9,7 @@
 #if !defined(_LUA_TINKER_H_)
 #define _LUA_TINKER_H_
 
+#include <algorithm>
 #include <cstdint>
 #include <cstdio>
 #include <functional>
