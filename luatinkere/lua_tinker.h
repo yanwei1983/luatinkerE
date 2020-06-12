@@ -9,6 +9,7 @@
 #if !defined(_LUA_TINKER_H_)
 #define _LUA_TINKER_H_
 
+#include <algorithm>
 #include <cstdint>
 #include <cstdio>
 #include <functional>
@@ -694,13 +695,21 @@ namespace lua_tinker
         }
 		
 		template<typename _T>
-        typename std::enable_if<!std::is_reference<_T>::value && !std::is_pointer<_T>::value, void>::type 
+        typename std::enable_if<!is_container<base_type<_T>>::value
+		&& !std::is_reference<_T>::value && !std::is_pointer<_T>::value, void>::type 
 		_noregtype2lua(lua_State* L, _T&& val)
         {
             // val2usr must add _gc
             push_meta(L, "__onlygc_meta");
             lua_setmetatable(L, -2);
         }
+
+		template<typename _T>
+        typename std::enable_if<!is_container<base_type<_T>>::value &&
+		(std::is_reference<_T>::value || std::is_pointer<_T>::value ) , void>::type 
+		_noregtype2lua(lua_State* L, _T&& val)
+		{			
+		}
 		
         template<typename _T>
         void _type2lua(lua_State* L, _T&& val)
@@ -2779,6 +2788,55 @@ namespace lua_tinker
 
     namespace detail
     {
+		template<typename T>
+		typename std::enable_if<is_associative_container<T>::value, void>::type  
+		push_container_val_to_lua(lua_State* L, T* pContainer)
+		{
+			// k,v
+			auto it = pContainer->find(detail::read<typename T::key_type>(L, 2));
+			if(it == pContainer->end())
+			{
+				lua_pushnil(L);
+			}
+			else
+			{
+				detail::push(L, it->second);
+			}
+		}
+
+		template<typename T>
+		typename std::enable_if<!is_associative_container<T>::value && has_key_type<T>::value, void>::type  
+		push_container_val_to_lua(lua_State* L, T* pContainer)
+		{
+			// set
+			auto it = pContainer->find(detail::read<typename T::value_type>(L, 2));
+			if(it == pContainer->end())
+			{
+				lua_pushnil(L);
+			}
+			else
+			{
+				detail::push(L, *it);
+			}
+		}
+
+		template<typename T>
+		typename std::enable_if<!is_associative_container<T>::value && !has_key_type<T>::value, void>::type  
+		push_container_val_to_lua(lua_State* L, T* pContainer)
+		{
+			//vector
+			int32_t key = detail::read<int32_t>(L, 2);
+			key -= 1;
+			if(key > (int32_t)pContainer->size())
+			{
+				lua_pushnil(L);
+			}
+			else
+			{
+				detail::push(L, pContainer->at(key));
+			}
+		}
+
         // stl helper
         template<typename T>
         int32_t meta_container_get(lua_State* L)
@@ -2792,50 +2850,45 @@ namespace lua_tinker
                 // val = list[key]
                 UserDataWapper* pWapper    = user2type<UserDataWapper*>(L, 1);
                 T*              pContainer = (T*)(pWapper->m_p);
-                if constexpr(is_associative_container<T>::value)
-                {
-                    // k,v
-                    auto it = pContainer->find(detail::read<typename T::key_type>(L, 2));
-                    if(it == pContainer->end())
-                    {
-                        lua_pushnil(L);
-                    }
-                    else
-                    {
-                        detail::push(L, it->second);
-                    }
-                }
-                else if constexpr(!is_associative_container<T>::value && has_key_type<T>::value)
-                {
-                    // set
-                    auto it = pContainer->find(detail::read<typename T::value_type>(L, 2));
-                    if(it == pContainer->end())
-                    {
-                        lua_pushnil(L);
-                    }
-                    else
-                    {
-                        detail::push(L, *it);
-                    }
-                }
-                else
-                {
-                    // vector
-
-                    int32_t key = detail::read<int32_t>(L, 2);
-                    key -= 1;
-                    if(key > (int32_t)pContainer->size())
-                    {
-                        lua_pushnil(L);
-                    }
-                    else
-                    {
-                        detail::push(L, pContainer->at(key));
-                    }
-                }
+                push_container_val_to_lua(L, pContainer);
             }
             return 1;
         }
+
+
+		template<typename T>
+		typename std::enable_if<is_associative_container<T>::value, void>::type  
+		read_val_to_container(lua_State* L, T* pContainer)
+		{
+			// k,v
+            (*pContainer)[detail::read<typename T::key_type>(L, 2)] = detail::read<typename T::mapped_type>(L, 3);
+		}
+
+		template<typename T>
+		typename std::enable_if<!is_associative_container<T>::value && has_key_type<T>::value, void>::type  
+		read_val_to_container(lua_State* L, T* pContainer)
+		{
+			// set
+            pContainer->insert(detail::read<typename T::value_type>(L, 2));
+		}
+
+		template<typename T>
+		typename std::enable_if<!is_associative_container<T>::value && !has_key_type<T>::value, void>::type  
+		read_val_to_container(lua_State* L, T* pContainer)
+		{
+			// vector
+			int32_t key = detail::read<int32_t>(L, 2);
+			key -= 1;
+			if(key > (int32_t)pContainer->size())
+			{
+				lua_pushfstring(L, "set to vector : %d out of range", key);
+				lua_error(L);
+			}
+			else
+			{
+				(*pContainer)[key] = detail::read<typename T::value_type>(L, 3);
+			}
+		}
 
         template<typename T>
         int32_t meta_container_set(lua_State* L)
@@ -2850,34 +2903,41 @@ namespace lua_tinker
                 lua_error(L);
             }
 #endif
-            if constexpr(is_associative_container<T>::value)
-            {
-                // k,v
-                (*pContainer)[detail::read<typename T::key_type>(L, 2)] = detail::read<typename T::mapped_type>(L, 3);
-            }
-            else if constexpr(!is_associative_container<T>::value && has_key_type<T>::value)
-            {
-                // set
-                pContainer->insert(detail::read<typename T::value_type>(L, 2));
-            }
-            else
-            {
-                // vector
-                int32_t key = detail::read<int32_t>(L, 2);
-                key -= 1;
-                if(key > (int32_t)pContainer->size())
-                {
-                    lua_pushfstring(L, "set to vector : %d out of range", key);
-                    lua_error(L);
-                }
-                else
-                {
-                    (*pContainer)[key] = detail::read<typename T::value_type>(L, 3);
-                }
-            }
-
+			read_val_to_container(L, pContainer);
             return 0;
         }
+
+		template<typename T>
+		typename std::enable_if<is_associative_container<T>::value, void>::type  
+		emplace_val_to_container(lua_State* L, T* pContainer)
+		{
+			// k,v
+			pContainer->emplace(detail::read<typename T::key_type>(L, 2),
+								detail::read<typename T::mapped_type>(L, 3));
+		}
+
+		template<typename T>
+		typename std::enable_if<!is_associative_container<T>::value && has_key_type<T>::value, void>::type  
+		emplace_val_to_container(lua_State* L, T* pContainer)
+		{
+			// set
+            pContainer->emplace(detail::read<typename T::value_type>(L, 2));
+		}
+
+		template<typename T>
+		typename std::enable_if<!is_associative_container<T>::value && !has_key_type<T>::value && has_allocator_type<T>::value, void>::type  
+		emplace_val_to_container(lua_State* L, T* pContainer)
+		{
+			// vector or string
+            pContainer->emplace_back(detail::read<typename T::value_type>(L, 2));
+		}
+
+		template<typename T>
+		typename std::enable_if<!is_associative_container<T>::value && !has_key_type<T>::value && !has_allocator_type<T>::value, void>::type  
+		emplace_val_to_container(lua_State* L, T* pContainer)
+		{
+			// array
+		}
 
         template<typename T>
         int32_t meta_container_push(lua_State* L)
@@ -2892,29 +2952,41 @@ namespace lua_tinker
                 lua_error(L);
             }
 #endif
-            if constexpr(is_associative_container<T>::value)
-            {
-                // k,v
-                pContainer->emplace(detail::read<typename T::key_type>(L, 2),
-                                    detail::read<typename T::mapped_type>(L, 3));
-            }
-            else if constexpr(!is_associative_container<T>::value && has_key_type<T>::value)
-            {
-                // set
-                pContainer->emplace(detail::read<typename T::value_type>(L, 2));
-            }
-            else if constexpr(has_allocator_type<T>::value)
-            {
-                // vector or string
-                pContainer->emplace_back(detail::read<typename T::value_type>(L, 2));
-            }
-            else
-            {
-                // array
-            }
-
+			emplace_val_to_container(L, pContainer);
             return 0;
         }
+
+		template<typename T>
+		typename std::enable_if<is_associative_container<T>::value, void>::type  
+		erase_val_from_container(lua_State* L, T* pContainer)
+		{
+			// k,v
+            pContainer->erase(detail::read<typename T::key_type>(L, 2));
+		}
+
+		template<typename T>
+		typename std::enable_if<!is_associative_container<T>::value && has_key_type<T>::value, void>::type  
+		erase_val_from_container(lua_State* L, T* pContainer)
+		{
+			// set
+            pContainer->erase(detail::read<typename T::value_type>(L, 2));
+		}
+
+		template<typename T>
+		typename std::enable_if<!is_associative_container<T>::value && !has_key_type<T>::value && has_allocator_type<T>::value, void>::type  
+		erase_val_from_container(lua_State* L, T* pContainer)
+		{
+			// vector or string
+            pContainer->erase(
+                std::find(pContainer->begin(), pContainer->end(), detail::read<typename T::value_type>(L, 2)));
+		}
+
+		template<typename T>
+		typename std::enable_if<!is_associative_container<T>::value && !has_key_type<T>::value && !has_allocator_type<T>::value, void>::type  
+		erase_val_from_container(lua_State* L, T* pContainer)
+		{
+			// array
+		}
 
         template<typename T>
         int32_t meta_container_erase(lua_State* L)
@@ -2929,26 +3001,7 @@ namespace lua_tinker
                 lua_error(L);
             }
 #endif
-            if constexpr(is_associative_container<T>::value)
-            {
-                // k,v
-                pContainer->erase(detail::read<typename T::key_type>(L, 2));
-            }
-            else if constexpr(!is_associative_container<T>::value && has_key_type<T>::value)
-            {
-                // set
-                pContainer->erase(detail::read<typename T::value_type>(L, 2));
-            }
-            else if constexpr(has_allocator_type<T>::value)
-            {
-                // vector or string
-                pContainer->erase(
-                    std::find(pContainer->begin(), pContainer->end(), detail::read<typename T::value_type>(L, 2)));
-            }
-            else
-            {
-                // maybe std::array
-            }
+            erase_val_from_container(L, pContainer);
 
             return 0;
         }
@@ -2969,6 +3022,23 @@ namespace lua_tinker
                 m_Iter++;
                 m_nMoveDistance++;
             }
+			
+			template<typename _T>
+			static typename std::enable_if<is_associative_container<_T>::value, void>::type 
+			push_kv_to_lua(lua_State* L, lua_iterator<_T>* pIter)
+			{
+				detail::push(L, pIter->m_Iter->first);
+                detail::push(L, pIter->m_Iter->second);
+			}
+
+			template<typename _T>
+			static typename std::enable_if<!is_associative_container<_T>::value, void>::type 
+			push_kv_to_lua(lua_State* L, lua_iterator<_T>* pIter)
+			{
+				detail::push(L, pIter->m_nMoveDistance);
+                detail::push(L, *(pIter->m_Iter));
+			}
+
             static int32_t Next(lua_State* L)
             {
                 UserDataWapper*  pWapper = user2type<UserDataWapper*>(L, 1);
@@ -2978,20 +3048,11 @@ namespace lua_tinker
                     lua_pushnil(L);
                     return 1;
                 }
-                if constexpr(is_associative_container<T>::value)
-                {
-                    detail::push(L, pIter->m_Iter->first);
-                    detail::push(L, pIter->m_Iter->second);
-                    pIter->MoveNext();
-                    return 2;
-                }
-                else
-                {
-                    detail::push(L, pIter->m_nMoveDistance);
-                    detail::push(L, *(pIter->m_Iter));
-                    pIter->MoveNext();
-                    return 2;
-                }
+
+				push_kv_to_lua(L, pIter);
+                pIter->MoveNext();
+				return 2;
+               
             }
             size_t m_nMoveDistance = 1;
             Iter   m_Iter;

@@ -12,6 +12,8 @@
 #include <cstring>
 #include <iostream>
 #include <string>
+#include <vector>
+
 #if defined(_MSC_VER)
 #define I64_FMT "I64"
 #elif defined(__APPLE__)
@@ -501,11 +503,6 @@ void lua_tinker::detail::_stack_help<std::string>::_push(lua_State* L, const std
     lua_pushlstring(L, ret.data(), ret.size());
 }
 
-
-void lua_tinker::detail::_stack_help<std::string_view>::_push(lua_State* L, std::string_view ret)
-{
-    lua_pushlstring(L, ret.data(), ret.size());
-}
 
 /*---------------------------------------------------------------------------*/
 /* pop                                                                       */

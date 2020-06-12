@@ -176,10 +176,10 @@ LUA_TEST(stl_container)
 		lua_tinker::dostring(L, luabuf.c_str());
 		int nTotalK =0;
 		int nTotalV =0;
-		for(const auto&[k,v] : push_map_ref())
+		for(const auto& pair_v : push_map_ref())
 		{
-			nTotalK += k;
-			nTotalV += v;
+			nTotalK += pair_v.first;
+			nTotalV += pair_v.second;
 		}
 
 		return lua_tinker::call<bool>(L, "test_lua_map_5", nTotalK, nTotalV);
