@@ -27,7 +27,7 @@
     class has_##member                                                              \
     {                                                                               \
         template<class C>                                                           \
-        static void check(typename std::decay<typename C::member>::type*) noexcept; \
+        static void check(typename std::decay<decltype(&C::member)>::type*) noexcept; \
         template<class C>                                                           \
         static void check(...) noexcept(false);                                     \
                                                                                     \
@@ -66,27 +66,27 @@ struct not_type<Trait, true> : std::false_type
 
 namespace details
 {
-    CAT_CLASS_HAS_MEMBER(value_type);
-    CAT_CLASS_HAS_MEMBER(key_type);
-    CAT_CLASS_HAS_MEMBER(mapped_type);
-    CAT_CLASS_HAS_MEMBER(container_type);
+    CAT_CLASS_HAS_TYPEDEF(value_type);
+    CAT_CLASS_HAS_TYPEDEF(key_type);
+    CAT_CLASS_HAS_TYPEDEF(mapped_type);
+    CAT_CLASS_HAS_TYPEDEF(container_type);
 
-    CAT_CLASS_HAS_MEMBER(pointer);
-    CAT_CLASS_HAS_MEMBER(const_pointer);
-    CAT_CLASS_HAS_MEMBER(reference);
-    CAT_CLASS_HAS_MEMBER(const_reference);
-    CAT_CLASS_HAS_MEMBER(iterator);
-    CAT_CLASS_HAS_MEMBER(const_iterator);
-    CAT_CLASS_HAS_MEMBER(reverse_iterator);
-    CAT_CLASS_HAS_MEMBER(const_reverse_iterator);
-    CAT_CLASS_HAS_MEMBER(size_type);
-    CAT_CLASS_HAS_MEMBER(difference_type);
+    CAT_CLASS_HAS_TYPEDEF(pointer);
+    CAT_CLASS_HAS_TYPEDEF(const_pointer);
+    CAT_CLASS_HAS_TYPEDEF(reference);
+    CAT_CLASS_HAS_TYPEDEF(const_reference);
+    CAT_CLASS_HAS_TYPEDEF(iterator);
+    CAT_CLASS_HAS_TYPEDEF(const_iterator);
+    CAT_CLASS_HAS_TYPEDEF(reverse_iterator);
+    CAT_CLASS_HAS_TYPEDEF(const_reverse_iterator);
+    CAT_CLASS_HAS_TYPEDEF(size_type);
+    CAT_CLASS_HAS_TYPEDEF(difference_type);
 
     CAT_CLASS_HAS_TYPEDEF(function_type);
     CAT_CLASS_HAS_TYPEDEF(return_type);
-    CAT_CLASS_HAS_MEMBER(arity_value);
+    CAT_CLASS_HAS_TYPEDEF(arity_value);
+    CAT_CLASS_HAS_TYPEDEF(allocator_type);
 
-    CAT_CLASS_HAS_MEMBER(allocator_type);
 } // namespace details
 
 template<typename T>
@@ -163,6 +163,66 @@ template<typename t>
 struct has_allocator_type : bool_type<details::has_allocator_type<t>::value>
 {
 };
+
+
+
+template<class X, class Y, class Op>
+struct op_valid_impl
+{
+    template<class U, class L, class R>
+    static auto test(int) -> decltype(std::declval<U>()(std::declval<L>(), std::declval<R>()),
+                                      void(), std::true_type());
+
+    template<class U, class L, class R>
+    static auto test(...) -> std::false_type;
+
+    using type = decltype(test<Op, X, Y>(0));
+    public:                                                                           
+        enum                                                                          
+        {                                                                             
+            value = noexcept(test<Op, X, Y>(0))                                     
+        };  
+};
+
+template<class X, class Y, class Op> using op_valid = typename op_valid_impl<X, Y, Op>::type;
+
+namespace notstd {
+
+    struct left_shift {
+
+        template <class L, class R>
+        constexpr auto operator()(L&& l, R&& r) const
+        noexcept(noexcept(std::forward<L>(l) << std::forward<R>(r)))
+        -> decltype(std::forward<L>(l) << std::forward<R>(r))
+        {
+            return std::forward<L>(l) << std::forward<R>(r);
+        }
+    };
+
+    struct right_shift {
+
+        template <class L, class R>
+        constexpr auto operator()(L&& l, R&& r) const
+        noexcept(noexcept(std::forward<L>(l) >> std::forward<R>(r)))
+        -> decltype(std::forward<L>(l) >> std::forward<R>(r))
+        {
+            return std::forward<L>(l) >> std::forward<R>(r);
+        }
+    };
+
+}
+
+template<class X, class Y> using has_equality = op_valid<X, Y, std::equal_to<>>;
+template<class X, class Y> using has_inequality = op_valid<X, Y, std::not_equal_to<>>;
+template<class X, class Y> using has_less_than = op_valid<X, Y, std::less<>>;
+template<class X, class Y> using has_less_equal = op_valid<X, Y, std::less_equal<>>;
+template<class X, class Y> using has_greater_than = op_valid<X, Y, std::greater<>>;
+template<class X, class Y> using has_greater_equal = op_valid<X, Y, std::greater_equal<>>;
+template<class X, class Y> using has_bit_xor = op_valid<X, Y, std::bit_xor<>>;
+template<class X, class Y> using has_bit_or = op_valid<X, Y, std::bit_or<>>;
+template<class X, class Y> using has_left_shift = op_valid<X, Y, notstd::left_shift>;
+template<class X, class Y> using has_right_shift = op_valid<X, Y, notstd::right_shift>;
+
 
 //////////////////////////////////////////////////////////////////////////////////
 //

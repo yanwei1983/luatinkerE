@@ -2861,12 +2861,17 @@ namespace lua_tinker
             }
             else if constexpr(!is_associative_container<T>::value && has_key_type<T>::value)
             {
-                // set
+                // set<int>
                 pContainer->emplace(detail::read<typename T::value_type>(L, 2));
+            }
+            else if constexpr(has_allocator_type<T>::value && std::is_same<typename T::value_type, char>::value)
+            {
+                // string
+                pContainer->emplace_back(detail::read<typename T::value_type>(L, 2));
             }
             else if constexpr(has_allocator_type<T>::value)
             {
-                // vector or string
+                // vector<int>
                 pContainer->emplace_back(detail::read<typename T::value_type>(L, 2));
             }
             else
@@ -2900,9 +2905,9 @@ namespace lua_tinker
                 // set
                 pContainer->erase(detail::read<typename T::value_type>(L, 2));
             }
-            else if constexpr(has_allocator_type<T>::value)
+            else if constexpr(has_allocator_type<T>::value && has_equality<typename T::value_type, typename T::value_type>::value )
             {
-                // vector or string
+                // vector
                 pContainer->erase(
                     std::find(pContainer->begin(), pContainer->end(), detail::read<typename T::value_type>(L, 2)));
             }
