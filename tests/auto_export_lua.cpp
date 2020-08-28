@@ -38,6 +38,8 @@ void export_to_lua_auto(lua_State* L)
 	lua_tinker::def(L, "push_vector", &push_vector);
 	lua_tinker::def(L, "push_vector_const", &push_vector_const);
 	lua_tinker::def(L, "vector_join_const", &vector_join_const);
+	lua_tinker::def(L, "push_vector_struct_const", &push_vector_struct_const);
+	lua_tinker::def(L, "test_vector_struct_const", &test_vector_struct_const);
 	lua_tinker::def(L, "store_lua_function", &store_lua_function);
 	lua_tinker::def(L, "test_default_params", &test_default_params, 5, 8);
 	lua_tinker::def(L, "test_lua_function", &test_lua_function);
@@ -157,6 +159,7 @@ void export_to_lua_auto(lua_State* L)
 	lua_tinker::class_def<ff_other_base>(L, "test_other_callfn", &ff_other_base::test_other_callfn);
 	lua_tinker::class_add<ff_other_baseA>(L, "ff_other_baseA", true);
 	lua_tinker::class_add<ff_other_baseB>(L, "ff_other_baseB", true);
+	lua_tinker::class_add<SampleStruct>(L, "SampleStruct", false);
 	lua_tinker::class_inh<ff, ff_base>(L);
 	lua_tinker::class_inh<ff, ff_other>(L);
 	lua_tinker::class_inh<ff_other, ff_other_baseA>(L);
