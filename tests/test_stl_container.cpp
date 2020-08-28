@@ -59,7 +59,7 @@ const std::vector<SampleStruct> &push_vector_struct_const()
 
 bool test_vector_struct_const(const std::vector<SampleStruct> & st)
 {
-	return (st.size() == 2) && (st[0].a == 1) && (st[0].b == 2)&& (st[1].a == 3)&& (st[2].b == 4);
+	return (st.size() == 2) && (st[0].a == 1) && (st[0].b == 2)&& (st[1].a == 3)&& (st[1].b == 4);
 }
 
 LUA_TEST(stl_container)
