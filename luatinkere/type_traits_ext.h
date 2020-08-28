@@ -166,25 +166,8 @@ struct has_allocator_type : bool_type<details::has_allocator_type<t>::value>
 
 
 
-template<class X, class Y, class Op>
-struct op_valid_impl
-{
-    template<class U, class L, class R>
-    static auto test(int) -> decltype(std::declval<U>()(std::declval<L>(), std::declval<R>()),
-                                      void(), std::true_type());
 
-    template<class U, class L, class R>
-    static auto test(...) -> std::false_type;
 
-    using type = decltype(test<Op, X, Y>(0));
-    public:                                                                           
-        enum                                                                          
-        {                                                                             
-            value = noexcept(test<Op, X, Y>(0))                                     
-        };  
-};
-
-template<class X, class Y, class Op> using op_valid = typename op_valid_impl<X, Y, Op>::type;
 
 namespace notstd {
 
@@ -212,16 +195,69 @@ namespace notstd {
 
 }
 
-template<class X, class Y> using has_equality = op_valid<X, Y, std::equal_to<>>;
-template<class X, class Y> using has_inequality = op_valid<X, Y, std::not_equal_to<>>;
-template<class X, class Y> using has_less_than = op_valid<X, Y, std::less<>>;
-template<class X, class Y> using has_less_equal = op_valid<X, Y, std::less_equal<>>;
-template<class X, class Y> using has_greater_than = op_valid<X, Y, std::greater<>>;
-template<class X, class Y> using has_greater_equal = op_valid<X, Y, std::greater_equal<>>;
-template<class X, class Y> using has_bit_xor = op_valid<X, Y, std::bit_xor<>>;
-template<class X, class Y> using has_bit_or = op_valid<X, Y, std::bit_or<>>;
-template<class X, class Y> using has_left_shift = op_valid<X, Y, notstd::left_shift>;
-template<class X, class Y> using has_right_shift = op_valid<X, Y, notstd::right_shift>;
+template<class T, class R, class ... Args>
+std::is_convertible<std::invoke_result_t<T, Args...>, R> is_invokable_test(int);
+
+template<class T, class R, class ... Args>
+std::false_type is_invokable_test(...);
+
+template<class T, class R, class ... Args>
+using is_invokable = decltype(is_invokable_test<T, R, Args...>(0));
+
+template<class T, class R, class ... Args>
+constexpr auto is_invokable_v = is_invokable<T, R, Args...>::value;
+
+template<class L, class R = L>
+using has_equality = is_invokable<std::equal_to<>, bool, L, R>;
+template<class L, class R = L>
+constexpr auto has_equality_v = has_equality<L, R>::value;
+
+template<class L, class R = L>
+using has_inequality = is_invokable<std::not_equal_to<>, bool, L, R>;
+template<class L, class R = L>
+constexpr auto has_inequality_v = has_inequality<L, R>::value;
+
+template<class L, class R = L>
+using has_less_than = is_invokable<std::less<>, bool, L, R>;
+template<class L, class R = L>
+constexpr auto has_less_than_v = has_less_than<L, R>::value;
+
+template<class L, class R = L>
+using has_less_equal = is_invokable<std::less_equal<>, bool, L, R>;
+template<class L, class R = L>
+constexpr auto has_less_equal_v = has_less_equal<L, R>::value;
+
+template<class L, class R = L>
+using has_greater = is_invokable<std::greater<>, bool, L, R>;
+template<class L, class R = L>
+constexpr auto has_greater_v = has_greater<L, R>::value;
+
+template<class L, class R = L>
+using has_greater_equal = is_invokable<std::greater_equal<>, bool, L, R>;
+template<class L, class R = L>
+constexpr auto has_greater_equal_v = has_greater_equal<L, R>::value;
+
+template<class L, class R = L>
+using has_bit_xor = is_invokable<std::bit_xor<>, bool, L, R>;
+template<class L, class R = L>
+constexpr auto has_bit_xor_v = has_bit_xor<L, R>::value;
+
+template<class L, class R = L>
+using has_bit_or = is_invokable<std::bit_or<>, bool, L, R>;
+template<class L, class R = L>
+constexpr auto has_bit_or_v = has_bit_or<L, R>::value;
+
+template<class L, class R = L>
+using has_left_shift = is_invokable<notstd::left_shift, L, L, R>;
+template<class L, class R = L>
+constexpr auto has_left_shift_v = has_left_shift<L, R>::value;
+
+template<class L, class R = L>
+using has_right_shift = is_invokable<notstd::right_shift, L, L, R>;
+template<class L, class R = L>
+constexpr auto has_right_shift_v = has_right_shift<L, R>::value;
+
+
 
 
 //////////////////////////////////////////////////////////////////////////////////
