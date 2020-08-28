@@ -494,7 +494,7 @@ LUA_TEST(stl_container)
 		std::string luabuf =
 			R"(function test_lua_vec_5()
 					local container_ref = push_vector_struct_const();
-					return push_vector_struct_const(container_ref);
+					return test_vector_struct_const(container_ref);
 				end
 			)";
 		
