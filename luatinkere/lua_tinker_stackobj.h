@@ -100,10 +100,7 @@ namespace lua_tinker
                     lua_pushvalue(L, _stack_pos);
             }
 
-            bool is_top() const
-            {
-                return lua_gettop(L) == _stack_pos;
-            }
+            bool is_top() const { return lua_gettop(L) == _stack_pos; }
 
             stack_obj get_lenobj() const
             {

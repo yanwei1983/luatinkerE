@@ -26,4 +26,8 @@
 *.exe
 *.out
 *.app
+
+\lua
+\build
+\.vscode
  

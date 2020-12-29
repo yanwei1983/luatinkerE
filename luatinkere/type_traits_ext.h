@@ -164,47 +164,43 @@ struct has_allocator_type : bool_type<details::has_allocator_type<t>::value>
 {
 };
 
+namespace notstd
+{
 
+    struct left_shift
+    {
 
-
-
-
-namespace notstd {
-
-    struct left_shift {
-
-        template <class L, class R>
-        constexpr auto operator()(L&& l, R&& r) const
-        noexcept(noexcept(std::forward<L>(l) << std::forward<R>(r)))
-        -> decltype(std::forward<L>(l) << std::forward<R>(r))
+        template<class L, class R>
+        constexpr auto operator()(L&& l, R&& r) const noexcept(noexcept(std::forward<L>(l) << std::forward<R>(r)))
+            -> decltype(std::forward<L>(l) << std::forward<R>(r))
         {
             return std::forward<L>(l) << std::forward<R>(r);
         }
     };
 
-    struct right_shift {
+    struct right_shift
+    {
 
-        template <class L, class R>
-        constexpr auto operator()(L&& l, R&& r) const
-        noexcept(noexcept(std::forward<L>(l) >> std::forward<R>(r)))
-        -> decltype(std::forward<L>(l) >> std::forward<R>(r))
+        template<class L, class R>
+        constexpr auto operator()(L&& l, R&& r) const noexcept(noexcept(std::forward<L>(l) >> std::forward<R>(r)))
+            -> decltype(std::forward<L>(l) >> std::forward<R>(r))
         {
             return std::forward<L>(l) >> std::forward<R>(r);
         }
     };
 
-}
+} // namespace notstd
 
-template<class T, class R, class ... Args>
+template<class T, class R, class... Args>
 std::is_convertible<std::invoke_result_t<T, Args...>, R> is_invokable_test(int);
 
-template<class T, class R, class ... Args>
+template<class T, class R, class... Args>
 std::false_type is_invokable_test(...);
 
-template<class T, class R, class ... Args>
+template<class T, class R, class... Args>
 using is_invokable = decltype(is_invokable_test<T, R, Args...>(0));
 
-template<class T, class R, class ... Args>
+template<class T, class R, class... Args>
 constexpr auto is_invokable_v = is_invokable<T, R, Args...>::value;
 
 template<class L, class R = L>
@@ -257,20 +253,15 @@ using has_right_shift = is_invokable<notstd::right_shift, L, L, R>;
 template<class L, class R = L>
 constexpr auto has_right_shift_v = has_right_shift<L, R>::value;
 
-
-
-
 //////////////////////////////////////////////////////////////////////////////////
 //
 // is_container
 //
 
 template<typename T>
-struct is_container : bool_type<details::has_value_type<T>::value && details::has_reference<T>::value &&
-                                details::has_const_reference<T>::value && details::has_iterator<T>::value &&
-                                details::has_const_iterator<T>::value && details::has_pointer<T>::value &&
-                                details::has_const_pointer<T>::value && details::has_size_type<T>::value &&
-                                details::has_difference_type<T>::value>
+struct is_container : bool_type<details::has_value_type<T>::value && details::has_reference<T>::value && details::has_const_reference<T>::value &&
+                                details::has_iterator<T>::value && details::has_const_iterator<T>::value && details::has_pointer<T>::value &&
+                                details::has_const_pointer<T>::value && details::has_size_type<T>::value && details::has_difference_type<T>::value>
 {
 };
 
@@ -280,8 +271,7 @@ struct is_container : bool_type<details::has_value_type<T>::value && details::ha
 //
 
 template<typename T>
-struct is_associative_container
-    : bool_type<is_container<T>::value && details::has_key_type<T>::value && details::has_mapped_type<T>::value>
+struct is_associative_container : bool_type<is_container<T>::value && details::has_key_type<T>::value && details::has_mapped_type<T>::value>
 {
 };
 
@@ -414,9 +404,7 @@ namespace stdext
         // constexpr bool is_reference_wrapper_v = is_reference_wrapper<T>::value;
 
         template<class Base, class T, class Derived, class... Args>
-        auto INVOKE(T Base::* pmf,
-                    Derived&& ref,
-                    Args&&... args) noexcept(noexcept((std::forward<Derived>(ref).*pmf)(std::forward<Args>(args)...)))
+        auto INVOKE(T Base::*pmf, Derived&& ref, Args&&... args) noexcept(noexcept((std::forward<Derived>(ref).*pmf)(std::forward<Args>(args)...)))
             -> std::enable_if_t<std::is_function<T>::value && std::is_base_of<Base, std::decay_t<Derived>>::value,
                                 decltype((std::forward<Derived>(ref).*pmf)(std::forward<Args>(args)...))>
         {
@@ -424,9 +412,7 @@ namespace stdext
         }
 
         template<class Base, class T, class RefWrap, class... Args>
-        auto INVOKE(T Base::* pmf,
-                    RefWrap&& ref,
-                    Args&&... args) noexcept(noexcept((ref.get().*pmf)(std::forward<Args>(args)...)))
+        auto INVOKE(T Base::*pmf, RefWrap&& ref, Args&&... args) noexcept(noexcept((ref.get().*pmf)(std::forward<Args>(args)...)))
             -> std::enable_if_t<std::is_function<T>::value && is_reference_wrapper<std::decay_t<RefWrap>>::value,
                                 decltype((ref.get().*pmf)(std::forward<Args>(args)...))>
 
@@ -435,8 +421,7 @@ namespace stdext
         }
 
         template<class Base, class T, class Pointer, class... Args>
-        auto INVOKE(T Base::*pmf, Pointer&& ptr, Args&&... args) noexcept(noexcept(((*std::forward<Pointer>(ptr)).*
-                                                                                    pmf)(std::forward<Args>(args)...)))
+        auto INVOKE(T Base::*pmf, Pointer&& ptr, Args&&... args) noexcept(noexcept(((*std::forward<Pointer>(ptr)).*pmf)(std::forward<Args>(args)...)))
             -> std::enable_if_t<std::is_function<T>::value && !is_reference_wrapper<std::decay_t<Pointer>>::value &&
                                     !std::is_base_of<Base, std::decay_t<Pointer>>::value,
                                 decltype(((*std::forward<Pointer>(ptr)).*pmf)(std::forward<Args>(args)...))>
@@ -454,8 +439,7 @@ namespace stdext
 
         template<class Base, class T, class RefWrap>
         auto INVOKE(T Base::*pmd, RefWrap&& ref) noexcept(noexcept(ref.get().*pmd))
-            -> std::enable_if_t<!std::is_function<T>::value && is_reference_wrapper<std::decay_t<RefWrap>>::value,
-                                decltype(ref.get().*pmd)>
+            -> std::enable_if_t<!std::is_function<T>::value && is_reference_wrapper<std::decay_t<RefWrap>>::value, decltype(ref.get().*pmd)>
         {
             return ref.get().*pmd;
         }
@@ -471,8 +455,7 @@ namespace stdext
 
         template<class F, class... Args>
         auto INVOKE(F&& f, Args&&... args) noexcept(noexcept(std::forward<F>(f)(std::forward<Args>(args)...)))
-            -> std::enable_if_t<!std::is_member_pointer<std::decay_t<F>>::value,
-                                decltype(std::forward<F>(f)(std::forward<Args>(args)...))>
+            -> std::enable_if_t<!std::is_member_pointer<std::decay_t<F>>::value, decltype(std::forward<F>(f)(std::forward<Args>(args)...))>
         {
             return std::forward<F>(f)(std::forward<Args>(args)...);
         }
@@ -577,5 +560,8 @@ template<class _FUNC>
 struct function_traits<const volatile _FUNC&&> : function_traits<_FUNC>
 {
 };
+
+template<typename T>
+using base_type = typename std::remove_cv<typename std::remove_reference<typename std::remove_pointer<T>::type>::type>::type;
 
 #endif
