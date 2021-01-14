@@ -20,6 +20,10 @@
 #define I64_FMT "ll"
 #endif
 
+extern "C" {
+#include "lstate.h"
+}
+
 namespace lua_tinker
 {
     void set_error_callback(lua_State* L, error_call_back_fn fn)
@@ -211,6 +215,7 @@ void lua_tinker::init(lua_State* L)
 
     lua_register(L, "lua_create_class", create_class);
     set_error_callback(L, &on_error);
+    
 }
 
 #ifdef LUATINKER_USERDATA_CHECK_TYPEINFO
@@ -302,6 +307,8 @@ int32_t lua_tinker::on_error(lua_State* L)
 
     return 0;
 }
+
+
 
 /*---------------------------------------------------------------------------*/
 void lua_tinker::print_error(lua_State* L, const char* fmt, ...)

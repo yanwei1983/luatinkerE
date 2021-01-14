@@ -22,20 +22,20 @@
         };                                                                            \
     };
 
-#define CAT_CLASS_HAS_MEMBER(member)                                                \
-    template<typename T>                                                            \
-    class has_##member                                                              \
-    {                                                                               \
-        template<class C>                                                           \
+#define CAT_CLASS_HAS_MEMBER(member)                                                  \
+    template<typename T>                                                              \
+    class has_##member                                                                \
+    {                                                                                 \
+        template<class C>                                                             \
         static void check(typename std::decay<decltype(&C::member)>::type*) noexcept; \
-        template<class C>                                                           \
-        static void check(...) noexcept(false);                                     \
-                                                                                    \
-    public:                                                                         \
-        enum                                                                        \
-        {                                                                           \
-            value = noexcept(check<T>(nullptr))                                     \
-        };                                                                          \
+        template<class C>                                                             \
+        static void check(...) noexcept(false);                                       \
+                                                                                      \
+    public:                                                                           \
+        enum                                                                          \
+        {                                                                             \
+            value = noexcept(check<T>(nullptr))                                       \
+        };                                                                            \
     };
 
 //////////////////////////////////////////////////////////////////////////////////
