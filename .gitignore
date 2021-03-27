@@ -27,3 +27,6 @@
 *.out
 *.app
  
+/build
+/lua
+/.vscode

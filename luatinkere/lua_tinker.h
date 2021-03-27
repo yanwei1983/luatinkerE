@@ -1434,7 +1434,7 @@ namespace lua_tinker
             {
             }
             member_functor(FunctionType&& func, int32_t nDefaultParamCount = 0, int32_t nDefaultParamStart = 0)
-                : m_func(func)
+                : m_func(std::move(func))
                 , m_nDefaultParamCount(nDefaultParamCount)
                 , m_nDefaultParamsStart(nDefaultParamStart)
             {
@@ -1560,7 +1560,7 @@ namespace lua_tinker
             {
             }
             functor(FunctionType&& func, int32_t nDefaultParamCount = 0, int32_t nDefaultParamStart = 0)
-                : m_func(func)
+                : m_func(std::move(func))
                 , m_nDefaultParamCount(nDefaultParamCount)
                 , m_nDefaultParamsStart(nDefaultParamStart)
             {
@@ -3360,6 +3360,18 @@ namespace lua_tinker
     detail::functor<RVal, Args...>* make_functor_ptr(RVal(func)(Args...), ExtArgs... exArgs)
     {
         return new detail::functor<RVal, Args...>(func, exArgs...);
+    }
+
+    template<typename RVal, typename... Args, typename... ExtArgs>
+    detail::functor<RVal, Args...>* make_functor_ptr(const std::function<RVal(Args...)>& func, ExtArgs... exArgs)
+    {
+        return new detail::functor<RVal, Args...>(func, exArgs...);
+    }
+
+    template<typename RVal, typename... Args, typename... ExtArgs>
+    detail::functor<RVal, Args...>* make_functor_ptr(std::function<RVal(Args...)>&& func, ExtArgs... exArgs)
+    {
+        return new detail::functor<RVal, Args...>(std::move(func), exArgs...);
     }
 
     template<typename CT, typename RVal, typename... Args, typename... ExtArgs>

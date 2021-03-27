@@ -186,6 +186,30 @@ LUA_TEST(overloadfunc)
 		lua_tinker::dostring(L, luabuf.c_str());
 		return 6 == lua_tinker::call<int>(L, "test_lua_member_overloadfunc_3");
 	};
+	g_test_func_set["test_lua_member_overloadfunc_4"] = [L]()->bool
+	{
+		std::string luabuf =
+			R"(function test_lua_member_overloadfunc_4()
+					return test_overload_function_warp(1,2,3.0);
+				end
+			)";
+		auto pFF = get_gff_ptr();
+		using namespace std::placeholders;
+		std::function<int (int)> func_1 = std::bind((int (ff::*)(int) const)(&ff::test_overload), pFF, _1);
+		std::function<int (int, double)> func_2 = std::bind((int (ff::*)(int, double))(&ff::test_overload), pFF, _1, _2);
+		std::function<int (int,int, double)> func_3 = std::bind((int (ff::*)(int, int, double))(&ff::test_overload), pFF, _1, _2, _3);
+
+        lua_tinker::def(L, "test_overload_function_warp",
+                        lua_tinker::args_type_overload_functor(lua_tinker::make_functor_ptr(std::move(func_1)),
+                                                               lua_tinker::make_functor_ptr(std::move(func_2)),
+                                                               lua_tinker::make_functor_ptr(std::move(func_3))));
+
+        lua_tinker::dostring(L, luabuf.c_str());
+		return 6 == lua_tinker::call<int>(L, "test_lua_member_overloadfunc_4");
+	};
+
+
+
 	g_test_func_set["test_lua_member_overload_con_1"] = [L]()->bool
 	{
 		std::string luabuf =
