@@ -73,6 +73,26 @@ LUA_TEST(luafunction_ref)
 		return 7 == lua_func.invoke<int>(6);
 	};
 
+	
+
+	std::string luabuf =
+		R"( 	function g_lua_func_test(val)
+					return val + 1;
+				end;
+				
+			)";
+	lua_tinker::dostring(L, luabuf.c_str());
+	g_test_func_set["test_lua_luafunction_ref_5"] = [L]()->bool
+	{
+		if (g_lua_func_ref.empty())
+		{
+			g_lua_func_ref = lua_tinker::get<decltype(g_lua_func_ref)>(L, "g_lua_func_test");
+			lua_tinker::register_lua_close_callback(L, [](lua_State* L)
+														{ g_lua_func_ref.reset(); });
+		}
+		return g_lua_func_ref.invoke<int>(8) == 9;
+	};
+
 		
 
 	g_test_func_set["test_lua_luafunction_ref_6"] = [L]()->bool
@@ -147,35 +167,35 @@ LUA_TEST(luafunction_ref)
 		return key1_1 == "key1_1" && datamap[0]["key2"] == "key1_2" && datamap[1]["key3"] == "key2_3";
 	};
 
-
-
-	std::string luabuf =
-		R"( 	function g_lua_func_test(val)
-					return val + 1;
-				end;
-				
-			)";
-	lua_tinker::dostring(L, luabuf.c_str());
-	g_test_func_set["test_lua_luafunction_ref_4"] = [L]()->bool
+		g_test_func_set["test_lua_luafunction_ref_8"] = [L]()->bool
 	{
-		if (g_lua_func_ref.empty())
-		{
-			g_lua_func_ref = lua_tinker::get<decltype(g_lua_func_ref)>(L, "g_lua_func_test");
-			lua_tinker::register_lua_close_callback(L, [](lua_State* L)
-															{ g_lua_func_ref.reset(); });
-		}
+		std::string luabuf_1 =
+		R"( local local_table = {};
+			function local_table.Test(val)
+				return val;
+			end
+			return function (name,...)
+				local func = local_table[name];
+				return func(...);
+			end
 
-		return g_lua_func_ref.invoke<int>(6) == 7;
+		)";
+		std::string luabuf_2 =
+		R"( local local_table = {};
+			function local_table.Test1(val)
+				return val+1;
+			end
+			return function (name,...)
+				local func = local_table[name];
+				return func(...);
+			end
+
+		)";
+		lua_tinker::lua_function_ref func_in_lua_1 = lua_tinker::dostring<lua_tinker::lua_function_ref>(L, luabuf_1.c_str());
+		lua_tinker::lua_function_ref func_in_lua_2 = lua_tinker::dostring<lua_tinker::lua_function_ref>(L, luabuf_2.c_str());
+		bool result_1 = func_in_lua_1.invoke<int>("Test", 1,2,3) == 1;
+		bool result_2 = func_in_lua_2.invoke<int>("Test1", 1,2,3) == 2;
+		return result_1 && result_2;
 	};
 
-	g_test_func_set["test_lua_luafunction_ref_5"] = [L]()->bool
-	{
-		if (g_lua_func_ref.empty())
-		{
-			g_lua_func_ref = lua_tinker::get<decltype(g_lua_func_ref)>(L, "g_lua_func_test");
-			lua_tinker::register_lua_close_callback(L, [](lua_State* L)
-														{ g_lua_func_ref.reset(); });
-		}
-		return g_lua_func_ref.invoke<int>(8) == 9;
-	};
 }

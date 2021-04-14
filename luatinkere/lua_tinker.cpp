@@ -215,7 +215,6 @@ void lua_tinker::init(lua_State* L)
 
     lua_register(L, "lua_create_class", create_class);
     set_error_callback(L, &on_error);
-    
 }
 
 #ifdef LUATINKER_USERDATA_CHECK_TYPEINFO
@@ -734,7 +733,7 @@ bool lua_tinker::detail::push_upval_to_stack(lua_State* L, int32_t nArgsCount, i
         // need use upval
         int32_t nNeedUpval  = nArgsNeed - nArgsCount;
         int32_t nUpvalCount = read<int32_t>(L, lua_upvalueindex(default_upval_start));
-        if(nUpvalCount < 0)
+        if(nUpvalCount < nNeedUpval)
         {
             return false;
         }
@@ -753,7 +752,7 @@ bool lua_tinker::detail::push_upval_to_stack(lua_State* L, int32_t nArgsCount, i
     {
         // need use upval
         int32_t nNeedUpval = nArgsNeed - nArgsCount;
-        if(nUpvalCount < 0)
+        if(nUpvalCount < nNeedUpval)
         {
             return false;
         }
