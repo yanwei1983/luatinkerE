@@ -262,6 +262,15 @@ export_lua std::vector<int> push_vector();
 export_lua const std::vector<int> &push_vector_const();
 export_lua std::string vector_join_const(const std::vector<int> &vec, const std::string &sep);
 
+export_lua struct SampleStruct
+{
+	int a = 0;
+	int b = 0;
+};
+
+export_lua const std::vector<SampleStruct> &push_vector_struct_const();
+export_lua bool test_vector_struct_const(const std::vector<SampleStruct> & st);
+
 export_lua std::string push_string();
 export_lua std::string connect_string(std::string str1, const std::string &str2, const std::string &str3);
 export_lua const std::string &push_string_ref();

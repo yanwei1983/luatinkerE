@@ -22,6 +22,10 @@
 #define I64_FMT "ll"
 #endif
 
+extern "C" {
+#include "lstate.h"
+}
+
 namespace lua_tinker
 {
     void set_error_callback(lua_State* L, error_call_back_fn fn)
@@ -438,7 +442,7 @@ void lua_tinker::namespace_add(lua_State* L, const char* namespace_name)
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-char* lua_tinker::detail::_stack_help<char*>::_read(lua_State* L, int index)
+char* lua_tinker::detail::_stack_help<char*>::_read(lua_State* L, int32_t index)
 {
     return (char*)lua_tostring(L, index);
 }
@@ -725,7 +729,7 @@ bool lua_tinker::detail::push_upval_to_stack(lua_State* L,
         // need use upval
         int32_t nNeedUpval  = nArgsNeed - nArgsCount;
         int32_t nUpvalCount = read<int32_t>(L, lua_upvalueindex(default_upval_start));
-        if(nUpvalCount < 0)
+        if(nUpvalCount < nNeedUpval)
         {
             return false;
         }
@@ -748,7 +752,7 @@ bool lua_tinker::detail::push_upval_to_stack(lua_State* L,
     {
         // need use upval
         int32_t nNeedUpval = nArgsNeed - nArgsCount;
-        if(nUpvalCount < 0)
+        if(nUpvalCount < nNeedUpval)
         {
             return false;
         }
@@ -920,7 +924,7 @@ namespace lua_tinker
             inc_ref();
         }
 
-        lua_ref_base::lua_ref_base(lua_ref_base&& rht)
+        lua_ref_base::lua_ref_base(lua_ref_base&& rht) noexcept
             : m_L(rht.m_L)
             , m_regidx(rht.m_regidx)
             , m_pRef(rht.m_pRef)

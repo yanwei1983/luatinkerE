@@ -3,6 +3,12 @@
 
 
 lua_tinker::table_ref g_table_ref;
+
+lua_tinker::table_onstack get_table()
+{
+	return g_table_ref.push_table_to_stack();
+}
+
 LUA_TEST(lua_table_ref)
 {
 
@@ -34,6 +40,25 @@ LUA_TEST(lua_table_ref)
 
 		lua_tinker::table_onstack refTable = g_table_ref.push_table_to_stack();
 		return refTable.get<int>("test1") == 5;
+	};
+
+	g_test_func_set["test_lua_table_ref_3"] = [L]()->bool
+	{
+		if (g_table_ref.empty())
+		{
+			lua_tinker::table_onstack table(L, "g_test_table_ref");
+			g_table_ref = lua_tinker::table_ref::make_table_ref(table);
+		}
+
+		std::string luabuf =
+		R"(function test_lua_table_ref_3(get_table_func)
+				local table = get_table_func();
+				return table["test1"] == 5;
+			end
+		)";
+		lua_tinker::dostring(L, luabuf.c_str());
+		std::function<lua_tinker::table_onstack()> func = get_table;
+		return lua_tinker::call<bool>(L, "test_lua_table_ref_3", func);
 	};
 
 	g_test_func_set["test_lua_table_add_new"] = [L]()->bool

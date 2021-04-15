@@ -51,6 +51,17 @@ std::string vector_join_const(const std::vector<int>& vec, const std::string& se
 	return result;
 }
 
+const std::vector<SampleStruct> &push_vector_struct_const()
+{
+	static std::vector<SampleStruct> test_v = { {1,2}, {3,4}};
+	return test_v;
+}
+
+bool test_vector_struct_const(const std::vector<SampleStruct> & st)
+{
+	return (st.size() == 2) && (st[0].a == 1) && (st[0].b == 2)&& (st[1].a == 3)&& (st[1].b == 4);
+}
+
 LUA_TEST(stl_container)
 {
 
@@ -365,7 +376,7 @@ LUA_TEST(stl_container)
 			R"(function test_lua_set_6()
 					local map_copy = push_set();
 					map_copy:push(15);
-					map_copy:erase(15);
+					map_copy:erase_by_value(15);
 					return map_copy;
 				end
 			)";
@@ -468,7 +479,7 @@ LUA_TEST(stl_container)
 			R"(function test_lua_vec_4()
 					local container_copy = push_vector();
 					container_copy:push(15);
-					container_copy:erase(15);
+					container_copy:erase_by_value(15);
 					return container_copy;
 				end
 			)";
@@ -476,5 +487,18 @@ LUA_TEST(stl_container)
 		lua_tinker::dostring(L, luabuf.c_str());
 		const std::vector<int>& val =  lua_tinker::call<decltype(val)>(L, "test_lua_vec_4");
 		return std::find(val.begin(), val.end(), 15) == val.end();
+	};
+
+	g_test_func_set["test_lua_vec_5"] = [L]()->bool
+	{
+		std::string luabuf =
+			R"(function test_lua_vec_5()
+					local container_ref = push_vector_struct_const();
+					return test_vector_struct_const(container_ref);
+				end
+			)";
+		
+		lua_tinker::dostring(L, luabuf.c_str());
+		return lua_tinker::call<bool>(L, "test_lua_vec_5");
 	};
 }
