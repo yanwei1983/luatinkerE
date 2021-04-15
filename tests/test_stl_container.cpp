@@ -376,7 +376,7 @@ LUA_TEST(stl_container)
 			R"(function test_lua_set_6()
 					local map_copy = push_set();
 					map_copy:push(15);
-					map_copy:erase(15);
+					map_copy:erase_by_value(15);
 					return map_copy;
 				end
 			)";
@@ -479,7 +479,7 @@ LUA_TEST(stl_container)
 			R"(function test_lua_vec_4()
 					local container_copy = push_vector();
 					container_copy:push(15);
-					container_copy:erase(15);
+					container_copy:erase_by_value(15);
 					return container_copy;
 				end
 			)";

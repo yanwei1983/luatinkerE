@@ -12,6 +12,7 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
+#include <array>
 
 extern std::map<std::string, std::function<bool()> > g_test_func_set;
 struct lua_tester
