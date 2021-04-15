@@ -99,6 +99,7 @@ namespace lua_tinker
     void    clear_stack(lua_State* L);
     int32_t on_error(lua_State* L);
     void    print_error(lua_State* L, const char* fmt, ...);
+
     template<typename... Args>
     void    call_error(lua_State* L, const char* fmt, Args&&...args)
     {
@@ -112,6 +113,21 @@ namespace lua_tinker
             print_error(L, fmt, std::forward<Args>(args)...);
         }
     }
+
+    template<typename T>
+    typename std::enable_if<std::is_reference<T>::value, T>::type return_empty()
+    {
+        throw std::runtime_error("return a empty reference");
+        base_type<T>* empty_ptr = nullptr;
+        return *empty_ptr;
+    }
+
+    template<typename T>
+    typename std::enable_if<!std::is_reference<T>::value, T>::type return_empty()
+    {
+        return {};
+    }
+
     // dynamic type extention
     struct lua_value
     {
@@ -728,7 +744,6 @@ namespace lua_tinker
             lua_State*      L,
             int             index)
         {
-
 #ifdef LUATINKER_USERDATA_CHECK_TYPEINFO
             if(pWapper->m_type_idx != get_type_idx<base_type<_T>>())
             {
@@ -736,6 +751,7 @@ namespace lua_tinker
                 if(IsInherit(L, pWapper->m_type_idx, get_type_idx<base_type<_T>>()) == false)
                 {
                     call_error(L, "can't convert argument %d to class %s", index, get_class_name<_T>());
+					return return_empty<_T>();
                 }
             }
 #endif
@@ -745,6 +761,7 @@ namespace lua_tinker
                    false)
             {
                 call_error(L, "can't convert argument %d from const class %s", index, get_class_name<_T>());
+				return return_empty<_T>();
             }
 #endif
         }
@@ -764,9 +781,15 @@ namespace lua_tinker
             if(!lua_isuserdata(L, index))
             {
                 call_error(L, "can't convert argument %d to class %s", index, get_class_name<_T>()); 
+				return return_empty<_T>();
             }
 
             UserDataWapper* pWapper = user2type<UserDataWapper*>(L, index);
+			if(pWapper == nullptr)
+            {
+                call_error(L, "can't convert argument %d to class %s", index, get_class_name<_T>());
+                return return_empty<_T>();
+            }
             UserDataCheckType<_T>(pWapper, L, index);
             return void2type<_T>(pWapper->m_p);
         }
@@ -1113,6 +1136,7 @@ namespace lua_tinker
                 if(table_obj.is_table() == false)
                 {
                     call_error(L, "convert set from argument %d must be a table", index);
+                    return {};
                 }
 
                 return _read_tuple_fromtable<Tuple>(L,
@@ -1178,6 +1202,7 @@ namespace lua_tinker
                 if(lua_isfunction(L, index) == false)
                 {
                     call_error(L, "can't convert argument %d to function", index);
+                    return {};
                 }
 
                 // copy idx to top
@@ -1218,6 +1243,7 @@ namespace lua_tinker
                 if(lua_isfunction(L, index) == false)
                 {
                     call_error(L, "can't convert argument %d to function", index);
+                    return {};
                 }
 
                 // copy to top
@@ -1235,6 +1261,7 @@ namespace lua_tinker
                 if(func.m_L != L)
                 {
                     call_error(L, "lua_function was not create by the same lua_State");
+                    return;
                 }
 
                 lua_rawgeti(func.m_L, LUA_REGISTRYINDEX, func.m_regidx);
@@ -1256,12 +1283,14 @@ namespace lua_tinker
                 if(!lua_isuserdata(L, index))
                 {
                     call_error(L, "can't convert argument %d to class %s", index, get_class_name<T>());
+                    return {};
                 }
 
                 UserDataWapper* pWapper = user2type<UserDataWapper*>(L, index);
                 if(pWapper->isSharedPtr() == false)
                 {
                     call_error(L, "can't convert argument %d to class %s", index, get_class_name<T>());
+                    return {};
                 }
 
 #ifdef LUATINKER_USERDATA_CHECK_TYPEINFO
@@ -1271,6 +1300,7 @@ namespace lua_tinker
                     if(IsInherit(L, pWapper->m_type_idx, get_type_idx<std::shared_ptr<T>>()) == false)
                     {
                         call_error(L, "can't convert argument %d to class %s", index, get_class_name<T>());
+                        return {};
                     }
                 }
 #endif
@@ -1482,6 +1512,7 @@ namespace lua_tinker
                 if(pWapper->is_const() == true && bConstMemberFunc == false)
                 {
                     call_error(L, "const class_ptr %s can't invoke non-const member func.", get_class_name<T>());
+                    return return_empty<_T>();
                 }
 #endif
                 return void2type<T*>(pWapper->m_p);
@@ -2851,12 +2882,12 @@ namespace lua_tinker
 		read_lua_val_to_container(lua_State* L, T* pContainer)
 		{
 			// vector
-			int32_t key = detail::read<int32_t>(L, 2);
+            uint32_t key = detail::read<uint32_t>(L, 2);
 			key -= 1;
-			if(key > (int32_t)pContainer->size())
+			if(key > pContainer->size())
 			{
-				lua_pushfstring(L, "set to vector : %d out of range", key);
-				lua_error(L);
+				call_error(L, "set to vector : %d out of range", key);
+                return;
 			}
 			else
 			{
@@ -2874,6 +2905,7 @@ namespace lua_tinker
             if(pWapper->is_const())
             {
                 call_error(L, "container is const");
+				return 0;
             }
 #endif
 			read_lua_val_to_container(L, pContainer);
@@ -2922,6 +2954,7 @@ namespace lua_tinker
             if(pWapper->is_const())
             {
                 call_error(L, "container is const");
+				return 0;
             }
 #endif
 			emplace_val_to_container(L, pContainer);
@@ -2977,6 +3010,7 @@ namespace lua_tinker
             if(pWapper->is_const())
             {
                 call_error(L, "container is const");
+				return 0;
             }
 #endif
             erase_val_from_container(L, pContainer);
@@ -3028,6 +3062,7 @@ namespace lua_tinker
             if(pWapper->is_const())
             {
                 call_error(L, "container is const");
+                return 0;
             }
 #endif
             erase_key_from_container(L, pContainer);
@@ -3283,7 +3318,7 @@ namespace lua_tinker
             {
                 // signature mismatch
                 call_error(L, "function overload can't find %d args resolution ", nParamsCount);
-                return -1;
+                return 0;
             }
             else if(std::next(itFind.first) != itFind.second)
             {
@@ -3298,7 +3333,7 @@ namespace lua_tinker
                     strSig.append(pName);
                 }
                 call_error(L, "function(%s) overload resolution more than one", strSig.c_str());
-                return -1;
+                return 0;
             }
             else
             {
