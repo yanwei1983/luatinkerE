@@ -320,6 +320,8 @@ int32_t lua_tinker::on_error(lua_State* L)
     return 0;
 }
 
+
+
 /*---------------------------------------------------------------------------*/
 void lua_tinker::print_error(lua_State* L, const char* fmt, ...)
 {

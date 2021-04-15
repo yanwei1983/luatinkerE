@@ -90,9 +90,9 @@ namespace lua_tinker
     template<typename RVal = void>
     RVal dofile(lua_State* L, const char* filename);
     template<typename RVal = void>
-    RVal dostring(lua_State* L, const std::string& buff);
+    RVal dostring(lua_State* L, const std::string& buff, const char* name = nullptr);
     template<typename RVal = void>
-    RVal dobuffer(lua_State* L, const char* buff, size_t sz);
+    RVal dobuffer(lua_State* L, const char* buff, size_t sz, const char* name = nullptr);
 
     // debug helpers
     void    enum_stack(lua_State* L);
@@ -1874,15 +1874,15 @@ namespace lua_tinker
     }
 
     template<typename RVal>
-    RVal dostring(lua_State* L, const std::string& str)
+    RVal dostring(lua_State* L, const std::string& str, const char* name)
     {
-        return dobuffer<RVal>(L, str.c_str(), str.size());
+        return dobuffer<RVal>(L, str.c_str(), str.size(), name);
     }
 
     template<typename RVal>
-    RVal dobuffer(lua_State* L, const char* buff, size_t sz)
+    RVal dobuffer(lua_State* L, const char* buff, size_t sz, const char* name)
     {
-        if(luaL_loadbuffer(L, buff, sz, "lua_tinker::dobuffer()") != 0)
+        if(luaL_loadbuffer(L, buff, sz, name?name:"lua_tinker:dobuffer") != 0)
         {
             print_error(L, "%s in buffer[%s]", lua_tostring(L, -1), buff);
             return detail::pop_nil<RVal>(L);
@@ -2791,7 +2791,7 @@ namespace lua_tinker
                 if(key > (int32_t)pContainer->size())
                 {
                     call_error(L, "set to vector : %d out of range", key);
-                    return 0;
+                    return;
                 }
                 else
                 {
