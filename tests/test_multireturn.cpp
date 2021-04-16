@@ -43,7 +43,7 @@ LUA_TEST(multireturn)
 		lua_tinker::set_error_callback(L, [](lua_State *L) -> int
 		{
 			std::string errinfo(lua_tostring(L, -1));
-			if (errinfo != "[string \"lua_tinker::dobuffer()\"]:2: this is my test error")
+			if (errinfo != "[string \"lua_tinker::dobuffer\"]:2: this is my test error")
 			{
 				lua_tinker::on_error(L);
 			}

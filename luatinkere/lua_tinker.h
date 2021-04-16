@@ -1882,7 +1882,7 @@ namespace lua_tinker
     template<typename RVal>
     RVal dobuffer(lua_State* L, const char* buff, size_t sz, const char* name)
     {
-        if(luaL_loadbuffer(L, buff, sz, name?name:"lua_tinker:dobuffer") != 0)
+        if(luaL_loadbuffer(L, buff, sz, name?name:"lua_tinker::dobuffer") != 0)
         {
             print_error(L, "%s in buffer[%s]", lua_tostring(L, -1), buff);
             return detail::pop_nil<RVal>(L);
@@ -2791,7 +2791,7 @@ namespace lua_tinker
                 if(key > (int32_t)pContainer->size())
                 {
                     call_error(L, "set to vector : %d out of range", key);
-                    return;
+                    return 0;
                 }
                 else
                 {
