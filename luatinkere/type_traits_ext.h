@@ -6,37 +6,46 @@
 #include <string>
 #include <tuple>
 
-#define CAT_CLASS_HAS_TYPEDEF(typedef_)                                               \
-    template<typename T>                                                              \
-    class has_##typedef_                                                              \
-    {                                                                                 \
-        template<class C>                                                             \
-        static void check(typename std::decay<typename C::typedef_>::type*) noexcept; \
-        template<class C>                                                             \
-        static void check(...) noexcept(false);                                       \
-                                                                                      \
-    public:                                                                           \
-        enum                                                                          \
-        {                                                                             \
-            value = noexcept(check<T>(nullptr))                                       \
-        };                                                                            \
-    };
+// #define CAT_CLASS_HAS_TYPEDEF(typedef_)                                               \
+//     template<typename T>                                                              \
+//     class has_##typedef_                                                              \
+//     {                                                                                 \
+//         template<class C>                                                             \
+//         static void check(typename std::decay<typename C::typedef_>::type*) noexcept; \
+//         template<class C>                                                             \
+//         static void check(...) noexcept(false);                                       \
+//                                                                                       \
+//     public:                                                                           \
+//         enum                                                                          \
+//         {                                                                             \
+//             value = noexcept(check<T>(nullptr))                                       \
+//         };                                                                            \
+//     };
 
-#define CAT_CLASS_HAS_MEMBER(member)                                                  \
-    template<typename T>                                                              \
-    class has_##member                                                                \
-    {                                                                                 \
-        template<class C>                                                             \
-        static void check(typename std::decay<decltype(&C::member)>::type*) noexcept; \
-        template<class C>                                                             \
-        static void check(...) noexcept(false);                                       \
-                                                                                      \
-    public:                                                                           \
-        enum                                                                          \
-        {                                                                             \
-            value = noexcept(check<T>(nullptr))                                       \
-        };                                                                            \
-    };
+// #define CAT_CLASS_HAS_MEMBER(member)                                                  \
+//     template<typename T>                                                              \
+//     class has_##member                                                                \
+//     {                                                                                 \
+//         template<class C>                                                             \
+//         static void check(typename std::decay<decltype(&C::member)>::type*) noexcept; \
+//         template<class C>                                                             \
+//         static void check(...) noexcept(false);                                       \
+//                                                                                       \
+//     public:                                                                           \
+//         enum                                                                          \
+//         {                                                                             \
+//             value = noexcept(check<T>(nullptr))                                       \
+//         };                                                                            \
+//     };
+
+#if __cplusplus < 201703L
+/// A metafunction that always yields void, used for detecting valid types.
+namespace std
+{
+    template<typename...>
+    using void_t = void;
+}
+#endif
 
 //////////////////////////////////////////////////////////////////////////////////
 //
@@ -59,110 +68,84 @@ struct not_type<Trait, true> : std::false_type
 {
 };
 
+
+namespace stdext
+{
+    namespace details
+    {
+        struct nonesuch
+        {
+            nonesuch()                = delete;
+            ~nonesuch()               = delete;
+            nonesuch(const nonesuch&) = delete;
+            void operator=(const nonesuch&) = delete;
+        };
+
+        template<class Default, class AlwaysVoid, template<class...> class Op, class... Args>
+        struct detector
+        {
+            using value_t = std::false_type;
+            using type    = Default;
+        };
+
+        template<class Default, template<class...> class Op, class... Args>
+        struct detector<Default, std::void_t<Op<Args...>>, Op, Args...>
+        {
+            using value_t = std::true_type;
+            using type    = Op<Args...>;
+        };
+
+        template<template<class...> class Op, class... Args>
+        using is_detected = typename detector<nonesuch, void, Op, Args...>::value_t;
+
+        template<template<class...> class Op, class... Args>
+        using detected_t = typename detector<nonesuch, void, Op, Args...>::type;
+
+        template<class Default, template<class...> class Op, class... Args>
+        using detected_or_t = typename detector<Default, void, Op, Args...>::type;
+    } // namespace details
+} // namespace stdext
+
 //////////////////////////////////////////////////////////////////////////////////
 //
 // generic type traits...
 //
-
-namespace details
+namespace stdext
 {
-    CAT_CLASS_HAS_TYPEDEF(value_type);
-    CAT_CLASS_HAS_TYPEDEF(key_type);
-    CAT_CLASS_HAS_TYPEDEF(mapped_type);
-    CAT_CLASS_HAS_TYPEDEF(container_type);
+    namespace details
+    {
+#define CLASS_HAS_TYPEDEF(typedef_)                                                             \
+    template<class T>                                                                           \
+    using typedef_##_check = typename T::typedef_;                                              \
+    template<typename T>                                                                        \
+    struct has_##typedef_ : bool_type<stdext::details::is_detected<typedef_##_check, T>::value> \
+    {                                                                                           \
+    };
 
-    CAT_CLASS_HAS_TYPEDEF(pointer);
-    CAT_CLASS_HAS_TYPEDEF(const_pointer);
-    CAT_CLASS_HAS_TYPEDEF(reference);
-    CAT_CLASS_HAS_TYPEDEF(const_reference);
-    CAT_CLASS_HAS_TYPEDEF(iterator);
-    CAT_CLASS_HAS_TYPEDEF(const_iterator);
-    CAT_CLASS_HAS_TYPEDEF(reverse_iterator);
-    CAT_CLASS_HAS_TYPEDEF(const_reverse_iterator);
-    CAT_CLASS_HAS_TYPEDEF(size_type);
-    CAT_CLASS_HAS_TYPEDEF(difference_type);
+        CLASS_HAS_TYPEDEF(value_type);
+        CLASS_HAS_TYPEDEF(key_type);
+        CLASS_HAS_TYPEDEF(mapped_type);
+        CLASS_HAS_TYPEDEF(container_type);
 
-    CAT_CLASS_HAS_TYPEDEF(function_type);
-    CAT_CLASS_HAS_TYPEDEF(return_type);
-    CAT_CLASS_HAS_TYPEDEF(arity_value);
-    CAT_CLASS_HAS_TYPEDEF(allocator_type);
+        CLASS_HAS_TYPEDEF(pointer);
+        CLASS_HAS_TYPEDEF(const_pointer);
+        CLASS_HAS_TYPEDEF(reference);
+        CLASS_HAS_TYPEDEF(const_reference);
+        CLASS_HAS_TYPEDEF(iterator);
+        CLASS_HAS_TYPEDEF(const_iterator);
+        CLASS_HAS_TYPEDEF(reverse_iterator);
+        CLASS_HAS_TYPEDEF(const_reverse_iterator);
+        CLASS_HAS_TYPEDEF(size_type);
+        CLASS_HAS_TYPEDEF(difference_type);
 
-} // namespace details
+        CLASS_HAS_TYPEDEF(function_type);
+        CLASS_HAS_TYPEDEF(return_type);
+        CLASS_HAS_TYPEDEF(arity_value);
+        CLASS_HAS_TYPEDEF(allocator_type);
 
-template<typename T>
-struct has_value_type : bool_type<details::has_value_type<T>::value>
-{
-};
-
-template<typename t>
-struct has_key_type : bool_type<details::has_key_type<t>::value>
-{
-};
-
-template<typename t>
-struct has_mapped_type : bool_type<details::has_mapped_type<t>::value>
-{
-};
-
-template<typename t>
-struct has_container_type : bool_type<details::has_container_type<t>::value>
-{
-};
-
-template<typename T>
-struct has_pointer : bool_type<details::has_pointer<T>::value>
-{
-};
-
-template<typename T>
-struct has_const_pointer : bool_type<details::has_const_pointer<T>::value>
-{
-};
-
-template<typename T>
-struct has_reference : bool_type<details::has_reference<T>::value>
-{
-};
-
-template<typename T>
-struct has_const_reference : bool_type<details::has_const_reference<T>::value>
-{
-};
-
-template<typename T>
-struct has_iterator : bool_type<details::has_iterator<T>::value>
-{
-};
-
-template<typename T>
-struct has_const_iterator : bool_type<details::has_const_iterator<T>::value>
-{
-};
-
-template<typename T>
-struct has_reverse_iterator : bool_type<details::has_reverse_iterator<T>::value>
-{
-};
-
-template<typename T>
-struct has_const_reverse_iterator : bool_type<details::has_const_reverse_iterator<T>::value>
-{
-};
-
-template<typename T>
-struct has_size_type : bool_type<details::has_size_type<T>::value>
-{
-};
-
-template<typename T>
-struct has_difference_type : bool_type<details::has_difference_type<T>::value>
-{
-};
-
-template<typename t>
-struct has_allocator_type : bool_type<details::has_allocator_type<t>::value>
-{
-};
+#undef CLASS_HAS_TYPEDEF
+    } // namespace details
+} // namespace stdext
 
 namespace notstd
 {
@@ -190,9 +173,6 @@ namespace notstd
     };
 
 } // namespace notstd
-
-
-
 
 namespace stdext
 {
@@ -273,7 +253,6 @@ namespace stdext
             return std::forward<F>(f)(std::forward<Args>(args)...);
         }
 
-        
     } // namespace detail
 
     template<class F, class... ArgTypes>
@@ -297,7 +276,7 @@ namespace stdext
         {
             using type = decltype(detail::INVOKE(std::declval<F>(), std::declval<Args>()...));
         };
-    };
+    }; // namespace detail
 
     template<class F, class... ArgTypes>
     struct invoke_result : detail::invoke_result<void, F, ArgTypes...>
@@ -375,11 +354,12 @@ constexpr auto has_right_shift_v = has_right_shift<L, R>::value;
 //
 
 template<typename T>
-struct is_container : bool_type<details::has_value_type<T>::value && details::has_reference<T>::value &&
-                                details::has_const_reference<T>::value && details::has_iterator<T>::value &&
-                                details::has_const_iterator<T>::value && details::has_pointer<T>::value &&
-                                details::has_const_pointer<T>::value && details::has_size_type<T>::value &&
-                                details::has_difference_type<T>::value>
+struct is_container
+    : bool_type<stdext::details::has_value_type<T>::value && stdext::details::has_reference<T>::value &&
+                stdext::details::has_const_reference<T>::value && stdext::details::has_iterator<T>::value &&
+                stdext::details::has_const_iterator<T>::value && stdext::details::has_pointer<T>::value &&
+                stdext::details::has_const_pointer<T>::value && stdext::details::has_size_type<T>::value &&
+                stdext::details::has_difference_type<T>::value>
 {
 };
 
@@ -389,42 +369,38 @@ struct is_container : bool_type<details::has_value_type<T>::value && details::ha
 //
 
 template<typename T>
-struct is_associative_container
-    : bool_type<is_container<T>::value && details::has_key_type<T>::value && details::has_mapped_type<T>::value>
+struct is_associative_container : bool_type<is_container<T>::value && stdext::details::has_key_type<T>::value &&
+                                            stdext::details::has_mapped_type<T>::value>
 {
 };
 
 template<typename T>
-struct is_map_like
-    : bool_type<is_associative_container<T>::value>
+struct is_map_like : bool_type<is_associative_container<T>::value>
 {
 };
 
 template<typename T>
-struct is_set_like
-    : bool_type<!is_associative_container<T>::value && has_key_type<T>::value>
+struct is_set_like : bool_type<!is_associative_container<T>::value && stdext::details::has_key_type<T>::value>
 {
 };
 
 template<typename T>
 struct is_vector_or_array_like
-    : bool_type<!is_associative_container<T>::value && !has_key_type<T>::value>
+    : bool_type<!is_associative_container<T>::value && !stdext::details::has_key_type<T>::value>
 {
 };
 
 template<typename T>
-struct is_array_like
-    : bool_type<!is_associative_container<T>::value && !has_key_type<T>::value && !has_allocator_type<T>::value>
+struct is_array_like : bool_type<!is_associative_container<T>::value && !stdext::details::has_key_type<T>::value &&
+                                 !stdext::details::has_allocator_type<T>::value>
 {
 };
 
 template<typename T>
-struct is_vector_like
-    : bool_type<!is_associative_container<T>::value && !has_key_type<T>::value && has_allocator_type<T>::value>
+struct is_vector_like : bool_type<!is_associative_container<T>::value && !stdext::details::has_key_type<T>::value &&
+                                  stdext::details::has_allocator_type<T>::value>
 {
 };
-
-
 
 //////////////////////////////////////////////////////////////////////////////////
 //
@@ -539,8 +515,6 @@ namespace std
 } // namespace std
 #endif //#if __cplusplus != 201402L
 
-
-
 template<class _FUNC>
 struct function_traits : function_traits<decltype(&_FUNC::operator())>
 {
@@ -632,6 +606,7 @@ struct function_traits<const volatile _FUNC&&> : function_traits<_FUNC>
 };
 
 template<typename T>
-using base_type = typename std::remove_cv<typename std::remove_reference<typename std::remove_pointer<T>::type>::type>::type;
+using base_type =
+    typename std::remove_cv<typename std::remove_reference<typename std::remove_pointer<T>::type>::type>::type;
 
 #endif
