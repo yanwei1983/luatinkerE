@@ -37,12 +37,12 @@ LUA_TEST(default_param)
 		std::string luabuf =
 			R"(function lua_test_default_params3()
 					local pFF = ff();
-					return pFF:test_default_params(7);
+					return pFF:test_default_params(2,2,1);
 				end
 			)";
 
 		lua_tinker::dostring(L, luabuf.c_str());
-		return  (7 + 5 - 8) == lua_tinker::call<int>(L, "lua_test_default_params3");
+		return  (2 + 2 - 1) == lua_tinker::call<int>(L, "lua_test_default_params3");
 	};
 	g_test_func_set["lua_test_default_params4"] = [L]()->bool
 	{

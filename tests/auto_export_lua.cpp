@@ -50,8 +50,8 @@ void export_to_lua_auto(lua_State* L)
 		lua_tinker::make_functor_ptr((int(*)(int, int, double))(&test_overload))));
 	lua_tinker::def(L, "test_overload_default", lua_tinker::args_type_overload_functor(
 		lua_tinker::make_functor_ptr((int(*)(int, bool))(&test_overload_default)),
-		lua_tinker::make_functor_ptr((int(*)(int, int, bool))(&test_overload_default), 1 /*default_args_count*/, 1 /*default_args_start*/),
-		lua_tinker::make_functor_ptr((int(*)(int, int, int, double, double, double, double, const std::string &))(&test_overload_default), 5 /*default_args_count*/, 2 /*default_args_start*/)), true, 1.0, 2.0, 3.0, 4.0, std::string("test"));
+		lua_tinker::make_functor_ptr((int(*)(int, int, bool))(&test_overload_default), true),
+		lua_tinker::make_functor_ptr((int(*)(int, int, int, double, double, double, double, const std::string &))(&test_overload_default), 1.0, 2.0, 3.0, 4.0, std::string("test"))));
 	lua_tinker::def(L, "test_overload_err", lua_tinker::args_type_overload_functor(
 		lua_tinker::make_functor_ptr((void(*)(const char *))(&test_overload_err)),
 		lua_tinker::make_functor_ptr((void(*)(const std::string &))(&test_overload_err))));
@@ -82,7 +82,7 @@ void export_to_lua_auto(lua_State* L)
 	lua_tinker::class_def<IntOpTest>(L, "__lt", &IntOpTest::operator<);
 	lua_tinker::class_def<IntOpTest>(L, "__le", &IntOpTest::operator<=);
 	lua_tinker::class_def<IntOpTest>(L, "__eq", &IntOpTest::operator==);
-	lua_tinker::class_con<IntOpTest>(L, lua_tinker::constructor<IntOpTest, int>::invoke);
+	lua_tinker::class_con<IntOpTest, int>(L);
 	lua_tinker::class_mem<IntOpTest>(L, "m_n", &IntOpTest::m_n);
 	lua_tinker::namespace_add(L, "NS_TEST");
 	lua_tinker::namespace_def(L, "NS_TEST", "test_function_in_namespace", &NS_TEST::test_function_in_namespace);
@@ -117,7 +117,7 @@ void export_to_lua_auto(lua_State* L)
 	lua_tinker::class_def<TestCon>(L, "getDataSet", &TestCon::getDataSet);
 	lua_tinker::class_def<TestCon>(L, "getDataSetRef", &TestCon::getDataSetRef);
 	lua_tinker::class_def<TestCon>(L, "getStr", &TestCon::getStr);
-	lua_tinker::class_con<TestCon>(L, lua_tinker::constructor<TestCon, float, const char *, int>::invoke, -1.0f, "aa", 7);
+	lua_tinker::class_con<TestCon, float, const char *, int>(L, -1.0f, "aa", 7);
 	lua_tinker::class_mem<TestCon>(L, "m_fVal", &TestCon::m_fVal);
 	lua_tinker::class_mem<TestCon>(L, "m_nVal", &TestCon::m_nVal);
 	lua_tinker::class_mem<TestCon>(L, "m_str", &TestCon::m_str);
@@ -137,9 +137,9 @@ void export_to_lua_auto(lua_State* L)
 		lua_tinker::make_member_functor_ptr((int(ff::*)(int, double))(&ff::test_overload)),
 		lua_tinker::make_member_functor_ptr((int(ff::*)(int, int, double))(&ff::test_overload))));
 	lua_tinker::class_def_static<ff>(L, "visit_inner_ptr", &ff::visit_inner_ptr);
-	lua_tinker::class_con<ff>(L, lua_tinker::args_type_overload_constructor(
-		new lua_tinker::constructor<ff, double, unsigned char, int>(1 /*default_args_count*/, 1 /*default_args_start*/),
-		new lua_tinker::constructor<ff, int>(1 /*default_args_count*/, 2 /*default_args_start*/)), 1, 0);
+	lua_tinker::class_con_fun<ff>(L, lua_tinker::args_type_overload_constructor(
+		lua_tinker::make_constructor_ptr<ff, double, unsigned char, int>(1),
+		lua_tinker::make_constructor_ptr<ff, int>(0)));
 	lua_tinker::class_mem_readonly<ff>(L, "m_const_val", &ff::m_const_val);
 	lua_tinker::class_mem<ff>(L, "m_val", &ff::m_val);
 	lua_tinker::class_mem_static_readonly<ff>(L, "s_const_val", &ff::s_const_val);
