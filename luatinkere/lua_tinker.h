@@ -1661,7 +1661,7 @@ namespace lua_tinker
         }
 
         // global function
-        void _push_functor(lua_State* L, const char* name, lua_CFunction func)
+        static inline void _push_functor(lua_State* L, const char* name, lua_CFunction func)
         {
             lua_pushcclosure(L, func, 0);
         }
