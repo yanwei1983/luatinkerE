@@ -16,6 +16,7 @@
 
 int ff::s_val = 0;
 int ff::s_ref = 0;
+std::string ff::s_str;
 const int ff::s_const_val;
 int ff_nodef::s_ref = 0;
 

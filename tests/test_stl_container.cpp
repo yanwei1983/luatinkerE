@@ -386,6 +386,23 @@ LUA_TEST(stl_container)
 		return val.find(15) == val.end();
 	};
 
+	g_test_func_set["test_lua_set_7"] = [L]()->bool
+	{
+		std::string luabuf =
+			R"(function test_lua_set_7(pTest)
+					pTest.m_DataSet:push(1);
+					return pTest.m_DataSet:size();
+				end
+			)";
+		lua_tinker::dostring(L, luabuf.c_str());
+		TestCon test;
+		test.m_DataSet.insert(77);
+		size_t data_size = lua_tinker::call<size_t>(L, "test_lua_set_7", &test);
+		
+		return data_size == test.m_DataSet.size() && data_size == 2;
+	};
+
+
 	g_test_func_set["test_lua_vec"] = [L]()->bool
 	{
 		std::string luabuf =

@@ -13,6 +13,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <stdexcept>
 
 #if defined(_MSC_VER)
 #define I64_FMT "I64"

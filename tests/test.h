@@ -81,7 +81,7 @@ public:
 	export_lua void ChangeDataMapPtr(DataMap *pDataMap) { m_DataMap = *pDataMap; }
 
 	typedef std::set<int> DataSet;
-	DataSet m_DataSet;
+	export_lua DataSet m_DataSet;
 	export_lua DataSet getDataSet() { return m_DataSet; }
 	export_lua void ChangeDataSet(DataSet dataSet) { m_DataSet = dataSet; }
 	export_lua DataSet &getDataSetRef() { return m_DataSet; }
@@ -224,6 +224,7 @@ public:
 	export_lua int m_val = 0;
 	export_lua static int s_val;
 	export_lua static int s_ref;
+	export_lua static std::string s_str;
 
 	export_lua static const int s_const_val = 1;
 	export_lua const int m_const_val = 1;

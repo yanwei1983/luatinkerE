@@ -16,6 +16,7 @@
 #include <memory>
 #include <new>
 #include <string>
+#include <stdexcept>
 
 #include <type_traits>
 #include <typeindex>
@@ -2392,7 +2393,9 @@ namespace lua_tinker
             virtual void get(lua_State* L) override
             {
                 CHECK_CLASS_PTR(T);
-                push(L, _read_classptr_from_index1<T, true>(L)->*(_var));
+                auto class_ptr = _read_classptr_from_index1<T, true>(L);
+                auto& v = class_ptr->*(_var);
+                _stack_help<V>::_push(L, v);
             }
             virtual void set(lua_State* L) override
             {
@@ -2412,7 +2415,9 @@ namespace lua_tinker
             virtual void get(lua_State* L) override
             {
                 CHECK_CLASS_PTR(T);
-                push(L, _read_classptr_from_index1<T, true>(L)->*(_var));
+                auto class_ptr = _read_classptr_from_index1<T, true>(L);
+                auto& v = class_ptr->*(_var);
+                _stack_help<V>::_push(L, v);
             }
             virtual void set(lua_State* L) override
             {
@@ -2428,7 +2433,12 @@ namespace lua_tinker
                 : _var(val)
             {
             }
-            virtual void get(lua_State* L) override { push(L, *(_var)); }
+
+            virtual void get(lua_State* L) override 
+            { 
+                _stack_help<V>::_push(L, *(_var)); 
+            }
+
             virtual void set(lua_State* L) override { *(_var) = read<V>(L, 3); }
         };
 
@@ -2440,7 +2450,7 @@ namespace lua_tinker
                 : _var(val)
             {
             }
-            virtual void get(lua_State* L) override { push(L, *(_var)); }
+            virtual void get(lua_State* L) override {  _stack_help<V>::_push(L, *(_var));  }
             virtual void set(lua_State* L) override
             {
                 call_error(L, "static_member is readonly.");
@@ -3178,6 +3188,10 @@ namespace lua_tinker
             lua_rawset(L, -3);
 
             lua_pushstring(L, "__len");
+            lua_pushcclosure(L, detail::meta_container_get_len<base_type<T>>, 0);
+            lua_rawset(L, -3);
+
+            lua_pushstring(L, "size");
             lua_pushcclosure(L, detail::meta_container_get_len<base_type<T>>, 0);
             lua_rawset(L, -3);
 
