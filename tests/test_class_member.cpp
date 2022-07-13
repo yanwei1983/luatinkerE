@@ -67,6 +67,38 @@ LUA_TEST(class_member)
 		lua_tinker::dostring(L, luabuf.c_str());
 		return lua_tinker::call<bool>(L, "test_lua_member_static");
 	};
+
+	g_test_func_set["test_lua_member_static_2"] = [L]()->bool
+	{
+		std::string luabuf =
+			R"(function test_lua_member_static_2()
+					local pFF1 = ff(1);
+					pFF1.s_str = "hello world";
+					local pFF2 = ff(2);
+					return pFF2.s_str == "hello world";
+				end
+			)";
+		lua_tinker::dostring(L, luabuf.c_str());
+		return lua_tinker::call<bool>(L, "test_lua_member_static_2");
+	};
+
+	g_test_func_set["test_lua_member_string"] = [L]()->bool
+	{
+		std::string luabuf =
+			R"(function test_lua_member_string(pTest)
+					if (pTest.m_str ~= "hello") then
+						return;
+					end
+					pTest.m_str = "hello world";
+				end
+			)";
+		lua_tinker::dostring(L, luabuf.c_str());
+		TestCon test;
+		test.m_str = "hello";
+		lua_tinker::call<void>(L, "test_lua_member_string", &test);
+		return test.m_str == "hello world";
+	};
+
 	g_test_func_set["test_lua_var_static"] = [L]()->bool
 	{
 		std::string luabuf =

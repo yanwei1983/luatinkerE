@@ -120,6 +120,7 @@ void export_to_lua_auto(lua_State* L)
 	lua_tinker::class_con<TestCon, float, const char *, int>(L, -1.0f, "aa", 7);
 	lua_tinker::class_mem<TestCon>(L, "m_fVal", &TestCon::m_fVal);
 	lua_tinker::class_mem<TestCon>(L, "m_nVal", &TestCon::m_nVal);
+	lua_tinker::class_mem<TestCon>(L, "m_DataSet", &TestCon::m_DataSet);
 	lua_tinker::class_mem<TestCon>(L, "m_str", &TestCon::m_str);
 	lua_tinker::class_add<ff>(L, "ff", true);
 	lua_tinker::class_def<ff>(L, "add", &ff::add);
@@ -145,6 +146,7 @@ void export_to_lua_auto(lua_State* L)
 	lua_tinker::class_mem_static_readonly<ff>(L, "s_const_val", &ff::s_const_val);
 	lua_tinker::class_mem_static<ff>(L, "s_ref", &ff::s_ref);
 	lua_tinker::class_mem_static<ff>(L, "s_val", &ff::s_val);
+	lua_tinker::class_mem_static<ff>(L, "s_str", &ff::s_str);
 	lua_tinker::class_var_static<ff>(L, "ENUM_1", ff::ENUM_1);
 	lua_tinker::class_var_static<ff>(L, "ENUM_2", ff::ENUM_2);
 	lua_tinker::class_var_static<ff>(L, "ENUM_3", ff::ENUM_3);
