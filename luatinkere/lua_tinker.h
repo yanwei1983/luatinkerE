@@ -752,7 +752,7 @@ namespace lua_tinker
                 if(IsInherit(L, pWapper->m_type_idx, get_type_idx<base_type<_T>>()) == false)
                 {
                     call_error(L, "can't convert argument %d to class %s", index, get_class_name<_T>());
-					return return_empty<_T>();
+					return;
                 }
             }
 #endif
@@ -762,7 +762,7 @@ namespace lua_tinker
                    false)
             {
                 call_error(L, "can't convert argument %d from const class %s", index, get_class_name<_T>());
-				return return_empty<_T>();
+				return;
             }
 #endif
         }
@@ -1513,7 +1513,7 @@ namespace lua_tinker
                 if(pWapper->is_const() == true && bConstMemberFunc == false)
                 {
                     call_error(L, "const class_ptr %s can't invoke non-const member func.", get_class_name<T>());
-                    return return_empty<_T>();
+                    return return_empty<T*>();
                 }
 #endif
                 return void2type<T*>(pWapper->m_p);
