@@ -1430,7 +1430,7 @@ namespace lua_tinker
                 if(pWapper->is_const() == true && bConstMemberFunc == false)
                 {
                     call_error(L, "const class_ptr %s can't invoke non-const member func.", get_class_name<T>());
-                    return return_empty<_T>();
+                    return return_empty<T*>();
                 }
 #endif
                 return void2type<T*>(pWapper->m_p);
