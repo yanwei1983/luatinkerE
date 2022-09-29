@@ -21,6 +21,7 @@
 #include <typeindex>
 #include <typeinfo>
 #include <stdexcept>
+#include <concepts>
 //#include<set>
 #include <map>
 //#include<vector>
@@ -295,7 +296,7 @@ namespace lua_tinker
         template<typename T>
         struct class_name;
 
-        template<typename T, typename Enable = void>
+        template<typename T>
         struct _stack_help;
 
         // forward delcare
@@ -799,7 +800,7 @@ namespace lua_tinker
         }
 
         // lua stack help to read/push
-        template<typename T, typename Enable>
+        template<typename T>
         struct _stack_help
         {
             static constexpr int32_t cover_to_lua_type() { return CLT_USERDATA; }
@@ -862,8 +863,8 @@ namespace lua_tinker
         };
 
         // integral
-        template<typename T>
-        struct _stack_help<T, typename std::enable_if<std::is_integral<T>::value>::type>
+        template<std::integral T>
+        struct _stack_help<T>
         {
             static constexpr int32_t cover_to_lua_type() { return CLT_INT; }
 
@@ -872,8 +873,8 @@ namespace lua_tinker
         };
 
         // float pointer
-        template<typename T>
-        struct _stack_help<T, typename std::enable_if<std::is_floating_point<T>::value>::type>
+        template<std::floating_point T>
+        struct _stack_help<T>
         {
             static constexpr int32_t cover_to_lua_type() { return CLT_DOUBLE; }
 
@@ -927,11 +928,13 @@ namespace lua_tinker
 
         // enum
         template<typename T>
-        struct _stack_help<T, typename std::enable_if<std::is_enum<T>::value>::type>
+        requires std::is_enum_v<T> 
+        struct _stack_help<T>
         {
             static constexpr int32_t cover_to_lua_type() { return CLT_INT; }
-            static T                 _read(lua_State* L, int32_t index) { return (T)lua_tointeger(L, index); }
-            static void              _push(lua_State* L, T ret) { lua_pushinteger(L, (int32_t)ret); }
+
+            static T    _read(lua_State* L, int32_t index) { return (T)lua_tointeger(L, index); }
+            static void _push(lua_State* L, T ret) { lua_pushinteger(L, static_cast<lua_Integer>(ret)); }
         };
 
         // support container
@@ -998,11 +1001,12 @@ namespace lua_tinker
             }
         }
 
+        template<class T>
+        concept stl_container = !std::is_reference<T>::value && !std::is_pointer<T>::value && is_container<base_type<T>>::value;
+
         // stl container T
-        template<typename T>
-        struct _stack_help<
-            T,
-            typename std::enable_if<!std::is_reference<T>::value && !std::is_pointer<T>::value && is_container<base_type<T>>::value>::type>
+        template<stl_container T>
+        struct _stack_help<T>
         {
             static constexpr int32_t cover_to_lua_type() { return CLT_TABLE; }
 
@@ -1703,8 +1707,8 @@ namespace lua_tinker
         }
 
         template<typename overload_functor>
-        auto _push_functor(lua_State* L, const char* name, overload_functor&& functor) ->
-            typename std::enable_if<std::is_base_of<args_type_overload_functor_base, overload_functor>::value, void>::type
+        requires std::is_base_of<args_type_overload_functor_base, overload_functor>::value
+        void _push_functor(lua_State* L, const char* name, overload_functor&& functor)
         {
             functor.setname(name);
             new(lua_newuserdata(L, sizeof(overload_functor))) overload_functor(std::forward<overload_functor>(functor));
@@ -1952,8 +1956,8 @@ namespace lua_tinker
         }
 
         template<typename overload_functor>
-        auto _push_class_functor(lua_State* L, const char* name, overload_functor&& functor) ->
-            typename std::enable_if<std::is_base_of<args_type_overload_functor_base, overload_functor>::value, void>::type
+        requires std::is_base_of<args_type_overload_functor_base, overload_functor>::value
+        void _push_class_functor(lua_State* L, const char* name, overload_functor&& functor)
         {
             functor.setname(name);
             new(lua_newuserdata(L, sizeof(overload_functor))) overload_functor(std::forward<overload_functor>(functor));
