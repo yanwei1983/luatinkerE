@@ -280,7 +280,7 @@ void _addInheritMap(lua_tinker::detail::InheritMap& refMap, uint64_t idTypeDeriv
     refMap[idTypeDerived][idTypeBase] = offset;
 }
 
-std::vector<uint64_t> BFSSearchInheritMap(const lua_tinker::detail::InheritMap& map, uint64_t start)
+std::vector<uint64_t> BFS_search_inherit_map(const lua_tinker::detail::InheritMap& map, uint64_t start)
 {
     std::queue<uint64_t>         q;
     std::vector<uint64_t>        result;
@@ -313,7 +313,7 @@ std::vector<uint64_t> BFSSearchInheritMap(const lua_tinker::detail::InheritMap& 
     return result;
 }
 
-std::vector<std::vector<uint64_t>> FindInheritanceChains(const lua_tinker::detail::InheritMap& map)
+std::vector<std::vector<uint64_t>> find_inherit_chains(const lua_tinker::detail::InheritMap& map)
 {
     std::vector<std::vector<uint64_t>> chains;
     std::unordered_set<uint64_t>       allNodes;
@@ -343,13 +343,13 @@ std::vector<std::vector<uint64_t>> FindInheritanceChains(const lua_tinker::detai
     chains.reserve(startNodes.size());
     for(const auto& startNode: startNodes)
     {
-        chains.push_back(BFSSearchInheritMap(map, startNode));
+        chains.push_back(BFS_search_inherit_map(map, startNode));
     }
 
     return chains;
 }
 
-void expendInheritMap(lua_tinker::detail::InheritMap& refMap, uint64_t idType, uint64_t idTypeBase, int64_t offset)
+void expend_inherit_map(lua_tinker::detail::InheritMap& refMap, uint64_t idType, uint64_t idTypeBase, int64_t offset)
 {
     auto it = refMap.find(idTypeBase);
     if(it == refMap.end())
@@ -365,7 +365,7 @@ void expendInheritMap(lua_tinker::detail::InheritMap& refMap, uint64_t idType, u
 
 void process_inherit_map(lua_tinker::detail::InheritMap& refMap)
 {
-    auto chains = FindInheritanceChains(refMap);
+    auto chains = find_inherit_chains(refMap);
     for(const auto& chain: chains)
     {
         for(const auto& id: chain)
@@ -376,7 +376,7 @@ void process_inherit_map(lua_tinker::detail::InheritMap& refMap)
                
                 for(const auto& [idBase, offset]: it->second)
                 {
-                    expendInheritMap(refMap, id, idBase, offset);
+                    expend_inherit_map(refMap, id, idBase, offset);
                 }
                 
             }
