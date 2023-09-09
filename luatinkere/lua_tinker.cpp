@@ -27,7 +27,10 @@ extern "C"
 
 namespace lua_tinker
 {
-    bool haveErrFunc(lua_State* L) { return L->errfunc != 0; }
+    bool haveErrFunc(lua_State* L)
+    {
+        return L->errfunc != 0;
+    }
 
     void set_error_callback(lua_State* L, error_call_back_fn fn)
     {
@@ -46,9 +49,9 @@ struct lua_ext_value
     lua_State*                                               m_L;
     typedef std::vector<lua_tinker::Lua_Close_CallBack_Func> CLOSE_CALLBACK_VEC;
     CLOSE_CALLBACK_VEC                                       m_vecCloseCallBack;
-#ifdef LUATINKER_USERDATA_CHECK_TYPEINFO
+
     lua_tinker::detail::InheritMap m_inherit_map;
-#endif
+
     lua_ext_value(lua_State* L)
         : m_L(L)
     {
@@ -244,27 +247,45 @@ void lua_tinker::init(lua_State* L)
 
     lua_register(L, "lua_create_class", create_class);
     lua_register(L, "__my_print", _my_print);
+    lua_register(L, "__enum_stack", enum_stack);
+    lua_register(L, "__clear_stack", clear_stack);
+    
     set_error_callback(L, &on_error);
 }
 
-#ifdef LUATINKER_USERDATA_CHECK_TYPEINFO
-
-bool find_inherit(size_t idThisType, size_t idTypeBase, lua_tinker::detail::InheritMap& refMap)
+bool find_inherit(uint64_t idThisType, uint64_t idTypeBase, lua_tinker::detail::InheritMap& refMap)
 {
-    auto itFindPair = refMap.equal_range(idThisType);
-    if(itFindPair.first == refMap.end())
+    auto it_derived = refMap.find(idThisType);
+    if(it_derived == refMap.end())
         return false;
-    for(auto itFind = itFindPair.first; itFind != itFindPair.second; itFind++)
-    {
-        if(itFind->second == idTypeBase)
-            return true;
-        if(find_inherit(itFind->second, idTypeBase, refMap) == true)
-            return true;
-    }
+
+    auto it_base = it_derived->second.find(idTypeBase);
+    if(it_base != it_derived->second.end())
+        return true;
+
     return false;
 }
 
-bool lua_tinker::detail::IsInherit(lua_State* L, size_t idTypeDerived, size_t idTypeBase)
+bool  lua_tinker::detail::hasInherit(lua_State* L, uint64_t idThisType)
+{
+    lua_stack_scope_exit scope_exit(L);
+    if(lua_getglobal(L, s_lua_ext_value_name) != LUA_TUSERDATA)
+    {
+        lua_pop(L, 1); // pop getglobal
+        print_error(L, "can't find lua_ext_value");
+        return false;
+    }
+
+    lua_ext_value* p_lua_ext_val = detail::user2type<lua_ext_value*>(L, -1);
+    auto&          refMap        = p_lua_ext_val->m_inherit_map;
+    auto it_derived = refMap.find(idThisType);
+    if(it_derived == refMap.end())
+        return false;
+    
+    return true;
+}
+
+bool lua_tinker::detail::IsInherit(lua_State* L, uint64_t idTypeDerived, uint64_t idTypeBase)
 {
     lua_stack_scope_exit scope_exit(L);
     if(lua_getglobal(L, s_lua_ext_value_name) != LUA_TUSERDATA)
@@ -280,7 +301,45 @@ bool lua_tinker::detail::IsInherit(lua_State* L, size_t idTypeDerived, size_t id
     return find_inherit(idTypeDerived, idTypeBase, refMap);
 }
 
-void lua_tinker::detail::_addInheritMap(lua_State* L, size_t idTypeDerived, size_t idTypeBase)
+void* lua_tinker::detail::getInheritPtr(lua_State* L, uint64_t idTypeDerived, uint64_t idTypeBase, void* ptr)
+{
+    lua_stack_scope_exit scope_exit(L);
+    if(lua_getglobal(L, s_lua_ext_value_name) != LUA_TUSERDATA)
+    {
+        lua_pop(L, 1); // pop getglobal
+        print_error(L, "can't find lua_ext_value");
+        return ptr;
+    }
+
+    lua_ext_value* p_lua_ext_val = detail::user2type<lua_ext_value*>(L, -1);
+
+    auto it_derived = p_lua_ext_val->m_inherit_map.find(idTypeDerived);
+    if(it_derived == p_lua_ext_val->m_inherit_map.end())
+        return ptr;
+
+    auto it_base = it_derived->second.find(idTypeBase);
+    if(it_base == it_derived->second.end())
+        return ptr;
+
+    return (char*)ptr + it_base->second;
+}
+
+void _addInheritMap(lua_tinker::detail::InheritMap& refMap, uint64_t idTypeDerived, uint64_t idTypeBase, int64_t offset)
+{
+    refMap[idTypeDerived][idTypeBase] = offset;
+
+    // 找到idTypeBase的基类, 然后把idTypeDerived的基类加入到基类的继承列表中
+    auto it_base = refMap.find(idTypeBase);
+    if(it_base != refMap.end())
+    {
+        for(auto& it: it_base->second)
+        {
+            _addInheritMap(refMap, idTypeDerived, it.first, it.second + offset);
+        }
+    }
+}
+
+void lua_tinker::detail::addInheritMap(lua_State* L, uint64_t idTypeDerived, uint64_t idTypeBase, int64_t offset)
 {
     lua_stack_scope_exit scope_exit(L);
     if(lua_getglobal(L, s_lua_ext_value_name) != LUA_TUSERDATA)
@@ -292,10 +351,8 @@ void lua_tinker::detail::_addInheritMap(lua_State* L, size_t idTypeDerived, size
 
     lua_ext_value* p_lua_ext_val = detail::user2type<lua_ext_value*>(L, -1);
     auto&          refMap        = p_lua_ext_val->m_inherit_map;
-    refMap.emplace(idTypeDerived, idTypeBase);
+    _addInheritMap(refMap, idTypeDerived, idTypeBase, offset);
 }
-
-#endif
 
 /*---------------------------------------------------------------------------*/
 /* debug helpers                                                             */
@@ -319,9 +376,20 @@ static void call_stack(lua_State* L, int32_t n)
         }
 
         if(ar.name)
-            lua_tinker::print_error(L, "%s%s() : line %d [%s : line %d]", indent, ar.name, ar.currentline, ar.source, ar.linedefined);
+            lua_tinker::print_error(L,
+                                    "%s%s() : line %d [%s : line %d]",
+                                    indent,
+                                    ar.name,
+                                    ar.currentline,
+                                    ar.source,
+                                    ar.linedefined);
         else
-            lua_tinker::print_error(L, "%sunknown : line %d [%s : line %d]", indent, ar.currentline, ar.source, ar.linedefined);
+            lua_tinker::print_error(L,
+                                    "%sunknown : line %d [%s : line %d]",
+                                    indent,
+                                    ar.currentline,
+                                    ar.source,
+                                    ar.linedefined);
 
         call_stack(L, n + 1);
     }
@@ -360,7 +428,7 @@ void lua_tinker::print_error(lua_State* L, const char* fmt, ...)
 }
 
 /*---------------------------------------------------------------------------*/
-void lua_tinker::enum_stack(lua_State* L)
+int32_t lua_tinker::enum_stack(lua_State* L)
 {
     int32_t top = lua_gettop(L);
     print_error(L, "%s", "----------stack----------");
@@ -392,7 +460,11 @@ void lua_tinker::enum_stack(lua_State* L)
                 {
                     name.assign(lua_tostring(L, -1));
                     lua_remove(L, -1);
-                    print_error(L, "\t%s    0x%08p [%s]", lua_typename(L, lua_type(L, i)), lua_topointer(L, i), name.c_str());
+                    print_error(L,
+                                "\t%s    0x%08p [%s]",
+                                lua_typename(L, lua_type(L, i)),
+                                lua_topointer(L, i),
+                                name.c_str());
                 }
                 else
                 {
@@ -413,11 +485,13 @@ void lua_tinker::enum_stack(lua_State* L)
         }
     }
     print_error(L, "%s", "-------------------------");
+    return 0;
 }
 
-void lua_tinker::clear_stack(lua_State* L)
+int32_t lua_tinker::clear_stack(lua_State* L)
 {
     lua_settop(L, 0);
+    return 0;
 }
 
 // getmetatable(scope_global_name)[name] = getmetatable(global_name)
@@ -500,7 +574,8 @@ lua_tinker::table_onstack lua_tinker::detail::_stack_help<lua_tinker::table_onst
     return lua_tinker::table_onstack(L, index);
 }
 
-void lua_tinker::detail::_stack_help<lua_tinker::table_onstack>::_push(lua_State* L, const lua_tinker::table_onstack& ret)
+void lua_tinker::detail::_stack_help<lua_tinker::table_onstack>::_push(lua_State*                       L,
+                                                                       const lua_tinker::table_onstack& ret)
 {
     lua_pushvalue(L, ret.m_obj->m_index);
 }
@@ -605,7 +680,6 @@ static void invoke_parent(lua_State* L)
             }
         }
     }
-#ifdef LUATINKER_MULTI_INHERITANCE
 
     // try multi_parent
     {
@@ -646,8 +720,6 @@ static void invoke_parent(lua_State* L)
             lua_pushnil(L); // not find return nil
         }
     }
-
-#endif
 }
 
 /*---------------------------------------------------------------------------*/
@@ -656,11 +728,18 @@ int32_t lua_tinker::detail::meta_get(lua_State* L)
     stack_obj class_obj(L, 1);
     stack_obj key_obj(L, 2);
     stack_obj class_meta = class_obj.get_metatable();
-    stack_obj val_obj    = class_meta.rawget(key_obj);
+    if(class_meta.is_vaild() == false || class_meta.is_table() == false)
+    {
+        lua_pushstring(L, "can't find class metatable. (forgot registering class variable ?)");
+        lua_error(L);
+        return 0;
+    }
+    stack_obj val_obj = class_meta.rawget(key_obj);
     if(val_obj.is_userdata())
     {
-        detail::user2type<detail::var_base*>(L, val_obj._stack_pos)->get(L); // push a val
-        val_obj.remove();
+        auto var_op_ptr = detail::user2type<detail::var_base*>(L, val_obj._stack_pos);
+        var_op_ptr->get(L); // push a val
+        val_obj.remove(true);
     }
     else if(val_obj.is_nil())
     {
@@ -669,8 +748,9 @@ int32_t lua_tinker::detail::meta_get(lua_State* L)
         val_obj = stack_obj::get_top(L);
         if(val_obj.is_userdata())
         {
-            detail::user2type<detail::var_base*>(L, val_obj._stack_pos)->get(L); // push a val
-            val_obj.remove();
+            auto var_op_ptr = detail::user2type<detail::var_base*>(L, val_obj._stack_pos);
+            var_op_ptr->get(L); // push a val
+            val_obj.remove(true);
         }
         else if(val_obj.is_nil())
         {
@@ -680,33 +760,35 @@ int32_t lua_tinker::detail::meta_get(lua_State* L)
             lua_error(L);
         }
     }
-    class_meta.remove();
+    class_meta.remove(true);
     return 1;
 }
 
 /*---------------------------------------------------------------------------*/
 int32_t lua_tinker::detail::meta_set(lua_State* L)
 {
-    stack_scope_exit scope_exit(L);
+    stack_scope_exit scope_exit(L, 0);
     stack_obj        class_obj(L, 1);
     stack_obj        key_obj(L, 2);
-    stack_obj        class_meta = class_obj.get_metatable();
-    stack_obj        val_obj    = class_meta.rawget(key_obj); // class_meta[key]
+    //
+    stack_obj class_meta = class_obj.get_metatable();
+    stack_obj val_obj    = class_meta.rawget(key_obj); // class_meta[key]
 
     if(val_obj.is_userdata())
     {
-        detail::user2type<detail::var_base*>(L, val_obj._stack_pos)->set(L);
+        auto var_op_ptr = detail::user2type<detail::var_base*>(L, val_obj._stack_pos);
+        var_op_ptr->set(L);
     }
     else if(val_obj.is_nil())
     {
         val_obj.remove();
-        key_obj.push_top();
         class_meta.push_top();
         invoke_parent(L);
         val_obj = stack_obj::get_top(L);
         if(val_obj.is_userdata())
         {
-            detail::user2type<detail::var_base*>(L, val_obj._stack_pos)->set(L);
+            auto var_op_ptr = detail::user2type<detail::var_base*>(L, val_obj._stack_pos);
+            var_op_ptr->set(L);
         }
         else if(val_obj.is_nil())
         {

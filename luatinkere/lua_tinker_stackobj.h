@@ -11,12 +11,20 @@ namespace lua_tinker
         {
             lua_State* L;
             int32_t    nTop;
-            stack_scope_exit(lua_State* _L)
+            explicit stack_scope_exit(lua_State* _L)
                 : L(_L)
             {
                 nTop = lua_gettop(L);
             }
-            ~stack_scope_exit() { lua_settop(L, nTop); }
+            stack_scope_exit(lua_State* _L, int32_t t)
+                : L(_L), nTop(t)
+            {
+            }
+            ~stack_scope_exit() 
+            { 
+                lua_settop(L, nTop); 
+            }
+
         };
         struct stack_delay_pop
         {
@@ -32,7 +40,11 @@ namespace lua_tinker
         struct stack_obj
         {
             lua_State* L;
-            int32_t    _stack_pos;
+            int32_t    _stack_pos = 0;
+            explicit stack_obj(lua_State* _L)
+                : L(_L)
+            {
+            }
             stack_obj(lua_State* _L, int32_t nIdx)
                 : L(_L)
                 , _stack_pos(lua_absindex(L, nIdx))
@@ -47,7 +59,7 @@ namespace lua_tinker
                 return stack_obj(L, lua_gettop(L));
             }
 
-            void    reset(int32_t nIdx = 0){_stack_pos = nIdx;}
+            void reset(int32_t nIdx = 0) { _stack_pos = nIdx; }
 
             bool    is_vaild() const { return _stack_pos != 0; }
             int32_t get_type() const { return is_vaild() && lua_type(L, _stack_pos); }
@@ -62,10 +74,39 @@ namespace lua_tinker
             bool    is_table() const { return is_vaild() && lua_istable(L, _stack_pos); }
             bool    is_nil() const { return is_vaild() && lua_isnil(L, _stack_pos); }
 
-            void remove()
+            const char*   to_string() const { return lua_tostring(L, _stack_pos); }
+            lua_Integer   to_integer() const { return lua_tointeger(L, _stack_pos); }
+            lua_Number    to_number() const { return lua_tonumber(L, _stack_pos); }
+            bool          to_boolean() const { return lua_toboolean(L, _stack_pos); }
+            void*         to_userdata() const { return lua_touserdata(L, _stack_pos); }
+            lua_CFunction to_cfunction() const { return lua_tocfunction(L, _stack_pos); }
+            
+            
+
+            void remove(bool force = false)
             {
                 if(is_vaild())
-                    lua_remove(L, _stack_pos);
+                {
+                    if(is_top() || force)
+                    {
+                        lua_remove(L, _stack_pos);
+                    }
+                    else
+                    {
+                        lua_pushfstring(L, "stack_obj::remove() error: %d not top stack", _stack_pos);
+                        lua_error(L);
+                        
+                        return;
+                    }
+                }
+                reset(0);
+            }
+
+            void remove_up()
+            {
+                if(!is_vaild())
+                    return;
+                lua_pop(L, lua_gettop(L) - (_stack_pos -1));
                 reset(0);
             }
 
@@ -87,15 +128,20 @@ namespace lua_tinker
                     _stack_pos = lua_absindex(L, -1);
                 }
             }
+
             void pop_up()
             {
                 if(!is_vaild())
+                    return;
+                if(is_top())
                     return;
                 lua_pop(L, lua_gettop(L) - _stack_pos);
             }
 
             void push_top() const
             {
+                if(is_top())
+                    return;
                 if(is_vaild())
                     lua_pushvalue(L, _stack_pos);
             }
@@ -110,7 +156,7 @@ namespace lua_tinker
                     return get_top(L);
                 }
                 else
-                    return stack_obj(L, 0);
+                    return stack_obj(L);
             }
 
             lua_Integer get_len() const
@@ -141,7 +187,7 @@ namespace lua_tinker
                     lua_rawget(L, _stack_pos);
                     return get_top(L);
                 }
-                return stack_obj(L, 0);
+                return stack_obj(L);
             }
 
             stack_obj rawget(const char* key) const
@@ -152,7 +198,7 @@ namespace lua_tinker
                     lua_rawget(L, _stack_pos);
                     return get_top(L);
                 }
-                return stack_obj(L, 0);
+                return stack_obj(L);
             }
 
             stack_obj rawgeti(int32_t n) const
@@ -162,7 +208,7 @@ namespace lua_tinker
                     lua_rawgeti(L, _stack_pos, n);
                     return get_top(L);
                 }
-                return stack_obj(L, 0);
+                return stack_obj(L);
             }
 
             void rawset()
@@ -188,7 +234,7 @@ namespace lua_tinker
                     if(lua_getmetatable(L, _stack_pos))
                         return get_top(L);
                 }
-                return stack_obj(L, 0);
+                return stack_obj(L);
             }
 
             void set_to_global(const char* name)
@@ -210,6 +256,10 @@ namespace lua_tinker
                 do_next();
             }
 
+            ~table_iterator()
+            {
+            }
+
             bool hasNext() const { return m_hasNext; }
 
             void moveNext()
@@ -222,6 +272,7 @@ namespace lua_tinker
                 }
                 else
                 {
+                    key().remove_up();
                     m_hasNext = false;
                 }
             }
@@ -241,7 +292,10 @@ namespace lua_tinker
             }
 
         private:
-            void      do_next() { m_hasNext = !!lua_next(m_table.L, m_table._stack_pos); }
+            void      do_next()
+            { 
+                m_hasNext = lua_next(m_table.L, m_table._stack_pos) == 1;
+            }
             stack_obj m_table;
             int32_t   m_key;
             bool      m_hasNext;

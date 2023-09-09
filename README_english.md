@@ -65,8 +65,6 @@ QQ group:518398988
 * call register_lua_close_callback reg a callback func, when lua close it will be callback  
 * allow to push a const obj/ref/pointer, but it will lost const qualifier, plz used carefully 
 * define macro LUATINKER_USERDATA_HOLD_CONST will store const info(bool) in userdata,will check when call member function,will check lost const qualifier when read   
-* define macro LUATINKER_USERDATA_CHECK_TYPEINFO will stroe typeidx info(size_t) in userdata,will do type consistency check when read  
-* on debug mode will auto define LUATINKER_USERDATA_CHECK_CONST and LUATINKER_USERDATA_CHECK_TYPEINFO for extra check  
 * args_type_overload_functor/member_functor/constructor was simple convert c++ params list to luatype, then stored in int64 as a function signature, do non-exact matching when function name invoked  
 * add function class_def_static for register class static member function,use class.foo() to invoke, plz don't use class:foo()  
 * add function class_property for register get/set function for a member_name  

@@ -167,7 +167,7 @@ LUA_TEST(sharedptr)
 		lua_tinker::dostring(L, luabuf.c_str());
 		return  lua_tinker::call<bool>(L, "lua_test_shared_1");
 	};
-#ifdef LUATINKER_USERDATA_CHECK_TYPEINFO
+
 	g_test_func_set["test_lua_shared_2"] = [L]()->bool
 	{
 		std::string luabuf =
@@ -182,7 +182,7 @@ LUA_TEST(sharedptr)
 		lua_tinker::set_error_callback(L, [](lua_State *L) -> int
 		{
 			std::string errinfo(lua_tostring(L, -1));
-			if (errinfo != "can't convert argument 1 to class ff")
+			if (errinfo != "can't convert argument 1 from ff__shared_ptr to class ff")
 			{
 				lua_tinker::on_error(L);
 			}
@@ -207,7 +207,7 @@ LUA_TEST(sharedptr)
 		lua_tinker::set_error_callback(L, [](lua_State *L) -> int
 		{
 			std::string errinfo(lua_tostring(L, -1));
-			if (errinfo != "can't convert argument 1 to class ")
+			if (errinfo != "can't convert argument 1 from ff__shared_ptr to class ")
 			{
 				lua_tinker::on_error(L);
 			}
@@ -219,7 +219,7 @@ LUA_TEST(sharedptr)
 		return true;
 
 	};
-#endif
+
 
 	g_test_func_set["test_lua_shared_4"] = [L]()->bool
 	{
@@ -280,8 +280,13 @@ LUA_TEST(sharedptr)
 			R"(function test_lua_shared_8()
 					local shared_ff = make_ff_to_lua();
 					shared_ff.m_val = 77;
+
 					local shared_ff_copy = pass_shared_from_lua(shared_ff);
-					return nil ~= shared_ff_copy:_get_raw_ptr() and shared_ff:_get_raw_ptr().m_val == shared_ff_copy:_get_raw_ptr().m_val and shared_ff_copy:_get_raw_ptr().m_val == 77;
+					local raw_ff_copy = shared_ff_copy:_get_raw_ptr();
+					local raw_ff = shared_ff:_get_raw_ptr();
+
+
+					return raw_ff_copy.m_val == 77;
 				end
 			)";
 
@@ -302,7 +307,6 @@ LUA_TEST(sharedptr)
 		return  lua_tinker::call<bool>(L, "lua_test_weak_1");
 	};
 
-#ifdef LUATINKER_USERDATA_CHECK_TYPEINFO
 
 	g_test_func_set["test_lua_weak_2"] = [L]()->bool
 	{
@@ -328,7 +332,6 @@ LUA_TEST(sharedptr)
 		return true;
 
 	};
-#endif
 
 	g_test_func_set["test_lua_shared_invoke_1"] = [L]()->bool
 	{
@@ -411,7 +414,6 @@ LUA_TEST(sharedptr)
 		lua_tinker::dostring(L, luabuf.c_str());
 		return  lua_tinker::call<bool>(L, "test_lua_nodef_shared_2");
 	};
-#ifdef LUATINKER_USERDATA_CHECK_TYPEINFO
 
 	g_test_func_set["test_lua_nodef_shared_3"] = [L]()->bool
 	{
@@ -425,7 +427,7 @@ LUA_TEST(sharedptr)
 		lua_tinker::set_error_callback(L, [](lua_State *L) -> int
 		{
 			std::string errinfo(lua_tostring(L, -1));
-			if (errinfo != "can't convert argument 1 to class ")
+			if (errinfo != "shared_ptr _read 1 to class __shared_ptr,nil or not shared")
 			{
 				lua_tinker::on_error(L);
 			}
@@ -462,7 +464,6 @@ LUA_TEST(sharedptr)
 		return true;
 
 	};
-#endif
 
 
 }

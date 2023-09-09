@@ -70,8 +70,6 @@ QQ群:518398988
 * 通过调用register_lua_close_callback注册回调函数，当lua关闭时回调  
 * 允许向lua导出常量对象，但是会丢失常量限定符，请注意 
 * 定义宏 LUATINKER_USERDATA_CHECK_CONST 将会储存const信息(bool)到userdata中，当调用成员函数时会检查是否允许调用,同时read是会检查是否发生丢失常量限定符的问题  
-* 定义宏 LUATINKER_USERDATA_CHECK_TYPEINFO 将会储存typeidx信息(size_t)到userdata中，当read时将进行类型一致性检查  
-* 调试模式下自动打开LUATINKER_USERDATA_CHECK_CONST和LUATINKER_USERDATA_CHECK_TYPEINFO 进行额外的检查  
 * args_type_overload_functor/member_functor/constructor是简单的将c++参数列表转换为luatype后存储到int64作为函数签名，运行时进行非精确匹配  
 * 新增class_def_static函数可以注册类静态函数,使用class.foo()来调用，不要使用class:foo() 
 * 新增class_property函数可以为一个名字注册一对get/set函数  

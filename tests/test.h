@@ -110,6 +110,11 @@ public:
 	{
 		return n;
 	}
+
+	export_lua void set_ff_other_base(int a) { m_data =a;}
+	export_lua int get_ff_other_base() const {return m_data;}
+private:
+	int m_data = 0;
 };
 
 export_lua class ff_other_baseA
@@ -124,13 +129,23 @@ export_lua class ff_other_baseB : public ff_other_base
 public:
 	ff_other_baseB() {}
 	virtual ~ff_other_baseB() {}
+
+	export_lua void set_ff_other_baseB(int a) { m_data =a;}
+	export_lua int get_ff_other_baseB() const {return m_data;}
+private:
+	int m_data = 0;
 };
 
 export_lua struct ff_other : public ff_other_baseA, public ff_other_baseB
 {
 public:
-	ff_other() {}
+	export_lua ff_other() {}
 	virtual ~ff_other() {}
+
+	export_lua void set_ff_other(int a) { m_data =a;}
+	export_lua int get_ff_other() const {return m_data;}
+private:
+	int m_data = 0;
 };
 
 export_lua class ff : public ff_other, public ff_base

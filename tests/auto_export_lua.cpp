@@ -157,16 +157,22 @@ void export_to_lua_auto(lua_State* L)
 	lua_tinker::class_add<ff_base>(L, "ff_base", true);
 	lua_tinker::class_def<ff_base>(L, "test_base_callfn", &ff_base::test_base_callfn);
 	lua_tinker::class_add<ff_other>(L, "ff_other", true);
+	lua_tinker::class_def<ff_other>(L, "set_ff_other", &ff_other::set_ff_other);
+	lua_tinker::class_def<ff_other>(L, "get_ff_other", &ff_other::get_ff_other);
+	lua_tinker::class_con<ff_other>(L);
 	lua_tinker::class_add<ff_other_base>(L, "ff_other_base", true);
 	lua_tinker::class_def<ff_other_base>(L, "test_other_callfn", &ff_other_base::test_other_callfn);
+	lua_tinker::class_def<ff_other_base>(L, "set_ff_other_base", &ff_other_base::set_ff_other_base);
+	lua_tinker::class_def<ff_other_base>(L, "get_ff_other_base", &ff_other_base::get_ff_other_base);
 	lua_tinker::class_add<ff_other_baseA>(L, "ff_other_baseA", true);
 	lua_tinker::class_add<ff_other_baseB>(L, "ff_other_baseB", true);
+	lua_tinker::class_def<ff_other_baseB>(L, "set_ff_other_baseB", &ff_other_baseB::set_ff_other_baseB);
+	lua_tinker::class_def<ff_other_baseB>(L, "get_ff_other_baseB", &ff_other_baseB::get_ff_other_baseB);
 	lua_tinker::class_add<SampleStruct>(L, "SampleStruct", false);
-	lua_tinker::class_inh<ff, ff_base>(L);
-	lua_tinker::class_inh<ff, ff_other>(L);
+	lua_tinker::class_inh<ff_other_baseB, ff_other_base>(L);
 	lua_tinker::class_inh<ff_other, ff_other_baseA>(L);
 	lua_tinker::class_inh<ff_other, ff_other_baseB>(L);
-	lua_tinker::class_inh<ff_other_baseB, ff_other_base>(L);
-
+	lua_tinker::class_inh<ff, ff_base>(L);
+	lua_tinker::class_inh<ff, ff_other>(L);
 
 }

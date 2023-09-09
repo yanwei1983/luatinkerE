@@ -28,7 +28,7 @@ LUA_TEST(inherit)
 		return  lua_tinker::call<bool>(L, "test_lua_inherit_3");
 	};
 
-#ifdef LUATINKER_MULTI_INHERITANCE
+
 	g_test_func_set["test_lua_inherit_2"] = [L]()->bool
 	{
 		std::string luabuf =
@@ -79,7 +79,53 @@ LUA_TEST(inherit)
 		return true;
 	};
 
-#endif
+
+	g_test_func_set["test_lua_inherit_6"] = [L]()->bool
+	{
+		std::string luabuf =
+			R"(function test_lua_inherit_6(ff)
+					return ff:get_ff_other() + ff:get_ff_other_base() + ff:get_ff_other_baseB();
+				end
+			)";
+		lua_tinker::dostring(L, luabuf.c_str());
+		
+		ff_other test;
+		test.set_ff_other(1);
+		test.set_ff_other_base(2);
+		test.set_ff_other_baseB(3);
+	
+		return lua_tinker::call<int>(L, "test_lua_inherit_6", &test) == 6;
+	};
+	g_test_func_set["test_lua_inherit_7"] = [L]()->bool
+	{
+		std::string luabuf =
+			R"(function test_lua_inherit_7()
+					local ff = ff_other();
+					ff:set_ff_other(1);
+					ff:set_ff_other_base(2);
+					ff:set_ff_other_baseB(3);
+					return ff:get_ff_other() + ff:get_ff_other_base() + ff:get_ff_other_baseB();
+				end
+			)";
+		lua_tinker::dostring(L, luabuf.c_str());
+		
+	
+		return lua_tinker::call<int>(L, "test_lua_inherit_7") == 6;
+	};
+	g_test_func_set["test_lua_inherit_8"] = [L]()->bool
+	{
+		std::string luabuf =
+			R"(function test_lua_inherit_8()
+					local ff = ff_other();
+					return ff:get_ff_other() + ff:get_ff_other_base() + ff:get_ff_other_baseB();
+				end
+			)";
+		lua_tinker::dostring(L, luabuf.c_str());
+		
+	
+		return lua_tinker::call<int>(L, "test_lua_inherit_8") == 0;
+	};
+
 
 
 

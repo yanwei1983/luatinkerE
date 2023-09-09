@@ -49,7 +49,7 @@ LUA_TEST(array)
 			)";
 		lua_tinker::dostring(L, luabuf.c_str());
         
-		return lua_tinker::call<bool>(L, "test_lua_array_2",g_array_int);
+		return lua_tinker::call<bool>(L, "test_lua_array_2", std::cref(g_array_int) );
 	};
     g_test_func_set["test_lua_array_3"] = [L]()->bool
 	{
@@ -57,7 +57,7 @@ LUA_TEST(array)
 			R"(function test_lua_array_3(array)
                     local array_table = push_array();
                     local test_table = array_table:to_table();
-                    return test_table[2] == 2;
+                    return test_table[2] == 2 and array[3] == 3;
 				end
 			)";
 		lua_tinker::dostring(L, luabuf.c_str());
