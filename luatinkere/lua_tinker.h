@@ -292,8 +292,9 @@ namespace lua_tinker
         template<typename T, typename P>
         constexpr int64_t get_inherit_offset()
         {
-            T  t;
-            T* pT = &t;
+            static_assert(std::is_base_of<P, T>::value, "T must be inherit from P");
+            void* pVoid = (void*)1;
+            T* pT = (T*)pVoid;
             P* pP = (P*)pT;
             return (int64_t)((char*)pP - (char*)pT);
         }
