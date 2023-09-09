@@ -10,8 +10,13 @@
 
 #include <algorithm>
 #include <cstring>
+#include <deque>
 #include <iostream>
+#include <queue>
 #include <string>
+#include <unordered_set>
+#include <vector>
+
 #if defined(_MSC_VER)
 #define I64_FMT "I64"
 #elif defined(__APPLE__)
@@ -46,11 +51,15 @@ namespace lua_tinker
 
 struct lua_ext_value
 {
-    lua_State*                                               m_L;
+    lua_State* m_L;
+
     typedef std::vector<lua_tinker::Lua_Close_CallBack_Func> CLOSE_CALLBACK_VEC;
-    CLOSE_CALLBACK_VEC                                       m_vecCloseCallBack;
+
+    CLOSE_CALLBACK_VEC m_vecCloseCallBack;
 
     lua_tinker::detail::InheritMap m_inherit_map;
+
+    bool need_prcessed_inherit_map = true;  // if true, need process inherit map
 
     lua_ext_value(lua_State* L)
         : m_L(L)
@@ -249,7 +258,7 @@ void lua_tinker::init(lua_State* L)
     lua_register(L, "__my_print", _my_print);
     lua_register(L, "__enum_stack", enum_stack);
     lua_register(L, "__clear_stack", clear_stack);
-    
+
     set_error_callback(L, &on_error);
 }
 
@@ -266,7 +275,115 @@ bool find_inherit(uint64_t idThisType, uint64_t idTypeBase, lua_tinker::detail::
     return false;
 }
 
-bool  lua_tinker::detail::hasInherit(lua_State* L, uint64_t idThisType)
+void _addInheritMap(lua_tinker::detail::InheritMap& refMap, uint64_t idTypeDerived, uint64_t idTypeBase, int64_t offset)
+{
+    refMap[idTypeDerived][idTypeBase] = offset;
+}
+
+std::vector<uint64_t> BFSSearchInheritMap(const lua_tinker::detail::InheritMap& map, uint64_t start)
+{
+    std::queue<uint64_t>         q;
+    std::vector<uint64_t>        result;
+    std::unordered_set<uint64_t> visited;
+
+    q.push(start);
+    visited.insert(start);
+
+    while(!q.empty())
+    {
+        uint64_t n = q.front();
+        q.pop();
+        result.insert(result.begin(), n); // 添加节点到链表的前面，以实现逆序
+
+        auto it = map.find(n);
+        if(it != map.end())
+        {
+            for(const auto& base: it->second)
+            {
+                uint64_t baseId = base.first;
+                if(visited.count(baseId) == 0)
+                {
+                    q.push(baseId);
+                    visited.insert(baseId);
+                }
+            }
+        }
+    }
+
+    return result;
+}
+
+std::vector<std::vector<uint64_t>> FindInheritanceChains(const lua_tinker::detail::InheritMap& map)
+{
+    std::vector<std::vector<uint64_t>> chains;
+    std::unordered_set<uint64_t>       allNodes;
+    std::unordered_set<uint64_t>       ancestorNodes;
+
+    // Collect all nodes and ancestor nodes
+    for(const auto& derivedPair: map)
+    {
+        allNodes.insert(derivedPair.first);
+        for(const auto& basePair: derivedPair.second)
+        {
+            ancestorNodes.insert(basePair.first);
+        }
+    }
+
+    // Find start nodes
+    std::vector<uint64_t> startNodes;
+    for(const auto& node: allNodes)
+    {
+        if(ancestorNodes.count(node) == 0)
+        {
+            startNodes.push_back(node);
+        }
+    }
+
+    // Traverse each chain separately
+    for(const auto& startNode: startNodes)
+    {
+        chains.push_back(BFSSearchInheritMap(map, startNode));
+    }
+
+    return chains;
+}
+
+void expendInheritMap(lua_tinker::detail::InheritMap& refMap, uint64_t idType, uint64_t idTypeBase, int64_t offset)
+{
+    auto it = refMap.find(idTypeBase);
+    if(it == refMap.end())
+    {
+        return;
+    }
+
+    for(const auto& [idBase, baseOffset]: it->second)
+    {
+        _addInheritMap(refMap, idType, idBase, offset + baseOffset);
+    }
+}
+
+void process_inherit_map(lua_tinker::detail::InheritMap& refMap)
+{
+    auto chains = FindInheritanceChains(refMap);
+    for(const auto& chain: chains)
+    {
+        for(const auto& id: chain)
+        {
+            auto it = refMap.find(id);
+            if(it != refMap.end())
+            {
+               
+                for(const auto& [idBase, offset]: it->second)
+                {
+                    expendInheritMap(refMap, id, idBase, offset);
+                }
+                
+            }
+        }
+    }
+}
+
+bool lua_tinker::detail::hasInherit(lua_State* L, uint64_t idThisType)
 {
     lua_stack_scope_exit scope_exit(L);
     if(lua_getglobal(L, s_lua_ext_value_name) != LUA_TUSERDATA)
@@ -277,11 +394,19 @@ bool  lua_tinker::detail::hasInherit(lua_State* L, uint64_t idThisType)
     }
 
     lua_ext_value* p_lua_ext_val = detail::user2type<lua_ext_value*>(L, -1);
-    auto&          refMap        = p_lua_ext_val->m_inherit_map;
+
+    auto& refMap = p_lua_ext_val->m_inherit_map;
+
+    if(p_lua_ext_val->need_prcessed_inherit_map == true)
+    {
+        process_inherit_map(refMap);
+        p_lua_ext_val->need_prcessed_inherit_map = false;
+    }
+
     auto it_derived = refMap.find(idThisType);
     if(it_derived == refMap.end())
         return false;
-    
+
     return true;
 }
 
@@ -296,7 +421,13 @@ bool lua_tinker::detail::IsInherit(lua_State* L, uint64_t idTypeDerived, uint64_
     }
 
     lua_ext_value* p_lua_ext_val = detail::user2type<lua_ext_value*>(L, -1);
-    auto&          refMap        = p_lua_ext_val->m_inherit_map;
+
+    auto& refMap = p_lua_ext_val->m_inherit_map;
+    if(p_lua_ext_val->need_prcessed_inherit_map == true)
+    {
+        process_inherit_map(refMap);
+        p_lua_ext_val->need_prcessed_inherit_map = false;
+    }
 
     return find_inherit(idTypeDerived, idTypeBase, refMap);
 }
@@ -313,8 +444,15 @@ void* lua_tinker::detail::getInheritPtr(lua_State* L, uint64_t idTypeDerived, ui
 
     lua_ext_value* p_lua_ext_val = detail::user2type<lua_ext_value*>(L, -1);
 
-    auto it_derived = p_lua_ext_val->m_inherit_map.find(idTypeDerived);
-    if(it_derived == p_lua_ext_val->m_inherit_map.end())
+    auto& refMap = p_lua_ext_val->m_inherit_map;
+    if(p_lua_ext_val->need_prcessed_inherit_map == true)
+    {
+        process_inherit_map(refMap);
+        p_lua_ext_val->need_prcessed_inherit_map = false;
+    }
+
+    auto it_derived = refMap.find(idTypeDerived);
+    if(it_derived == refMap.end())
         return ptr;
 
     auto it_base = it_derived->second.find(idTypeBase);
@@ -322,21 +460,6 @@ void* lua_tinker::detail::getInheritPtr(lua_State* L, uint64_t idTypeDerived, ui
         return ptr;
 
     return (char*)ptr + it_base->second;
-}
-
-void _addInheritMap(lua_tinker::detail::InheritMap& refMap, uint64_t idTypeDerived, uint64_t idTypeBase, int64_t offset)
-{
-    refMap[idTypeDerived][idTypeBase] = offset;
-
-    // 找到idTypeBase的基类, 然后把idTypeDerived的基类加入到基类的继承列表中
-    auto it_base = refMap.find(idTypeBase);
-    if(it_base != refMap.end())
-    {
-        for(auto& it: it_base->second)
-        {
-            _addInheritMap(refMap, idTypeDerived, it.first, it.second + offset);
-        }
-    }
 }
 
 void lua_tinker::detail::addInheritMap(lua_State* L, uint64_t idTypeDerived, uint64_t idTypeBase, int64_t offset)
@@ -350,6 +473,7 @@ void lua_tinker::detail::addInheritMap(lua_State* L, uint64_t idTypeDerived, uin
     }
 
     lua_ext_value* p_lua_ext_val = detail::user2type<lua_ext_value*>(L, -1);
+
     auto&          refMap        = p_lua_ext_val->m_inherit_map;
     _addInheritMap(refMap, idTypeDerived, idTypeBase, offset);
 }
