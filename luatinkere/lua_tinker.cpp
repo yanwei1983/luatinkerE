@@ -340,6 +340,7 @@ std::vector<std::vector<uint64_t>> FindInheritanceChains(const lua_tinker::detai
     }
 
     // Traverse each chain separately
+    chains.reserve(startNodes.size());
     for(const auto& startNode: startNodes)
     {
         chains.push_back(BFSSearchInheritMap(map, startNode));
