@@ -59,7 +59,7 @@ struct lua_ext_value
 
     lua_tinker::detail::InheritMap m_inherit_map;
 
-    bool need_prcessed_inherit_map = true;  // if true, need process inherit map
+    bool bAutoProcessInheritMap = true; // if true, process inheritmap in first use
 
     lua_ext_value(lua_State* L)
         : m_L(L)
@@ -275,113 +275,54 @@ bool find_inherit(uint64_t idThisType, uint64_t idTypeBase, lua_tinker::detail::
     return false;
 }
 
-void _addInheritMap(lua_tinker::detail::InheritMap& refMap, uint64_t idTypeDerived, uint64_t idTypeBase, int64_t offset)
+void add_inherit_map(lua_tinker::detail::InheritMap& refMap,
+                     uint64_t                        idTypeDerived,
+                     uint64_t                        idTypeBase,
+                     int64_t                         offset)
 {
     refMap[idTypeDerived][idTypeBase] = offset;
 }
 
-std::vector<uint64_t> BFS_search_inherit_map(const lua_tinker::detail::InheritMap& map, uint64_t start)
+void auto_process_inherit_map(lua_tinker::detail::InheritMap& inputMap)
 {
-    std::queue<uint64_t>         q;
-    std::vector<uint64_t>        result;
-    std::unordered_set<uint64_t> visited;
+    lua_tinker::detail::InheritMap expandedMap;
 
-    q.push(start);
-    visited.insert(start);
-
-    while(!q.empty())
+    for(const auto& entry: inputMap)
     {
-        uint64_t n = q.front();
-        q.pop();
-        result.insert(result.begin(), n); // 添加节点到链表的前面，以实现逆序
+        uint64_t                              idType = entry.first;
+        std::unordered_map<uint64_t, int64_t> expandedInheritances;
+        std::unordered_map<uint64_t, bool>    visited;
 
-        auto it = map.find(n);
-        if(it != map.end())
+        std::function<void(uint64_t, int64_t)> expand = [&](uint64_t idTypeBase, int64_t offset)
         {
-            for(const auto& base: it->second)
+            if(!visited[idTypeBase])
             {
-                uint64_t baseId = base.first;
-                if(visited.count(baseId) == 0)
+                visited[idTypeBase]              = true;
+                expandedInheritances[idTypeBase] = offset;
+
+                if(inputMap.find(idTypeBase) != inputMap.end())
                 {
-                    q.push(baseId);
-                    visited.insert(baseId);
+                    for(const auto& inheritEntry: inputMap.at(idTypeBase))
+                    {
+                        uint64_t parent       = inheritEntry.first;
+                        int64_t  parentOffset = inheritEntry.second;
+                        expand(parent, offset + parentOffset);
+                    }
                 }
             }
-        }
-    }
+        };
 
-    return result;
-}
-
-std::vector<std::vector<uint64_t>> find_inherit_chains(const lua_tinker::detail::InheritMap& map)
-{
-    std::vector<std::vector<uint64_t>> chains;
-    std::unordered_set<uint64_t>       allNodes;
-    std::unordered_set<uint64_t>       ancestorNodes;
-
-    // Collect all nodes and ancestor nodes
-    for(const auto& derivedPair: map)
-    {
-        allNodes.insert(derivedPair.first);
-        for(const auto& basePair: derivedPair.second)
+        for(const auto& inheritEntry: entry.second)
         {
-            ancestorNodes.insert(basePair.first);
+            uint64_t idTypeBase = inheritEntry.first;
+            int64_t  offset     = inheritEntry.second;
+            expand(idTypeBase, offset);
         }
+
+        expandedMap[idType] = expandedInheritances;
     }
 
-    // Find start nodes
-    std::vector<uint64_t> startNodes;
-    for(const auto& node: allNodes)
-    {
-        if(ancestorNodes.count(node) == 0)
-        {
-            startNodes.push_back(node);
-        }
-    }
-
-    // Traverse each chain separately
-    chains.reserve(startNodes.size());
-    for(const auto& startNode: startNodes)
-    {
-        chains.push_back(BFS_search_inherit_map(map, startNode));
-    }
-
-    return chains;
-}
-
-void expend_inherit_map(lua_tinker::detail::InheritMap& refMap, uint64_t idType, uint64_t idTypeBase, int64_t offset)
-{
-    auto it = refMap.find(idTypeBase);
-    if(it == refMap.end())
-    {
-        return;
-    }
-
-    for(const auto& [idBase, baseOffset]: it->second)
-    {
-        _addInheritMap(refMap, idType, idBase, offset + baseOffset);
-    }
-}
-
-void process_inherit_map(lua_tinker::detail::InheritMap& refMap)
-{
-    auto chains = find_inherit_chains(refMap);
-    for(const auto& chain: chains)
-    {
-        for(const auto& id: chain)
-        {
-            auto it = refMap.find(id);
-            if(it != refMap.end())
-            {
-               
-                for(const auto& [idBase, offset]: it->second)
-                {
-                    expend_inherit_map(refMap, id, idBase, offset);
-                }
-                
-            }
-        }
-    }
+    inputMap = expandedMap;
 }
 
 bool lua_tinker::detail::hasInherit(lua_State* L, uint64_t idThisType)
@@ -398,10 +339,10 @@ bool lua_tinker::detail::hasInherit(lua_State* L, uint64_t idThisType)
 
     auto& refMap = p_lua_ext_val->m_inherit_map;
 
-    if(p_lua_ext_val->need_prcessed_inherit_map == true)
+    if(p_lua_ext_val->bAutoProcessInheritMap == true)
     {
-        process_inherit_map(refMap);
-        p_lua_ext_val->need_prcessed_inherit_map = false;
+        p_lua_ext_val->bAutoProcessInheritMap = false;
+        auto_process_inherit_map(refMap);
     }
 
     auto it_derived = refMap.find(idThisType);
@@ -424,10 +365,10 @@ bool lua_tinker::detail::IsInherit(lua_State* L, uint64_t idTypeDerived, uint64_
     lua_ext_value* p_lua_ext_val = detail::user2type<lua_ext_value*>(L, -1);
 
     auto& refMap = p_lua_ext_val->m_inherit_map;
-    if(p_lua_ext_val->need_prcessed_inherit_map == true)
+    if(p_lua_ext_val->bAutoProcessInheritMap == true)
     {
-        process_inherit_map(refMap);
-        p_lua_ext_val->need_prcessed_inherit_map = false;
+        p_lua_ext_val->bAutoProcessInheritMap = false;
+        auto_process_inherit_map(refMap);
     }
 
     return find_inherit(idTypeDerived, idTypeBase, refMap);
@@ -446,10 +387,10 @@ void* lua_tinker::detail::getInheritPtr(lua_State* L, uint64_t idTypeDerived, ui
     lua_ext_value* p_lua_ext_val = detail::user2type<lua_ext_value*>(L, -1);
 
     auto& refMap = p_lua_ext_val->m_inherit_map;
-    if(p_lua_ext_val->need_prcessed_inherit_map == true)
+    if(p_lua_ext_val->bAutoProcessInheritMap == true)
     {
-        process_inherit_map(refMap);
-        p_lua_ext_val->need_prcessed_inherit_map = false;
+        p_lua_ext_val->bAutoProcessInheritMap = false;
+        auto_process_inherit_map(refMap);
     }
 
     auto it_derived = refMap.find(idTypeDerived);
@@ -461,6 +402,27 @@ void* lua_tinker::detail::getInheritPtr(lua_State* L, uint64_t idTypeDerived, ui
         return ptr;
 
     return (char*)ptr + it_base->second;
+}
+
+void _addInheritMap(lua_ext_value* ext_ptr, uint64_t idTypeDerived, uint64_t idTypeBase, int64_t offset)
+{
+    if(ext_ptr == nullptr)
+        return;
+
+    auto& refMap = ext_ptr->m_inherit_map;
+    add_inherit_map(refMap, idTypeDerived, idTypeBase, offset);
+
+    if(ext_ptr->bAutoProcessInheritMap == true)
+        return;
+
+    auto it = refMap.find(idTypeBase);
+    if(it == refMap.end())
+        return;
+
+    for(const auto& [idBase, baseOffset]: it->second)
+    {
+        _addInheritMap(ext_ptr, idTypeDerived, idBase, offset + baseOffset);
+    }
 }
 
 void lua_tinker::detail::addInheritMap(lua_State* L, uint64_t idTypeDerived, uint64_t idTypeBase, int64_t offset)
@@ -475,8 +437,7 @@ void lua_tinker::detail::addInheritMap(lua_State* L, uint64_t idTypeDerived, uin
 
     lua_ext_value* p_lua_ext_val = detail::user2type<lua_ext_value*>(L, -1);
 
-    auto&          refMap        = p_lua_ext_val->m_inherit_map;
-    _addInheritMap(refMap, idTypeDerived, idTypeBase, offset);
+    _addInheritMap(p_lua_ext_val, idTypeDerived, idTypeBase, offset);
 }
 
 /*---------------------------------------------------------------------------*/
