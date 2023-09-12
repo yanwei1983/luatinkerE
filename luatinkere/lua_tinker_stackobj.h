@@ -283,7 +283,7 @@ namespace lua_tinker
             stack_obj value() const { return stack_obj(m_table.L, m_key + 1); }
             int32_t   value_idx() const { return m_key + 1; }
 
-            void destory()
+            void destroy()
             {
                 key().remove();
                 m_table._stack_pos = 0;

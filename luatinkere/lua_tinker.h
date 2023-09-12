@@ -574,7 +574,7 @@ namespace lua_tinker
             void dec_ref();
 
             bool empty() const { return m_L == nullptr; }
-            void destory();
+            void destroy();
             void reset();
 
             operator bool() const { return empty(); }

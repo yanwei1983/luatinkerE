@@ -1107,7 +1107,7 @@ namespace lua_tinker
             dec_ref();
         }
 
-        void lua_ref_base::destory()
+        void lua_ref_base::destroy()
         {
             luaL_unref(m_L, LUA_REGISTRYINDEX, m_regidx);
             delete m_pRef;
@@ -1132,7 +1132,7 @@ namespace lua_tinker
             if(m_pRef)
             {
                 if(--(*m_pRef) == 0)
-                    destory();
+                    destroy();
             }
         }
     } // namespace detail
