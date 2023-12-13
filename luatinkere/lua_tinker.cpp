@@ -275,10 +275,7 @@ bool find_inherit(uint64_t idThisType, uint64_t idTypeBase, lua_tinker::detail::
     return false;
 }
 
-void add_inherit_map(lua_tinker::detail::InheritMap& refMap,
-                     uint64_t                        idTypeDerived,
-                     uint64_t                        idTypeBase,
-                     int64_t                         offset)
+void add_inherit_map(lua_tinker::detail::InheritMap& refMap, uint64_t idTypeDerived, uint64_t idTypeBase, int64_t offset)
 {
     refMap[idTypeDerived][idTypeBase] = offset;
 }
@@ -462,20 +459,9 @@ static void call_stack(lua_State* L, int32_t n)
         }
 
         if(ar.name)
-            lua_tinker::print_error(L,
-                                    "%s%s() : line %d [%s : line %d]",
-                                    indent,
-                                    ar.name,
-                                    ar.currentline,
-                                    ar.source,
-                                    ar.linedefined);
+            lua_tinker::print_error(L, "%s%s() : line %d [%s : line %d]", indent, ar.name, ar.currentline, ar.source, ar.linedefined);
         else
-            lua_tinker::print_error(L,
-                                    "%sunknown : line %d [%s : line %d]",
-                                    indent,
-                                    ar.currentline,
-                                    ar.source,
-                                    ar.linedefined);
+            lua_tinker::print_error(L, "%sunknown : line %d [%s : line %d]", indent, ar.currentline, ar.source, ar.linedefined);
 
         call_stack(L, n + 1);
     }
@@ -546,11 +532,7 @@ int32_t lua_tinker::enum_stack(lua_State* L)
                 {
                     name.assign(lua_tostring(L, -1));
                     lua_remove(L, -1);
-                    print_error(L,
-                                "\t%s    0x%08p [%s]",
-                                lua_typename(L, lua_type(L, i)),
-                                lua_topointer(L, i),
-                                name.c_str());
+                    print_error(L, "\t%s    0x%08p [%s]", lua_typename(L, lua_type(L, i)), lua_topointer(L, i), name.c_str());
                 }
                 else
                 {
@@ -660,17 +642,17 @@ lua_tinker::table_onstack lua_tinker::detail::_stack_help<lua_tinker::table_onst
     return lua_tinker::table_onstack(L, index);
 }
 
-void lua_tinker::detail::_stack_help<lua_tinker::table_onstack>::_push(lua_State*                       L,
-                                                                       const lua_tinker::table_onstack& ret)
+void lua_tinker::detail::_stack_help<lua_tinker::table_onstack>::_push(lua_State* L, const lua_tinker::table_onstack& ret)
 {
     lua_pushvalue(L, ret.m_obj->m_index);
 }
 
 std::string lua_tinker::detail::_stack_help<std::string>::_read(lua_State* L, int32_t index)
 {
-    const char* strLua = lua_tostring(L, index);
+    size_t len = 0;
+    const char* strLua = lua_tolstring(L, index, &len);
     if(strLua)
-        return std::string(strLua);
+        return std::string(strLua, len);
     else
         return std::string();
 }
@@ -682,9 +664,10 @@ void lua_tinker::detail::_stack_help<std::string>::_push(lua_State* L, const std
 
 std::string_view lua_tinker::detail::_stack_help<std::string_view>::_read(lua_State* L, int32_t index)
 {
-    const char* strLua = lua_tostring(L, index);
+    size_t len = 0;
+    const char* strLua = lua_tolstring(L, index, &len);
     if(strLua)
-        return std::string_view{strLua, strlen(strLua)};
+        return std::string_view{strLua, len};
     else
         return std::string_view();
 }
