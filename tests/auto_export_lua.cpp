@@ -116,7 +116,7 @@ void export_to_lua_auto(lua_State* L)
 		if(class_ptr == nullptr)
 			return 0;
 
-		lua_tinker::table_onstack table(L);
+		lua_tinker::table_onstack table = lua_tinker::table_onstack::create_table(L);
 		for(auto& it : class_ptr->m_DataMap)
 		{
 			table.set(it.first, it.second);

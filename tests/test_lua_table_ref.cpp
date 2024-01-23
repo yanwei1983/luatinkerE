@@ -67,6 +67,32 @@ LUA_TEST(lua_table_ref)
 		return true;
 	};
 
+	g_test_func_set["test_lua_table_set"] = [L]()->bool
+	{
+		lua_tinker::table_onstack table(L, "test_lua_table_set");
+		table.set<int>("test1", 5);
+		//push table to top
+		lua_tinker::table_onstack sub_table = lua_tinker::table_onstack::create_table(L);
+		sub_table.set<int>("value", 10);
+		table.set("test2", sub_table);
+
+		std::string luabuf =
+		R"(function test_lua_table_set_func()
+				local table = test_lua_table_set;
+				if table["test1"] ~= 5 then
+					return false;
+				end
+				if table["test2"]["value"] ~= 10 then
+					return false;
+				end
+				return true;
+			end
+		)";
+		lua_tinker::dostring(L, luabuf.c_str());
+		return lua_tinker::call<bool>(L, "test_lua_table_set_func");
+	};
+
+
 	g_test_func_set["test_lua_table_iter_1"] = [L]()->bool
 	{
 		std::string luabuf =

@@ -993,8 +993,6 @@ bool lua_tinker::detail::table_obj::validate()
 /*---------------------------------------------------------------------------*/
 lua_tinker::table_onstack::table_onstack(lua_State* L)
 {
-    lua_newtable(L);
-
     m_obj = new detail::table_obj(L, lua_gettop(L));
 
     m_obj->inc_ref();

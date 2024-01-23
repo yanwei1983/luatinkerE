@@ -424,8 +424,11 @@ LUA_TEST(stl_container)
 		std::string luabuf =
 			R"(function test_lua_set_9(pTest)
 					local table = pTest:DataMapToTable();
-					print(table);
-					return #table;
+					local count = 0;
+					for k,v in pairs(table) do
+						count= count+1;
+					end
+					return count;
 				end
 			)";
 		lua_tinker::dostring(L, luabuf.c_str());

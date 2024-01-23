@@ -82,7 +82,7 @@ namespace lua_tinker
             lua_CFunction to_cfunction() const { return lua_tocfunction(L, _stack_pos); }
             
             
-
+            //if this stack_obj istop or force is true, remove it from stack
             void remove(bool force = false)
             {
                 if(is_valid())
@@ -101,7 +101,8 @@ namespace lua_tinker
                 }
                 reset(0);
             }
-
+            
+            //let this to top
             void remove_up()
             {
                 if(!is_valid())
@@ -110,6 +111,15 @@ namespace lua_tinker
                 reset(0);
             }
 
+            void move_to_top()
+            {
+                if(is_valid())
+                {
+                    lua_rotate(L, _stack_pos, 1);
+                }
+            }
+
+            //insert this to nIdx
             void insert_to(int32_t nIdx)
             {
                 if(is_top())
@@ -119,6 +129,7 @@ namespace lua_tinker
                 }
             }
 
+            // pop all thing after this, then this is the topone
             void pop_up(int32_t nIdx)
             {
                 if(is_top())
@@ -129,6 +140,7 @@ namespace lua_tinker
                 }
             }
 
+            // pop this to top
             void pop_up()
             {
                 if(!is_valid())
@@ -138,6 +150,7 @@ namespace lua_tinker
                 lua_pop(L, lua_gettop(L) - _stack_pos);
             }
 
+            //push this to top
             void push_top() const
             {
                 if(is_top())

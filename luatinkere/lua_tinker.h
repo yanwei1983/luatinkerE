@@ -2661,6 +2661,18 @@ namespace lua_tinker
                 }
             }
 
+            template<typename Key>
+            void set(Key&& key)
+            {
+                if(validate())
+                {
+                    stack_obj obj = stack_obj::get_top(m_L);
+                    _push_key(std::forward<Key>(key));
+                    obj.move_to_top();
+                    lua_settable(m_L, m_index);
+                }
+            }
+
             template<typename RVal, typename Key>
             RVal get(Key&& key)
             {
@@ -2738,6 +2750,7 @@ namespace lua_tinker
     // Table Object Holder
     struct table_onstack
     {
+        table_onstack() = default;
         table_onstack(lua_State* L);
         table_onstack(lua_State* L, int32_t index);
         table_onstack(lua_State* L, const char* name);
@@ -2747,37 +2760,71 @@ namespace lua_tinker
         template<typename T, typename Key>
         void set(Key&& key, T&& object)
         {
-            m_obj->set(std::forward<Key>(key), std::forward<T>(object));
+            if(m_obj != nullptr)
+            {
+                m_obj->set(std::forward<Key>(key), std::forward<T>(object));
+            }
+        }
+
+        template<typename Key>
+        void set_on_stack(Key&& key)
+        {
+            if(m_obj != nullptr)
+            {
+                m_obj->set(key);
+            }
         }
 
         template<typename T, typename Key>
         T get(Key&& key)
         {
-            return m_obj->get<T>(std::forward<Key>(key));
+            if(m_obj != nullptr)
+            {
+                return m_obj->get<T>(std::forward<Key>(key));
+            }
+            else
+            {
+                return {};
+            }
         }
 
         template<typename Key>
         bool get_to_stack(Key&& key)
         {
+            if(m_obj == nullptr)
+                return false;
+            
             return m_obj->get_to_stack(std::forward<Key>(key));
         }
 
         template<typename RVal, typename Key, typename... Args>
         RVal call(Key&& key, Args&&... args)
         {
+            if(m_obj == nullptr)
+                return {};
+
             return m_obj->call<RVal>(std::forward<Key>(key), std::forward<Args>(args)...);
         }
 
-        size_t len() const { return m_obj->len(); }
+        size_t len() const 
+        { 
+            if(m_obj == nullptr)
+                return 0;
+            return m_obj->len(); 
+        }
 
         template<typename T>
         T to_container()
         {
+            if(m_obj == nullptr)
+                return {};
             return detail::_readfromtable<T>(m_obj->m_L, m_obj->m_index);
         }
 
         void for_each(std::function<bool(int32_t key_idx, int32_t value_idx)> func)
         {
+            if(m_obj == nullptr)
+                return;
             detail::stack_obj      table = m_obj->get_stack_obj();
             detail::table_iterator it(table);
             while(it.hasNext())
@@ -2791,7 +2838,18 @@ namespace lua_tinker
         }
 
         bool is_valid() const { return m_obj != nullptr && m_obj->validate(); }
-        void release_owner() { m_obj->release_owner(); }
+        void release_owner() 
+        { 
+            if(m_obj == nullptr)
+                return;
+            m_obj->release_owner(); 
+        }
+
+        static table_onstack create_table(lua_State* L)
+        {
+            lua_newtable(L);
+            return table_onstack(L);
+        }
 
         detail::table_obj* m_obj = nullptr;
     };
