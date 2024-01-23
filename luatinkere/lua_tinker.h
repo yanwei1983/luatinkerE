@@ -168,11 +168,7 @@ namespace lua_tinker
 
     // namespace func
     template<typename Func, typename... DefaultArgs>
-    void namespace_def(lua_State*  L,
-                       const char* namespace_name,
-                       const char* name,
-                       Func&&      func,
-                       DefaultArgs&&... default_args);
+    void namespace_def(lua_State* L, const char* namespace_name, const char* name, Func&& func, DefaultArgs&&... default_args);
 
     // class init
     template<typename T>
@@ -237,8 +233,7 @@ namespace lua_tinker
         };
 
         template<typename T>
-        using base_type =
-            typename std::remove_cv<typename std::remove_reference<typename std::remove_pointer<T>::type>::type>::type;
+        using base_type = typename std::remove_cv<typename std::remove_reference<typename std::remove_pointer<T>::type>::type>::type;
 
         template<typename T>
         constexpr const char* get_class_name()
@@ -281,9 +276,7 @@ namespace lua_tinker
         };
 
         // inherit map
-        typedef std::unordered_map<uint64_t /*idTypeDerived*/,
-                                   std::unordered_map<uint64_t /*idTypeDerived*/, int64_t /*offset*/>>
-            InheritMap;
+        typedef std::unordered_map<uint64_t /*idTypeDerived*/, std::unordered_map<uint64_t /*idTypeDerived*/, int64_t /*offset*/>> InheritMap;
 
         bool  hasInherit(lua_State* L, uint64_t idThisType);
         bool  IsInherit(lua_State* L, uint64_t idTypeDerived, uint64_t idTypeBase);
@@ -291,14 +284,15 @@ namespace lua_tinker
         void  addInheritMap(lua_State* L, uint64_t idTypeDerived, uint64_t idTypeBase, int64_t offset);
 
         template<typename T, typename P>
-        constexpr int64_t get_inherit_offset()
+        int64_t get_inherit_offset()
         {
             static_assert(std::is_base_of<P, T>::value, "T must be inherit from P");
-            void* pVoid = (void*)1;
-            T* pT = (T*)pVoid;
-            P* pP = (P*)pT;
+            void* pVoid = (void*)0;
+            T*    pT    = (T*)pVoid;
+            P*    pP    = (P*)pT;
             return (int64_t)((char*)pP - (char*)pT);
         }
+
         template<typename T, typename P>
         void addInheritMap(lua_State* L)
         {
@@ -324,15 +318,9 @@ namespace lua_tinker
         template<typename R, typename... ARGS, typename... DEFAULT_ARGS>
         void _push_functor(lua_State* L, const char* name, R(func)(ARGS...), DEFAULT_ARGS&&... default_args);
         template<typename R, typename... ARGS, typename... DEFAULT_ARGS>
-        void _push_functor(lua_State*                       L,
-                           const char*                      name,
-                           const std::function<R(ARGS...)>& func,
-                           DEFAULT_ARGS&&... default_args);
+        void _push_functor(lua_State* L, const char* name, const std::function<R(ARGS...)>& func, DEFAULT_ARGS&&... default_args);
         template<typename R, typename... ARGS, typename... DEFAULT_ARGS>
-        void _push_functor(lua_State*                  L,
-                           const char*                 name,
-                           std::function<R(ARGS...)>&& func,
-                           DEFAULT_ARGS&&... default_args);
+        void _push_functor(lua_State* L, const char* name, std::function<R(ARGS...)>&& func, DEFAULT_ARGS&&... default_args);
 
         // from lua
         // param to pointer
@@ -639,8 +627,7 @@ namespace lua_tinker
             {
                 if(input)
                 {
-                    new(lua_newuserdata(L, sizeof(ptr2user<base_type<T>>)))
-                        ptr2user<base_type<T>>(std::forward<T>(input));
+                    new(lua_newuserdata(L, sizeof(ptr2user<base_type<T>>))) ptr2user<base_type<T>>(std::forward<T>(input));
                 }
                 else
                 {
@@ -953,8 +940,7 @@ namespace lua_tinker
             {
                 if constexpr(is_map_like<_T>::value)
                 {
-                    t.emplace(std::make_pair(read<typename _T::key_type>(L, it.key_idx()),
-                                             read<typename _T::mapped_type>(L, it.value_idx())));
+                    t.emplace(std::make_pair(read<typename _T::key_type>(L, it.key_idx()), read<typename _T::mapped_type>(L, it.value_idx())));
                 }
                 else if constexpr(is_set_like<_T>::value)
                 {
@@ -1001,8 +987,7 @@ namespace lua_tinker
         }
 
         template<class T>
-        concept stl_container =
-            !std::is_reference<T>::value && !std::is_pointer<T>::value && is_container<base_type<T>>::value;
+        concept stl_container = !std::is_reference<T>::value && !std::is_pointer<T>::value && is_container<base_type<T>>::value;
 
         // stl container T
         template<stl_container T>
@@ -1069,9 +1054,7 @@ namespace lua_tinker
             static Tuple _read_tuple_fromtable(lua_State* L, int32_t table_stack_pos, std::index_sequence<index...>)
             {
                 return std::make_tuple(
-                    _read_tuple_element_fromtable_helper<typename std::tuple_element<index, Tuple>::type, index + 1>(
-                        L,
-                        table_stack_pos)...);
+                    _read_tuple_element_fromtable_helper<typename std::tuple_element<index, Tuple>::type, index + 1>(L, table_stack_pos)...);
             }
 
             template<typename Tuple>
@@ -1084,9 +1067,7 @@ namespace lua_tinker
                     return {};
                 }
 
-                return _read_tuple_fromtable<Tuple>(L,
-                                                    table_obj._stack_pos,
-                                                    std::make_index_sequence<std::tuple_size<Tuple>::value>{});
+                return _read_tuple_fromtable<Tuple>(L, table_obj._stack_pos, std::make_index_sequence<std::tuple_size<Tuple>::value>{});
             }
 
             static TupleType _read(lua_State* L, int32_t index)
@@ -1100,36 +1081,24 @@ namespace lua_tinker
             }
 
             template<typename Tuple>
-            static void _push_tuple_totable_helper(lua_State* L,
-                                                   int32_t    table_stack_pos,
-                                                   Tuple&&    tuple,
-                                                   std::index_sequence<>)
+            static void _push_tuple_totable_helper(lua_State* L, int32_t table_stack_pos, Tuple&& tuple, std::index_sequence<>)
             {
             }
 
             template<typename Tuple, std::size_t first, std::size_t... is>
-            static void _push_tuple_totable_helper(lua_State* L,
-                                                   int32_t    table_stack_pos,
-                                                   Tuple&&    tuple,
-                                                   std::index_sequence<first, is...>)
+            static void _push_tuple_totable_helper(lua_State* L, int32_t table_stack_pos, Tuple&& tuple, std::index_sequence<first, is...>)
             {
                 push(L, first + 1); // lua table index from 1~x
                 push(L, std::get<first>(std::forward<Tuple>(tuple)));
                 lua_settable(L, table_stack_pos);
-                _push_tuple_totable_helper(L,
-                                           table_stack_pos,
-                                           std::forward<Tuple>(tuple),
-                                           std::index_sequence<is...>{});
+                _push_tuple_totable_helper(L, table_stack_pos, std::forward<Tuple>(tuple), std::index_sequence<is...>{});
             }
 
             static void _push(lua_State* L, TupleType&& tuple)
             {
                 stack_obj        table_obj  = stack_obj::new_table(L, std::tuple_size<TupleType>(), 0);
                 constexpr size_t tuple_size = std::tuple_size<TupleType>::value;
-                _push_tuple_totable_helper(L,
-                                           table_obj._stack_pos,
-                                           std::forward<TupleType>(tuple),
-                                           std::make_index_sequence<tuple_size>());
+                _push_tuple_totable_helper(L, table_obj._stack_pos, std::forward<TupleType>(tuple), std::make_index_sequence<tuple_size>());
             }
 
             static void _push(lua_State* L, const TupleType& val) { return _type2lua(L, val); }
@@ -1226,10 +1195,7 @@ namespace lua_tinker
             {
                 if(!lua_isuserdata(L, index))
                 {
-                    call_error(L,
-                               "shared_ptr _read %d to class %s, not a userdata",
-                               index,
-                               get_class_name<std::shared_ptr<T>>());
+                    call_error(L, "shared_ptr _read %d to class %s, not a userdata", index, get_class_name<std::shared_ptr<T>>());
                     return {};
                 }
 
@@ -1241,10 +1207,7 @@ namespace lua_tinker
                     UserDataWapper* pWapper = user2type<UserDataWapper*>(L, index);
                     if(pWapper == nullptr || pWapper->isSharedPtr() == false)
                     {
-                        call_error(L,
-                                   "shared_ptr _read %d to class %s,nil or not shared",
-                                   index,
-                                   get_class_name<std::shared_ptr<T>>());
+                        call_error(L, "shared_ptr _read %d to class %s,nil or not shared", index, get_class_name<std::shared_ptr<T>>());
                         return {};
                     }
 
@@ -1273,21 +1236,14 @@ namespace lua_tinker
                 {
                     if(IsInherit(L, class_type_idx, other_type_idx) == false)
                     {
-                        call_error(L,
-                                   "shared_ptr _read %d from %s to class %s no inherit",
-                                   index,
-                                   class_name,
-                                   get_class_name<std::shared_ptr<T>>());
+                        call_error(L, "shared_ptr _read %d from %s to class %s no inherit", index, class_name, get_class_name<std::shared_ptr<T>>());
                         return {};
                     }
                 }
 
                 if(pWapper == nullptr || pWapper->isSharedPtr() == false)
                 {
-                    call_error(L,
-                               "shared_ptr _read %d to class %s, nil or not shared",
-                               index,
-                               get_class_name<std::shared_ptr<T>>());
+                    call_error(L, "shared_ptr _read %d to class %s, nil or not shared", index, get_class_name<std::shared_ptr<T>>());
                     return {};
                 }
 
@@ -1310,8 +1266,7 @@ namespace lua_tinker
                 {
                     if(val.use_count() == 1) // last count,if we didn't hold it, it will lost
                     {
-                        new(lua_newuserdata(L, sizeof(sharedptr2user<T>)))
-                            sharedptr2user<T>(std::forward<std::shared_ptr<T>>(val));
+                        new(lua_newuserdata(L, sizeof(sharedptr2user<T>))) sharedptr2user<T>(std::forward<std::shared_ptr<T>>(val));
                     }
                     else
                     {
@@ -1449,8 +1404,7 @@ namespace lua_tinker
         template<int32_t nIdxParams, typename RVal, typename Func, typename... Args>
         RVal direct_invoke_func(Func&& func, lua_State* L)
         {
-            return direct_invoke_invoke_helper<nIdxParams, RVal, Func, Args...>(
-                std::forward<Func>(func),
+            return direct_invoke_invoke_helper<nIdxParams, RVal, Func, Args...>(std::forward<Func>(func),
                 L,
                 std::make_index_sequence<sizeof...(Args)>{});
         }
@@ -1464,8 +1418,7 @@ namespace lua_tinker
         template<int32_t nIdxParams, typename RVal, typename Func, typename CT, typename... Args>
         RVal direct_invoke_member_func(Func&& func, lua_State* L, CT* pClassPtr)
         {
-            return direct_invoke_invoke_helper<nIdxParams, RVal, Func, CT, Args...>(
-                std::forward<Func>(func),
+            return direct_invoke_invoke_helper<nIdxParams, RVal, Func, CT, Args...>(std::forward<Func>(func),
                 L,
                 pClassPtr,
                 std::make_index_sequence<sizeof...(Args)>{});
@@ -1500,7 +1453,7 @@ namespace lua_tinker
         {
             if(!lua_isuserdata(L, 1))
             {
-                call_error(L, "can't convert argument 1 to class %s, nil", get_class_name<T>());
+                call_error(L, "can't convert argument 1 to class %s, is not a userdata", get_class_name<T>());
                 return nullptr;
             }
 
@@ -1530,10 +1483,7 @@ namespace lua_tinker
                 uint64_t other_type_shared_idx = get_type_idx<std::shared_ptr<T>>();
                 if(class_type_idx != 0 && class_type_idx != other_type_shared_idx)
                 {
-                    call_error(L,
-                               "can't convert argument 1 from %s to class %s, no shared",
-                               class_name,
-                               get_class_name<T>());
+                    call_error(L, "can't convert argument 1 from %s to class %s, no shared", class_name, get_class_name<T>());
                     return nullptr;
                 }
                 else
@@ -1555,10 +1505,7 @@ namespace lua_tinker
             {
                 if(IsInherit(L, class_type_idx, other_type_idx) == false)
                 {
-                    call_error(L,
-                               "can't convert argument 1 from %s to class %s, no inhert",
-                               class_name,
-                               get_class_name<T>());
+                    call_error(L, "can't convert argument 1 from %s to class %s, no inhert", class_name, get_class_name<T>());
                     return nullptr;
                 }
 
@@ -1577,9 +1524,7 @@ namespace lua_tinker
             lambda(std::integral_constant<std::size_t, first>(), std::forward<Tuple>(tuple));
             if constexpr(sizeof...(is) > 0)
             {
-                foreach_tuple_indexImpl(std::forward<Tuple>(tuple),
-                                        std::forward<Lambda>(lambda),
-                                        std::index_sequence<is...>{});
+                foreach_tuple_indexImpl(std::forward<Tuple>(tuple), std::forward<Lambda>(lambda), std::index_sequence<is...>{});
             }
         }
 
@@ -1589,9 +1534,7 @@ namespace lua_tinker
             constexpr size_t tuple_count = std::tuple_size<std::decay_t<Tuple>>::value;
             if constexpr(tuple_count > 0)
             {
-                foreach_tuple_indexImpl(std::forward<Tuple>(tuple),
-                                        std::forward<Lambda>(lambda),
-                                        std::make_index_sequence<tuple_count>{});
+                foreach_tuple_indexImpl(std::forward<Tuple>(tuple), std::forward<Lambda>(lambda), std::make_index_sequence<tuple_count>{});
             }
         }
 
@@ -1693,18 +1636,12 @@ namespace lua_tinker
             {
                 if constexpr(!std::is_void<T>::value)
                 {
-                    push_rv<RVal>(
-                        L,
-                        direct_invoke_member_func<2, RVal, FunctionType, CT, Args...>(std::forward<FunctionType>(func),
-                                                                                      L,
-                                                                                      pClassPtr));
+                    push_rv<RVal>(L, direct_invoke_member_func<2, RVal, FunctionType, CT, Args...>(std::forward<FunctionType>(func), L, pClassPtr));
                     return 1;
                 }
                 else
                 {
-                    direct_invoke_member_func<2, RVal, FunctionType, CT, Args...>(std::forward<FunctionType>(func),
-                                                                                  L,
-                                                                                  pClassPtr);
+                    direct_invoke_member_func<2, RVal, FunctionType, CT, Args...>(std::forward<FunctionType>(func), L, pClassPtr);
                     return 0;
                 }
             }
@@ -1772,9 +1709,7 @@ namespace lua_tinker
             {
                 if constexpr(!std::is_void<T>::value)
                 {
-                    push_rv<RVal>(
-                        L,
-                        direct_invoke_func<1, RVal, FunctionType, Args...>(std::forward<FunctionType>(func), L));
+                    push_rv<RVal>(L, direct_invoke_func<1, RVal, FunctionType, Args...>(std::forward<FunctionType>(func), L));
                     return 1;
                 }
                 else
@@ -1828,10 +1763,7 @@ namespace lua_tinker
         }
 
         template<typename R, typename... ARGS, typename... DEFAULT_ARGS>
-        void _push_functor(lua_State*                       L,
-                           const char*                      name,
-                           const std::function<R(ARGS...)>& func,
-                           DEFAULT_ARGS&&... default_args)
+        void _push_functor(lua_State* L, const char* name, const std::function<R(ARGS...)>& func, DEFAULT_ARGS&&... default_args)
         {
             auto default_args_tuple = std::make_tuple(std::forward<DEFAULT_ARGS>(default_args)...);
             using Functor_Warp      = functor<decltype(default_args_tuple), R, ARGS...>;
@@ -1843,15 +1775,11 @@ namespace lua_tinker
         }
 
         template<typename R, typename... ARGS, typename... DEFAULT_ARGS>
-        void _push_functor(lua_State*                  L,
-                           const char*                 name,
-                           std::function<R(ARGS...)>&& func,
-                           DEFAULT_ARGS&&... default_args)
+        void _push_functor(lua_State* L, const char* name, std::function<R(ARGS...)>&& func, DEFAULT_ARGS&&... default_args)
         {
             auto default_args_tuple = std::make_tuple(std::forward<DEFAULT_ARGS>(default_args)...);
             using Functor_Warp      = functor<decltype(default_args_tuple), R, ARGS...>;
-            new(lua_newuserdata(L, sizeof(Functor_Warp)))
-                Functor_Warp(std::move(func), std::move(default_args_tuple), name);
+            new(lua_newuserdata(L, sizeof(Functor_Warp))) Functor_Warp(std::move(func), std::move(default_args_tuple), name);
             // register functor
             _register_functor_meta<Functor_Warp>(L);
 
@@ -2074,10 +2002,7 @@ namespace lua_tinker
         }
 
         template<typename T, typename R, typename... ARGS, typename... DEFAULT_ARGS>
-        void _push_class_functor(lua_State*  L,
-                                 const char* name,
-                                 R (T::*func)(ARGS...) const,
-                                 DEFAULT_ARGS&&... default_args)
+        void _push_class_functor(lua_State* L, const char* name, R (T::*func)(ARGS...) const, DEFAULT_ARGS&&... default_args)
         {
             auto default_args_tuple = std::make_tuple(std::forward<DEFAULT_ARGS>(default_args)...);
             using Functor_Warp      = member_functor<true, decltype(default_args_tuple), T, R, ARGS...>;
@@ -2091,10 +2016,7 @@ namespace lua_tinker
         }
 
         template<typename T, typename R, typename... ARGS, typename... DEFAULT_ARGS>
-        void _push_class_functor(lua_State*                           L,
-                                 const char*                          name,
-                                 const std::function<R(T*, ARGS...)>& func,
-                                 DEFAULT_ARGS&&... default_args)
+        void _push_class_functor(lua_State* L, const char* name, const std::function<R(T*, ARGS...)>& func, DEFAULT_ARGS&&... default_args)
         {
             auto default_args_tuple = std::make_tuple(std::forward<DEFAULT_ARGS>(default_args)...);
             using Functor_Warp      = member_functor<false, decltype(default_args_tuple), T, R, ARGS...>;
@@ -2107,10 +2029,7 @@ namespace lua_tinker
         }
 
         template<typename T, typename R, typename... ARGS, typename... DEFAULT_ARGS>
-        void _push_class_functor(lua_State*                      L,
-                                 const char*                     name,
-                                 std::function<R(T*, ARGS...)>&& func,
-                                 DEFAULT_ARGS&&... default_args)
+        void _push_class_functor(lua_State* L, const char* name, std::function<R(T*, ARGS...)>&& func, DEFAULT_ARGS&&... default_args)
         {
             auto default_args_tuple = std::make_tuple(std::forward<DEFAULT_ARGS>(default_args)...);
             using Functor_Warp      = member_functor<false, decltype(default_args_tuple), T, R, ARGS...>;
@@ -2146,11 +2065,7 @@ namespace lua_tinker
 
     // namespace func
     template<typename Func, typename... DefaultArgs>
-    void namespace_def(lua_State*  L,
-                       const char* namespace_name,
-                       const char* name,
-                       Func&&      func,
-                       DefaultArgs&&... default_args)
+    void namespace_def(lua_State* L, const char* namespace_name, const char* name, Func&& func, DefaultArgs&&... default_args)
     {
         using namespace detail;
         stack_scope_exit scope_exit(L);
@@ -2529,8 +2444,7 @@ namespace lua_tinker
                 if constexpr(!std::is_null_pointer<FUNC>::value)
                 {
                     CHECK_CLASS_PTR(T);
-                    (_read_classptr_from_index1<T, false>(L)->*m_set_func)(
-                        read<typename function_traits<SET_FUNC>::template argv<0>::type>(L, 3));
+                    (_read_classptr_from_index1<T, false>(L)->*m_set_func)(read<typename function_traits<SET_FUNC>::template argv<0>::type>(L, 3));
                 }
                 else
                 {
@@ -2618,8 +2532,7 @@ namespace lua_tinker
         {
             lua_pushstring(L, name);
             new(lua_newuserdata(L, sizeof(member_property<T, GET_FUNC, SET_FUNC>)))
-                member_property<T, GET_FUNC, SET_FUNC>(std::forward<GET_FUNC>(get_func),
-                                                       std::forward<SET_FUNC>(set_func));
+                member_property<T, GET_FUNC, SET_FUNC>(std::forward<GET_FUNC>(get_func), std::forward<SET_FUNC>(set_func));
             lua_rawset(L, -3);
         }
     };
@@ -2629,7 +2542,7 @@ namespace lua_tinker
         // Table Object on Stack
         struct table_obj
         {
-            table_obj(lua_State* L, int32_t index);
+            table_obj(lua_State* L, int32_t index, bool bNeedRelease);
             ~table_obj();
 
             void inc_ref();
@@ -2743,7 +2656,8 @@ namespace lua_tinker
             lua_State*  m_L;
             int32_t     m_index;
             const void* m_pointer;
-            int32_t     m_ref;
+            int32_t     m_ref ;
+            bool m_bNeedRelease = false;
         };
     } // namespace detail
 
@@ -2751,8 +2665,8 @@ namespace lua_tinker
     struct table_onstack
     {
         table_onstack() = default;
-        table_onstack(lua_State* L);
-        table_onstack(lua_State* L, int32_t index);
+        table_onstack(lua_State* L, bool bNeedRelease = false);
+        table_onstack(lua_State* L, int32_t index, bool bNeedRelease= false);
         table_onstack(lua_State* L, const char* name);
         table_onstack(const table_onstack& input);
         ~table_onstack();
@@ -2820,7 +2734,7 @@ namespace lua_tinker
                 return {};
             return detail::_readfromtable<T>(m_obj->m_L, m_obj->m_index);
         }
-
+        
         void for_each(std::function<bool(int32_t key_idx, int32_t value_idx)> func)
         {
             if(m_obj == nullptr)
@@ -2837,6 +2751,25 @@ namespace lua_tinker
             }
         }
 
+        template<class Key, class Val>
+        void for_each_obj(std::function<bool(const Key&, const Val&)> func)
+        {
+            if(m_obj == nullptr)
+                return;
+            detail::stack_obj      table = m_obj->get_stack_obj();
+            detail::table_iterator it(table);
+            while(it.hasNext())
+            {
+                if(func(detail::read<Key>(m_obj->m_L, it.key_idx() ),
+                        detail::read<Val>(m_obj->m_L, it.value_idx() )) == false)
+                {
+                    return;
+                }
+                it.moveNext();
+            }
+        }
+
+
         bool is_valid() const { return m_obj != nullptr && m_obj->validate(); }
         void release_owner() 
         { 
@@ -2848,10 +2781,11 @@ namespace lua_tinker
         static table_onstack create_table(lua_State* L)
         {
             lua_newtable(L);
-            return table_onstack(L);
+            return table_onstack(L, true);
         }
 
         detail::table_obj* m_obj = nullptr;
+
     };
 
     struct table_ref : public detail::lua_ref_base
@@ -2889,7 +2823,7 @@ namespace lua_tinker
         {
             if(lua_rawgeti(m_L, LUA_REGISTRYINDEX, m_regidx) == LUA_TTABLE)
             {
-                return table_onstack(m_L, -1);
+                return table_onstack(m_L, -1, true);
             }
             else
             {
@@ -3053,8 +2987,7 @@ namespace lua_tinker
             if constexpr(is_map_like<T>::value)
             {
                 // k,v
-                pContainer->emplace(detail::read<typename T::key_type>(L, 2),
-                                    detail::read<typename T::mapped_type>(L, 3));
+                pContainer->emplace(detail::read<typename T::key_type>(L, 2), detail::read<typename T::mapped_type>(L, 3));
             }
             else if constexpr(is_set_like<T>::value)
             {
@@ -3105,8 +3038,7 @@ namespace lua_tinker
             else if constexpr(is_vector_like<T>::value && has_equality<typename T::value_type>::value)
             {
                 // vector
-                pContainer->erase(
-                    std::find(pContainer->begin(), pContainer->end(), detail::read<typename T::value_type>(L, 2)));
+                pContainer->erase(std::find(pContainer->begin(), pContainer->end(), detail::read<typename T::value_type>(L, 2)));
             }
             else
             {
@@ -3342,8 +3274,8 @@ namespace lua_tinker
         template<typename Func, std::size_t args_num>
         struct count_all_func_argv
         {
-            static constexpr const uint64_t result = ((get_func_argv<Func, (args_num - 1)>() << ((args_num - 1) * 4)) +
-                                                      count_all_func_argv<Func, (args_num - 1)>::result);
+            static constexpr const uint64_t result =
+                ((get_func_argv<Func, (args_num - 1)>() << ((args_num - 1) * 4)) + count_all_func_argv<Func, (args_num - 1)>::result);
         };
         template<typename Func>
         struct count_all_func_argv<Func, 1>
@@ -3571,18 +3503,14 @@ namespace lua_tinker
     auto make_member_functor_ptr(RVal (CT::*func)(Args...), DefaultArgs&&... default_args)
     {
         auto default_args_tuple = std::make_tuple(std::forward<DefaultArgs>(default_args)...);
-        return new detail::member_functor<false, decltype(default_args_tuple), CT, RVal, Args...>(
-            func,
-            std::move(default_args_tuple));
+        return new detail::member_functor<false, decltype(default_args_tuple), CT, RVal, Args...>(func, std::move(default_args_tuple));
     }
 
     template<typename CT, typename RVal, typename... Args, typename... DefaultArgs>
     auto make_member_functor_ptr(RVal (CT::*func)(Args...) const, DefaultArgs&&... default_args)
     {
         auto default_args_tuple = std::make_tuple(std::forward<DefaultArgs>(default_args)...);
-        return new detail::member_functor<true, decltype(default_args_tuple), CT, RVal, Args...>(
-            func,
-            std::move(default_args_tuple));
+        return new detail::member_functor<true, decltype(default_args_tuple), CT, RVal, Args...>(func, std::move(default_args_tuple));
     }
 
     template<typename CT, typename... Args, typename... DefaultArgs>

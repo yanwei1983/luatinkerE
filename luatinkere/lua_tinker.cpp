@@ -639,7 +639,7 @@ void lua_tinker::detail::_stack_help<lua_tinker::lua_value*>::_push(lua_State* L
 
 lua_tinker::table_onstack lua_tinker::detail::_stack_help<lua_tinker::table_onstack>::_read(lua_State* L, int32_t index)
 {
-    return lua_tinker::table_onstack(L, index);
+    return lua_tinker::table_onstack(L, index, true);
 }
 
 void lua_tinker::detail::_stack_help<lua_tinker::table_onstack>::_push(lua_State* L, const lua_tinker::table_onstack& ret)
@@ -706,7 +706,7 @@ lua_tinker::table_onstack lua_tinker::detail::pop<lua_tinker::table_onstack>::ap
 {
     // didn't need pop it
     // stack_delay_pop  _dealy(L, nresult);
-    return table_onstack(L, lua_gettop(L));
+    return table_onstack(L, lua_gettop(L), true);
 }
 
 /*---------------------------------------------------------------------------*/
@@ -922,10 +922,11 @@ uint8_t lua_tinker::detail::_get_signature_bit(const uint64_t& sig, size_t idx)
 /*---------------------------------------------------------------------------*/
 /* table object on stack                                                     */
 /*---------------------------------------------------------------------------*/
-lua_tinker::detail::table_obj::table_obj(lua_State* L, int32_t index)
+lua_tinker::detail::table_obj::table_obj(lua_State* L, int32_t index,bool bNeedRelease)
     : m_L(L)
     , m_index(index)
     , m_ref(0)
+    , m_bNeedRelease(bNeedRelease)
 {
     if(lua_isnil(m_L, m_index))
     {
@@ -940,7 +941,7 @@ lua_tinker::detail::table_obj::table_obj(lua_State* L, int32_t index)
 
 lua_tinker::detail::table_obj::~table_obj()
 {
-    if(validate())
+    if(validate() && m_bNeedRelease)
     {
         lua_remove(m_L, m_index);
     }
@@ -991,10 +992,9 @@ bool lua_tinker::detail::table_obj::validate()
 /*---------------------------------------------------------------------------*/
 /* Table Object Holder                                                       */
 /*---------------------------------------------------------------------------*/
-lua_tinker::table_onstack::table_onstack(lua_State* L)
+lua_tinker::table_onstack::table_onstack(lua_State* L, bool bNeedRelease)
 {
-    m_obj = new detail::table_obj(L, lua_gettop(L));
-
+    m_obj = new detail::table_obj(L, lua_gettop(L),bNeedRelease );
     m_obj->inc_ref();
 }
 
@@ -1009,19 +1009,19 @@ lua_tinker::table_onstack::table_onstack(lua_State* L, const char* name)
         lua_getglobal(L, name);
     }
 
-    m_obj = new detail::table_obj(L, lua_gettop(L));
+    m_obj = new detail::table_obj(L, lua_gettop(L), true);
 
     m_obj->inc_ref();
 }
 
-lua_tinker::table_onstack::table_onstack(lua_State* L, int32_t index)
+lua_tinker::table_onstack::table_onstack(lua_State* L, int32_t index, bool bNeedRelease)
 {
     if(index < 0)
     {
         index = lua_gettop(L) + index + 1;
     }
 
-    m_obj = new detail::table_obj(L, index);
+    m_obj = new detail::table_obj(L, index, bNeedRelease);
 
     m_obj->inc_ref();
 }

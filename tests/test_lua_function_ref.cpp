@@ -126,7 +126,9 @@ LUA_TEST(luafunction_ref)
 		//lua_tinker::table_ref tt_ref = lua_tinker::table_ref::make_table_ref(tt);
 
 		lua_tinker::lua_function_ref ref = tt.get<decltype(ref)>("testFunc2");
-		return tt.get<int>(1) == 3 && ref.invoke<std::string>() == "test_upval";
+		auto v = tt.get<int>(1);
+		auto result = ref.invoke<std::string>();
+		return  v == 3 && result == "test_upval";
 	};
 
 
@@ -162,9 +164,10 @@ LUA_TEST(luafunction_ref)
 		std::string key1_1 = tt2_1.get<std::string>("key1");
 
 		std::vector<std::map<std::string, std::string>> datamap = tt2.to_container<decltype(datamap)>();
-		
+		auto key1_2 = datamap[0]["key2"] ;
+		auto key2_3 = datamap[1]["key3"] ;
 
-		return key1_1 == "key1_1" && datamap[0]["key2"] == "key1_2" && datamap[1]["key3"] == "key2_3";
+		return key1_1 == "key1_1" && key1_2 == "key1_2" && key2_3 == "key2_3";
 	};
 
 		g_test_func_set["test_lua_luafunction_ref_8"] = [L]()->bool

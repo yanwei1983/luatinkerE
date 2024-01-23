@@ -138,8 +138,7 @@ LUA_TEST(lua_table_ref)
 			if(table.is_table() == true)
 			{
 				//table_onstack will remove table from stack, so push it to top;
-				table.push_top();
-				lua_tinker::table_onstack t(L, lua_gettop(L));
+				lua_tinker::table_onstack t(L, lua_gettop(L), false);
 				if((t.get<int>("key") == 1 && t.get<std::string>("value") == "a") ||
 				   (t.get<int>("key") == 2 && t.get<std::string>("value") == "b") )
 				{
@@ -153,6 +152,7 @@ LUA_TEST(lua_table_ref)
 			}
 
 
+
 			return true;
 		});
 
@@ -160,6 +160,36 @@ LUA_TEST(lua_table_ref)
 
 		
 		return !bFail;
+	};
+
+
+	g_test_func_set["test_lua_table_iter_3"] = [L]()->bool
+	{
+		std::string luabuf =
+			R"(function test_lua_table_iter3()
+					return {
+							{key=1,value="a"},
+							{key=2,value="b"},
+							};
+				end
+			)";
+		lua_tinker::dostring(L, luabuf.c_str());
+		lua_tinker::table_onstack table = lua_tinker::call<decltype(table)>(L, "test_lua_table_iter3");
+		
+		table.for_each([L](int key_idx, int value_idx)
+		{
+			lua_tinker::table_onstack sub_table(L, value_idx);
+			sub_table.for_each_obj<std::string, std::string>([](const auto& key,const auto& val)
+			{
+				//printf("key:%s, val:%s\n", key.c_str(), val.c_str());
+
+				return true;
+			});
+			return true;
+		});
+
+		
+		return true;
 	};
 
 }
