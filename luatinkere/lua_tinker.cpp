@@ -797,7 +797,7 @@ int32_t lua_tinker::detail::meta_get(lua_State* L)
     stack_obj class_obj(L, 1);
     stack_obj key_obj(L, 2);
     stack_obj class_meta = class_obj.get_metatable();
-    if(class_meta.is_vaild() == false || class_meta.is_table() == false)
+    if(class_meta.is_valid() == false || class_meta.is_table() == false)
     {
         lua_pushstring(L, "can't find class metatable. (forgot registering class variable ?)");
         lua_error(L);

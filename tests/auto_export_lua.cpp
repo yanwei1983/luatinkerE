@@ -110,6 +110,37 @@ void export_to_lua_auto(lua_State* L)
 	lua_tinker::class_def<TestCon>(L, "ChangeDataMapRef", &TestCon::ChangeDataMapRef);
 	lua_tinker::class_def<TestCon>(L, "ChangeDataSet", &TestCon::ChangeDataSet);
 	lua_tinker::class_def<TestCon>(L, "ChangeDataSetRef", &TestCon::ChangeDataSetRef);
+	lua_tinker::class_def<TestCon>(L, "DataMapToTable", [](lua_State*L)->int32_t
+	{
+		auto class_ptr = lua_tinker::detail::_read_classptr_from_index1<TestCon, false>(L);
+		if(class_ptr == nullptr)
+			return 0;
+
+		lua_tinker::table_onstack table(L);
+		for(auto& it : class_ptr->m_DataMap)
+		{
+			table.set(it.first, it.second);
+		}
+		table.release_owner();
+		
+		return 1;
+	} );
+	lua_tinker::class_def<TestCon>(L, "TableToDataMap", [](lua_State*L)->int32_t
+	{
+		auto class_ptr = lua_tinker::detail::_read_classptr_from_index1<TestCon, false>(L);
+		if(class_ptr == nullptr)
+			return 0;
+			
+
+		lua_tinker::table_onstack t(L, 2);
+		if(t.is_valid() == false)
+			return 0;
+		auto data_map = t.to_container<std::map<int, int>>();
+		class_ptr->m_DataMap = data_map;
+		
+		return 0;
+	});
+
 	lua_tinker::class_def<TestCon>(L, "TestFuncObj", &TestCon::TestFuncObj);
 	lua_tinker::class_def<TestCon>(L, "getDataMap", &TestCon::getDataMap);
 	lua_tinker::class_def<TestCon>(L, "getDataMapPtr", &TestCon::getDataMapPtr);

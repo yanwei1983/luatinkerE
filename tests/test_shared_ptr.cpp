@@ -182,7 +182,7 @@ LUA_TEST(sharedptr)
 		lua_tinker::set_error_callback(L, [](lua_State *L) -> int
 		{
 			std::string errinfo(lua_tostring(L, -1));
-			if (errinfo != "can't convert argument 1 from ff__shared_ptr to class ff")
+			if (errinfo != "can't convert argument 1 from ff__shared_ptr to class ff, not inherit")
 			{
 				lua_tinker::on_error(L);
 			}
@@ -207,7 +207,7 @@ LUA_TEST(sharedptr)
 		lua_tinker::set_error_callback(L, [](lua_State *L) -> int
 		{
 			std::string errinfo(lua_tostring(L, -1));
-			if (errinfo != "can't convert argument 1 from ff__shared_ptr to class ")
+			if (errinfo != "can't convert argument 1 from ff__shared_ptr to class , not inherit")
 			{
 				lua_tinker::on_error(L);
 			}

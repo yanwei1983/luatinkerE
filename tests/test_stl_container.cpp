@@ -390,8 +390,9 @@ LUA_TEST(stl_container)
 	{
 		std::string luabuf =
 			R"(function test_lua_set_7(pTest)
-					pTest.m_DataSet:push(1);
-					return pTest.m_DataSet:size();
+					local testSet = pTest.m_DataSet;
+					testSet:push(1);
+					return testSet:size();
 				end
 			)";
 		lua_tinker::dostring(L, luabuf.c_str());
@@ -402,6 +403,55 @@ LUA_TEST(stl_container)
 		return data_size == test.m_DataSet.size() && data_size == 2;
 	};
 
+	g_test_func_set["test_lua_set_8"] = [L]()->bool
+	{
+		std::string luabuf =
+			R"(function test_lua_set_8(pTest)
+					pTest.m_DataSet:push(1);
+					return pTest.m_DataSet:size();
+				end
+			)";
+		lua_tinker::dostring(L, luabuf.c_str());
+		TestCon test;
+		test.m_DataSet.insert(77);
+		size_t data_size = lua_tinker::call<size_t>(L, "test_lua_set_8", &test);
+		
+		return data_size == test.m_DataSet.size() && data_size == 2;
+	};
+
+	g_test_func_set["test_lua_set_9"] = [L]()->bool
+	{
+		std::string luabuf =
+			R"(function test_lua_set_9(pTest)
+					local table = pTest:DataMapToTable();
+					print(table);
+					return #table;
+				end
+			)";
+		lua_tinker::dostring(L, luabuf.c_str());
+		TestCon test;
+		test.m_DataMap.emplace(77,3);
+		test.m_DataMap.emplace(88,4);
+		size_t data_size = lua_tinker::call<size_t>(L, "test_lua_set_9", &test);
+		
+		return data_size == test.m_DataMap.size() && data_size == 2;
+	};
+
+	g_test_func_set["test_lua_set_10"] = [L]()->bool
+	{
+		std::string luabuf =
+			R"(function test_lua_set_10(pTest)
+					local table = {[77]=1, [88]=2};
+					pTest:TableToDataMap(table);
+					return pTest:getDataMapRef():size();
+				end
+			)";
+		lua_tinker::dostring(L, luabuf.c_str());
+		TestCon test;
+		size_t data_size = lua_tinker::call<size_t>(L, "test_lua_set_10", &test);
+		
+		return data_size == test.m_DataMap.size() && data_size == 2;
+	};
 
 	g_test_func_set["test_lua_vec"] = [L]()->bool
 	{

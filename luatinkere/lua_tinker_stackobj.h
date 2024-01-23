@@ -61,18 +61,18 @@ namespace lua_tinker
 
             void reset(int32_t nIdx = 0) { _stack_pos = nIdx; }
 
-            bool    is_vaild() const { return _stack_pos != 0; }
-            int32_t get_type() const { return is_vaild() && lua_type(L, _stack_pos); }
+            bool    is_valid() const { return _stack_pos != 0; }
+            int32_t get_type() const { return is_valid() && lua_type(L, _stack_pos); }
             bool    is_number() const { return get_type() == LUA_TNUMBER; }
-            bool    is_string() const { return is_vaild() && lua_isstring(L, _stack_pos) == 1; }
-            bool    is_integer() const { return is_vaild() && lua_isinteger(L, _stack_pos) == 1; }
-            bool    is_boolean() const { return is_vaild() && lua_isboolean(L, _stack_pos); }
-            bool    is_none() const { return is_vaild() && lua_isnone(L, _stack_pos); }
-            bool    is_userdata() const { return is_vaild() && lua_isuserdata(L, _stack_pos) == 1; }
-            bool    is_function() const { return is_vaild() && lua_isfunction(L, _stack_pos); }
-            bool    is_cfunction() const { return is_vaild() && lua_iscfunction(L, _stack_pos) == 1; }
-            bool    is_table() const { return is_vaild() && lua_istable(L, _stack_pos); }
-            bool    is_nil() const { return is_vaild() && lua_isnil(L, _stack_pos); }
+            bool    is_string() const { return is_valid() && lua_isstring(L, _stack_pos) == 1; }
+            bool    is_integer() const { return is_valid() && lua_isinteger(L, _stack_pos) == 1; }
+            bool    is_boolean() const { return is_valid() && lua_isboolean(L, _stack_pos); }
+            bool    is_none() const { return is_valid() && lua_isnone(L, _stack_pos); }
+            bool    is_userdata() const { return is_valid() && lua_isuserdata(L, _stack_pos) == 1; }
+            bool    is_function() const { return is_valid() && lua_isfunction(L, _stack_pos); }
+            bool    is_cfunction() const { return is_valid() && lua_iscfunction(L, _stack_pos) == 1; }
+            bool    is_table() const { return is_valid() && lua_istable(L, _stack_pos); }
+            bool    is_nil() const { return is_valid() && lua_isnil(L, _stack_pos); }
 
             const char*   to_string() const { return lua_tostring(L, _stack_pos); }
             lua_Integer   to_integer() const { return lua_tointeger(L, _stack_pos); }
@@ -85,7 +85,7 @@ namespace lua_tinker
 
             void remove(bool force = false)
             {
-                if(is_vaild())
+                if(is_valid())
                 {
                     if(is_top() || force)
                     {
@@ -104,7 +104,7 @@ namespace lua_tinker
 
             void remove_up()
             {
-                if(!is_vaild())
+                if(!is_valid())
                     return;
                 lua_pop(L, lua_gettop(L) - (_stack_pos -1));
                 reset(0);
@@ -131,7 +131,7 @@ namespace lua_tinker
 
             void pop_up()
             {
-                if(!is_vaild())
+                if(!is_valid())
                     return;
                 if(is_top())
                     return;
@@ -142,7 +142,7 @@ namespace lua_tinker
             {
                 if(is_top())
                     return;
-                if(is_vaild())
+                if(is_valid())
                     lua_pushvalue(L, _stack_pos);
             }
 
@@ -150,7 +150,7 @@ namespace lua_tinker
 
             stack_obj get_lenobj() const
             {
-                if(is_vaild())
+                if(is_valid())
                 {
                     lua_len(L, _stack_pos);
                     return get_top(L);
@@ -161,7 +161,7 @@ namespace lua_tinker
 
             lua_Integer get_len() const
             {
-                if(is_vaild())
+                if(is_valid())
                 {
                     lua_len(L, _stack_pos);
                     stack_delay_pop _delay(L, 1);
@@ -172,7 +172,7 @@ namespace lua_tinker
 
             size_t get_rawlen() const
             {
-                if(is_vaild())
+                if(is_valid())
                 {
                     return lua_rawlen(L, _stack_pos);
                 }
@@ -181,7 +181,7 @@ namespace lua_tinker
 
             stack_obj rawget(const stack_obj& key) const
             {
-                if(is_vaild())
+                if(is_valid())
                 {
                     key.push_top();
                     lua_rawget(L, _stack_pos);
@@ -192,7 +192,7 @@ namespace lua_tinker
 
             stack_obj rawget(const char* key) const
             {
-                if(is_vaild())
+                if(is_valid())
                 {
                     lua_pushstring(L, key);
                     lua_rawget(L, _stack_pos);
@@ -203,7 +203,7 @@ namespace lua_tinker
 
             stack_obj rawgeti(int32_t n) const
             {
-                if(is_vaild())
+                if(is_valid())
                 {
                     lua_rawgeti(L, _stack_pos, n);
                     return get_top(L);
@@ -213,7 +213,7 @@ namespace lua_tinker
 
             void rawset()
             {
-                if(is_vaild())
+                if(is_valid())
                 {
                     lua_rawset(L, _stack_pos);
                 }
@@ -221,7 +221,7 @@ namespace lua_tinker
 
             void rawseti(int32_t n)
             {
-                if(is_vaild())
+                if(is_valid())
                 {
                     lua_rawseti(L, _stack_pos, n);
                 }
@@ -229,7 +229,7 @@ namespace lua_tinker
 
             stack_obj get_metatable()
             {
-                if(is_vaild())
+                if(is_valid())
                 {
                     if(lua_getmetatable(L, _stack_pos))
                         return get_top(L);

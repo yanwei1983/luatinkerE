@@ -16,13 +16,13 @@
 #include <functional>
 #include <memory>
 #include <new>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <string_view>
 #include <type_traits>
 #include <typeindex>
 #include <typeinfo>
-
 // #include<set>
 #include <map>
 // #include<vector>
@@ -30,6 +30,7 @@
 #include "lua.hpp"
 #include "lua_tinker_stackobj.h"
 #include "type_traits_ext.h"
+#include "StaticTypeInfo.h"
 
 #ifdef _DEBUG
 #define LUATINKER_USERDATA_CHECK_CONST
@@ -710,7 +711,7 @@ namespace lua_tinker
         {
             if(!lua_isuserdata(L, index))
             {
-                call_error(L, "can't convert argument %d to class %s", index, get_class_name<_T>());
+                call_error(L, "can't convert argument %d to class %s, not a userdata", index, get_class_name<_T>());
                 return return_empty<_T>();
             }
 
@@ -718,13 +719,13 @@ namespace lua_tinker
 
             stack_obj class_meta = obj.get_metatable();
 
-            if(class_meta.is_vaild() == false || class_meta.is_table() == false)
+            if(class_meta.is_valid() == false || class_meta.is_table() == false)
             {
                 class_meta.remove();
                 UserDataWapper* pWapper = user2type<UserDataWapper*>(L, index);
                 if(pWapper == nullptr)
                 {
-                    call_error(L, "can't convert argument %d to class %s", index, get_class_name<_T>());
+                    call_error(L, "can't convert argument %d to class %s, convert to UserDataWarper is nullptr", index, get_class_name<_T>());
                     return return_empty<_T>();
                 }
 
@@ -740,7 +741,7 @@ namespace lua_tinker
             UserDataWapper* pWapper = user2type<UserDataWapper*>(L, index);
             if(pWapper == nullptr)
             {
-                call_error(L, "can't convert argument %d to class %s", index, get_class_name<_T>());
+                call_error(L, "can't convert argument %d to class %s, convert to UserDataWarper is nullptr", index, get_class_name<_T>());
                 return return_empty<_T>();
             }
 
@@ -748,11 +749,7 @@ namespace lua_tinker
             {
                 if(IsInherit(L, class_type_idx, other_type_idx) == false)
                 {
-                    call_error(L,
-                               "can't convert argument %d from %s to class %s",
-                               index,
-                               class_name,
-                               get_class_name<_T>());
+                    call_error(L, "can't convert argument %d from %s to class %s, not inherit", index, class_name, get_class_name<_T>());
                     return return_empty<_T>();
                 }
 
@@ -1238,7 +1235,7 @@ namespace lua_tinker
 
                 stack_obj obj(L, 1);
                 stack_obj class_meta = obj.get_metatable();
-                if(class_meta.is_vaild() == false || class_meta.is_table() == false)
+                if(class_meta.is_valid() == false || class_meta.is_table() == false)
                 {
                     // noreg
                     UserDataWapper* pWapper = user2type<UserDataWapper*>(L, index);
@@ -1351,6 +1348,36 @@ namespace lua_tinker
 
                 push_meta(L, get_class_name<std::shared_ptr<T>>());
                 lua_setmetatable(L, -2);
+            }
+        };
+
+        template<typename T>
+        struct _stack_help<std::optional<T>>
+        {
+            static constexpr int32_t cover_to_lua_type() { return CLT_USERDATA; }
+
+            static std::optional<T> _read(lua_State* L, int32_t index)
+            {
+                if(lua_isnoneornil(L, index))
+                {
+                    return {};
+                }
+
+                return read<T>(L, index);
+            }
+
+            // optional to lua
+            static void _push(lua_State* L, std::optional<T>&& val)
+            {
+                if(val.has_value())
+                {
+                    T&& v = std::move(val.value());
+                    push(L, std::move(v));
+                }
+                else
+                {
+                    lua_pushnil(L);
+                }
             }
         };
 
@@ -1479,7 +1506,7 @@ namespace lua_tinker
 
             stack_obj obj(L, 1);
             stack_obj class_meta = obj.get_metatable();
-            if(class_meta.is_vaild() == false || class_meta.is_table() == false)
+            if(class_meta.is_valid() == false || class_meta.is_table() == false)
             {
                 call_error(L, "can't convert argument 1 to class %s, no meta", get_class_name<T>());
                 return nullptr;
@@ -1494,7 +1521,7 @@ namespace lua_tinker
             UserDataWapper* pWapper = user2type<UserDataWapper*>(L, 1);
             if(pWapper == nullptr)
             {
-                call_error(L, "can't convert argument 1 to %s class %s, nil", class_name, get_class_name<T>());
+                call_error(L, "can't convert argument 1 to %s class %s, convert to UserDataWarper is nullptr", class_name, get_class_name<T>());
                 return nullptr;
             }
 
@@ -2413,7 +2440,7 @@ namespace lua_tinker
             {
                 CHECK_CLASS_PTR(T);
                 auto  class_ptr = _read_classptr_from_index1<T, true>(L);
-                auto& v         = class_ptr->*(_var);
+                auto& v = class_ptr->*(_var);
                 _stack_help<V>::_push(L, v);
             }
             virtual void set(lua_State* L) override
@@ -2763,6 +2790,7 @@ namespace lua_tinker
             }
         }
 
+        bool is_valid() const { return m_obj != nullptr && m_obj->validate(); }
         void release_owner() { m_obj->release_owner(); }
 
         detail::table_obj* m_obj = nullptr;
@@ -2823,7 +2851,7 @@ namespace lua_tinker
             stack_obj key_obj(L, 2);
             stack_obj class_meta = class_obj.get_metatable();
 
-            if(class_meta.is_vaild() == false || class_meta.is_table() == false)
+            if(class_meta.is_valid() == false || class_meta.is_table() == false)
             {
                 call_error(L, "meta_container_get : class_meta is not table");
                 return 0;
@@ -2840,8 +2868,13 @@ namespace lua_tinker
             class_meta.remove_up();
 
             // val = list[key]
-            UserDataWapper* pWapper    = user2type<UserDataWapper*>(L, 1);
-            T*              pContainer = (T*)(pWapper->m_p);
+            UserDataWapper* pWapper = user2type<UserDataWapper*>(L, 1);
+            if(pWapper == nullptr)
+            {
+                call_error(L, "meta_container_get_len : pWapper is nullptr");
+                return 0;
+            }
+            T* pContainer = (T*)(pWapper->m_p);
             if constexpr(is_map_like<T>::value)
             {
                 // k,v
@@ -2873,14 +2906,21 @@ namespace lua_tinker
                 // vector
 
                 uint32_t key = detail::read<uint32_t>(L, 2);
-                key -= 1;
-                if(key > pContainer->size())
+                if(key == 0)
                 {
                     lua_pushnil(L);
                 }
                 else
                 {
-                    detail::push(L, pContainer->at(key));
+                    key -= 1;
+                    if(key > pContainer->size())
+                    {
+                        lua_pushnil(L);
+                    }
+                    else
+                    {
+                        detail::push(L, pContainer->at(key));
+                    }
                 }
             }
 
@@ -2891,8 +2931,13 @@ namespace lua_tinker
         int32_t meta_container_set(lua_State* L)
         {
             // list[key] = val;
-            UserDataWapper* pWapper    = user2type<UserDataWapper*>(L, 1);
-            T*              pContainer = (T*)(pWapper->m_p);
+            UserDataWapper* pWapper = user2type<UserDataWapper*>(L, 1);
+            if(pWapper == nullptr)
+            {
+                call_error(L, "meta_container_get_len : pWapper is nullptr");
+                return 0;
+            }
+            T* pContainer = (T*)(pWapper->m_p);
 #ifdef LUATINKER_USERDATA_CHECK_CONST
             if(pWapper->is_const())
             {
@@ -2913,9 +2958,9 @@ namespace lua_tinker
             else
             {
                 // vector
-                int32_t key = detail::read<int32_t>(L, 2);
+                uint32_t key = detail::read<uint32_t>(L, 2);
                 key -= 1;
-                if(key > (int32_t)pContainer->size())
+                if(key > pContainer->size())
                 {
                     call_error(L, "set to vector : %d out of range", key);
                     return 0;
@@ -2933,8 +2978,13 @@ namespace lua_tinker
         int32_t meta_container_push(lua_State* L)
         {
             // list[key] = val;
-            UserDataWapper* pWapper    = user2type<UserDataWapper*>(L, 1);
-            T*              pContainer = (T*)(pWapper->m_p);
+            UserDataWapper* pWapper = user2type<UserDataWapper*>(L, 1);
+            if(pWapper == nullptr)
+            {
+                call_error(L, "meta_container_get_len : pWapper is nullptr");
+                return 0;
+            }
+            T* pContainer = (T*)(pWapper->m_p);
 #ifdef LUATINKER_USERDATA_CHECK_CONST
             if(pWapper->is_const())
             {
@@ -2971,8 +3021,13 @@ namespace lua_tinker
         int32_t meta_container_erase_by_value(lua_State* L)
         {
             // list[key] = val;
-            UserDataWapper* pWapper    = user2type<UserDataWapper*>(L, 1);
-            T*              pContainer = (T*)(pWapper->m_p);
+            UserDataWapper* pWapper = user2type<UserDataWapper*>(L, 1);
+            if(pWapper == nullptr)
+            {
+                call_error(L, "meta_container_get_len : pWapper is nullptr");
+                return 1;
+            }
+            T* pContainer = (T*)(pWapper->m_p);
 #ifdef LUATINKER_USERDATA_CHECK_CONST
             if(pWapper->is_const())
             {
@@ -3007,8 +3062,13 @@ namespace lua_tinker
         int32_t meta_container_erase_by_key(lua_State* L)
         {
             // list[key] = val;
-            UserDataWapper* pWapper    = user2type<UserDataWapper*>(L, 1);
-            T*              pContainer = (T*)(pWapper->m_p);
+            UserDataWapper* pWapper = user2type<UserDataWapper*>(L, 1);
+            if(pWapper == nullptr)
+            {
+                call_error(L, "meta_container_get_len : pWapper is nullptr");
+                return 1;
+            }
+            T* pContainer = (T*)(pWapper->m_p);
 #ifdef LUATINKER_USERDATA_CHECK_CONST
             if(pWapper->is_const())
             {
@@ -3059,8 +3119,13 @@ namespace lua_tinker
             }
             static int32_t Next(lua_State* L)
             {
-                UserDataWapper*  pWapper = user2type<UserDataWapper*>(L, 1);
-                lua_iterator<T>* pIter   = (lua_iterator<T>*)(pWapper->m_p);
+                UserDataWapper* pWapper = user2type<UserDataWapper*>(L, 1);
+                if(pWapper == nullptr)
+                {
+                    call_error(L, "meta_container_get_len : pWapper is nullptr");
+                    return 0;
+                }
+                lua_iterator<T>* pIter = (lua_iterator<T>*)(pWapper->m_p);
                 if(pIter->HasMore() == false)
                 {
                     lua_pushnil(L);
@@ -3089,8 +3154,13 @@ namespace lua_tinker
         template<typename T>
         int32_t meta_container_make_range(lua_State* L)
         {
-            UserDataWapper* pWapper    = user2type<UserDataWapper*>(L, 1);
-            T*              pContainer = (T*)(pWapper->m_p);
+            UserDataWapper* pWapper = user2type<UserDataWapper*>(L, 1);
+            if(pWapper == nullptr)
+            {
+                call_error(L, "meta_container_get_len : pWapper is nullptr");
+                return 0;
+            }
+            T* pContainer = (T*)(pWapper->m_p);
             lua_pushcfunction(L, &lua_iterator<base_type<T>>::Next);
             detail::push(L, lua_iterator<decltype(*pContainer)>(pContainer->begin(), pContainer->end()));
             lua_pushnil(L);
@@ -3100,8 +3170,13 @@ namespace lua_tinker
         template<typename T>
         int32_t meta_container_get_len(lua_State* L)
         {
-            UserDataWapper* pWapper    = user2type<UserDataWapper*>(L, 1);
-            T*              pContainer = (T*)(pWapper->m_p);
+            UserDataWapper* pWapper = user2type<UserDataWapper*>(L, 1);
+            if(pWapper == nullptr)
+            {
+                call_error(L, "meta_container_get_len : pWapper is nullptr");
+                return 0;
+            }
+            T* pContainer = (T*)(pWapper->m_p);
             detail::push(L, pContainer->size());
             return 1;
         }
@@ -3109,8 +3184,14 @@ namespace lua_tinker
         template<typename T>
         int32_t meta_container_to_table(lua_State* L)
         {
-            UserDataWapper* pWapper    = user2type<UserDataWapper*>(L, 1);
-            T*              pContainer = (T*)(pWapper->m_p);
+            UserDataWapper* pWapper = user2type<UserDataWapper*>(L, 1);
+            if(pWapper == nullptr)
+            {
+                call_error(L, "meta_container_get_len : pWapper is nullptr");
+                return 0;
+            }
+
+            T* pContainer = (T*)(pWapper->m_p);
 
             _pushtotable(L, *pContainer);
             return 1;
@@ -3120,7 +3201,10 @@ namespace lua_tinker
         void add_container_mate(lua_State* L)
         {
             std::string t_class_name = get_class_name<base_type<T>>();
-            std::string name = std::string("container_with_") + (t_class_name.empty() ? "unknown" : t_class_name);
+            if(t_class_name.empty())
+                t_class_name = static_type_info::getTypeName<base_type<T>>();
+
+            std::string name = std::string("container_with_") + t_class_name;
             detail::class_name<base_type<T>>::name(name.c_str());
             lua_createtable(L, 0, 8);
 
@@ -3137,6 +3221,10 @@ namespace lua_tinker
             lua_rawset(L, -3);
 
             lua_pushstring(L, "__pairs");
+            lua_pushcclosure(L, detail::meta_container_make_range<base_type<T>>, 0);
+            lua_rawset(L, -3);
+
+            lua_pushstring(L, "__ipairs");
             lua_pushcclosure(L, detail::meta_container_make_range<base_type<T>>, 0);
             lua_rawset(L, -3);
 
