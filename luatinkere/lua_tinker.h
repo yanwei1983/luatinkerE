@@ -284,12 +284,12 @@ namespace lua_tinker
         void  addInheritMap(lua_State* L, uint64_t idTypeDerived, uint64_t idTypeBase, int64_t offset);
 
         template<typename T, typename P>
-        int64_t get_inherit_offset()
+        constexpr int64_t get_inherit_offset()
         {
             static_assert(std::is_base_of<P, T>::value, "T must be inherit from P");
-            void* pVoid = (void*)0;
-            T*    pT    = (T*)pVoid;
-            P*    pP    = (P*)pT;
+            void* pVoid = (void*)1;
+            T* pT = (T*)pVoid;
+            P* pP = (P*)pT;
             return (int64_t)((char*)pP - (char*)pT);
         }
 
