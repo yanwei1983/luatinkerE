@@ -878,10 +878,8 @@ namespace lua_tinker
         struct _stack_help<const std::string&> : public _stack_help<std::string>
         {
         };
-        template<>
-        struct _stack_help<std::string&> : public _stack_help<std::string>
-        {
-        };
+
+
 
         template<>
         struct _stack_help<std::string_view>
