@@ -562,7 +562,8 @@ namespace lua_tinker
             void inc_ref();
             void dec_ref();
 
-            bool empty() const { return m_L == nullptr; }
+            bool validate() const { return m_L != nullptr && m_pRef != nullptr && m_regidx != 0; }
+            bool empty() const { return m_L == nullptr || m_pRef == nullptr || m_regidx == 0; }
             void destroy();
             void reset();
 
@@ -784,19 +785,16 @@ namespace lua_tinker
             }
         }
 
+        
         // lua stack help to read/push
         template<typename T>
         struct _stack_help
         {
             static constexpr int32_t cover_to_lua_type() { return CLT_USERDATA; }
 
-            static T _read(lua_State* L, int32_t index) { return lua2type<T>(L, index); }
-
-            // get userdata ptr from lua, can handle nil an 0
-            template<typename _T>
-            static _T lua2type(lua_State* L, int32_t index)
-            {
-                if constexpr(std::is_pointer<_T>::value)
+            static T _read(lua_State* L, int32_t index) 
+            { 
+                if constexpr(std::is_pointer<T>::value)
                 {
                     if(lua_isnoneornil(L, index))
                     {
@@ -806,13 +804,14 @@ namespace lua_tinker
                     {
                         return nullptr;
                     }
-                    return _lua2type<_T>(L, index);
+                    return _lua2type<T>(L, index);
                 }
                 else
                 {
-                    return _lua2type<_T>(L, index);
+                    return _lua2type<T>(L, index);
                 }
             }
+
 
             // obj to lua
             template<typename _T>
@@ -879,6 +878,10 @@ namespace lua_tinker
         struct _stack_help<const std::string&> : public _stack_help<std::string>
         {
         };
+        template<>
+        struct _stack_help<std::string&> : public _stack_help<std::string>
+        {
+        };
 
         template<>
         struct _stack_help<std::string_view>
@@ -892,6 +895,10 @@ namespace lua_tinker
         };
         template<>
         struct _stack_help<const std::string_view&> : public _stack_help<std::string_view>
+        {
+        };
+        template<>
+        struct _stack_help<std::string_view&> : public _stack_help<std::string_view>
         {
         };
 
@@ -913,7 +920,7 @@ namespace lua_tinker
 
         // enum
         template<typename T>
-            requires std::is_enum_v<T>
+        requires std::is_enum_v<T>
         struct _stack_help<T>
         {
             static constexpr int32_t cover_to_lua_type() { return CLT_INT; }
@@ -945,6 +952,14 @@ namespace lua_tinker
                 else if constexpr(is_set_like<_T>::value)
                 {
                     t.emplace(read<typename _T::value_type>(L, it.value_idx()));
+                }
+                 else if constexpr(is_array_like<_T>::value)
+                {
+                    auto nIdx = it.key_idx();
+                    if(nIdx > 0 && nIdx <= t.size())
+                    {
+                        t[nIdx] = read<typename _T::value_type>(L, it.value_idx());
+                    }
                 }
                 else
                 {
@@ -1005,16 +1020,6 @@ namespace lua_tinker
                 }
             }
 
-            // template<typename _T>
-            // static void _push(lua_State *L, _T&& val)
-            //{
-            //	return _pushtotable(L, std::forward<_T>(val));
-            //}
-
-            // static T _read(lua_State *L, int32_t index)
-            //{
-            //	return _lua2type<T>(L, index);
-            //}
 
             template<typename _T>
             static void _push(lua_State* L, _T&& val)
@@ -1032,6 +1037,22 @@ namespace lua_tinker
                 return _type2lua(L, val);
             }
         };
+        template<stl_container T>
+        struct _stack_help<const T&> : public _stack_help<T>
+        {
+            static const T& _read(lua_State* L, int32_t index)
+            {
+                return _lua2type<const T&>(L, index);
+            }
+
+        };
+        
+        template<stl_container T>
+        struct _stack_help<T&> : public _stack_help<const T&>
+        {
+        };
+
+
 
         template<typename... Args>
         struct _stack_help<std::tuple<Args...>>
@@ -1105,6 +1126,7 @@ namespace lua_tinker
 
             static void _push(lua_State* L, TupleType& val) { return _type2lua(L, val); }
         };
+        
         template<typename RVal, typename... Args>
         struct _stack_help<std::function<RVal(Args...)>>
         {
@@ -1289,14 +1311,7 @@ namespace lua_tinker
             {
                 if(val)
                 {
-                    // if (val.use_count() == 1)	//last count,if we didn't hold it, it will lost
-                    //{
-                    //	new(lua_newuserdata(L, sizeof(sharedptr2user<T>))) sharedptr2user<T>(val);
-                    //}
-                    // else
-                    {
-                        new(lua_newuserdata(L, sizeof(weakptr2user<T>))) weakptr2user<T>(val);
-                    }
+                    new(lua_newuserdata(L, sizeof(weakptr2user<T>))) weakptr2user<T>(val);
                 }
                 else
                     lua_pushnil(L);
@@ -1304,6 +1319,12 @@ namespace lua_tinker
                 push_meta(L, get_class_name<std::shared_ptr<T>>());
                 lua_setmetatable(L, -2);
             }
+        };
+
+        template<typename T>
+        struct _stack_help<std::shared_ptr<T>&> : public _stack_help<const std::shared_ptr<T>&>
+        {
+
         };
 
         template<typename T>
@@ -2355,8 +2376,16 @@ namespace lua_tinker
             {
                 CHECK_CLASS_PTR(T);
                 auto  class_ptr = _read_classptr_from_index1<T, true>(L);
-                auto& v = class_ptr->*(_var);
-                _stack_help<V>::_push(L, v);
+                auto& v         = class_ptr->*(_var);
+                if constexpr (is_container<V>::value)
+                {
+                    push<V&>(L, v);
+                }
+                else
+                {
+                    push(L, v);
+                }
+                
             }
             virtual void set(lua_State* L) override
             {
@@ -2378,7 +2407,14 @@ namespace lua_tinker
                 CHECK_CLASS_PTR(T);
                 auto  class_ptr = _read_classptr_from_index1<T, true>(L);
                 auto& v         = class_ptr->*(_var);
-                _stack_help<V>::_push(L, v);
+                if constexpr (is_container<V>::value)
+                {
+                    push<const V&>(L, v);
+                }
+                else
+                {
+                    push(L, v);
+                }
             }
             virtual void set(lua_State* L) override { call_error(L, "member is readonly."); }
         };
@@ -2821,7 +2857,7 @@ namespace lua_tinker
 
         table_onstack push_table_to_stack() const
         {
-            if(lua_rawgeti(m_L, LUA_REGISTRYINDEX, m_regidx) == LUA_TTABLE)
+            if(validate() && lua_rawgeti(m_L, LUA_REGISTRYINDEX, m_regidx) == LUA_TTABLE)
             {
                 return table_onstack(m_L, -1, true);
             }
