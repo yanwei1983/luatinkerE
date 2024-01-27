@@ -895,10 +895,6 @@ namespace lua_tinker
         struct _stack_help<const std::string_view&> : public _stack_help<std::string_view>
         {
         };
-        template<>
-        struct _stack_help<std::string_view&> : public _stack_help<std::string_view>
-        {
-        };
 
         template<>
         struct _stack_help<table_onstack>
