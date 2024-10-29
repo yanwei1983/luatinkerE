@@ -1215,7 +1215,7 @@ namespace lua_tinker
                     return {};
                 }
 
-                stack_obj obj(L, 1);
+                stack_obj obj(L, indx);
                 stack_obj class_meta = obj.get_metatable();
                 if(class_meta.is_valid() == false || class_meta.is_table() == false)
                 {
